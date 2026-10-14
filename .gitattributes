@@ -1,0 +1,7 @@
+# Keep GitHub language statistics focused on maintained source code.
+*.pbxproj linguist-generated=true
+*.xcscheme linguist-generated=true
+station-directory/migrations/*.sql linguist-generated=true
+station-directory/package-lock.json linguist-generated=true
+*.swift text eol=lf
+*.md text eol=lf

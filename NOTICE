@@ -1,0 +1,14 @@
+Wireless notices
+
+Original Wireless source and documentation: Copyright (c) 2026 Kevin Perry.
+Available under the MIT License in LICENSE, except where otherwise stated.
+
+Wireless adapts original MIT-licensed Autohop code by Kevin Perry.
+
+Wireless/VocalBoost.swift contains a Vocal Boost signal chain adapted from
+Autohop's Playback/PlaybackEngine.swift, which derives from Pocket Casts for iOS
+by Automattic, Inc. and contributors. This file remains available under the
+Mozilla Public License 2.0. See LICENSE-MPL-2.0.md.
+
+Broadcaster material and third-party dependencies retain their own rights and
+licences. See THIRD_PARTY.md.

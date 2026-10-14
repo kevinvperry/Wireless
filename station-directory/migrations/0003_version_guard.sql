@@ -1,0 +1,1 @@
+ALTER TABLE mutation_locks ADD COLUMN guard INTEGER NOT NULL DEFAULT 1 CHECK(guard=1);

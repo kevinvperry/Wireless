@@ -1,0 +1,24 @@
+{
+  "name": "wireless-directory",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --port 8787",
+    "test": "wrangler deploy --dry-run --outdir .wrangler/test-build && node --test test/*.test.js",
+    "check": "node --check src/index.js && node --check src/auth.js && node --check src/catalogue.js && node --check src/artwork.js && node --check src/stream-testing.js && node --check public/admin/app.js",
+    "import:prepare": "node scripts/import-research.js",
+    "import:capital-metadata": "node scripts/import-capital-metadata.js",
+    "import:contact-metadata": "node scripts/import-contact-metadata.js",
+    "db:migrate:local": "wrangler d1 migrations apply DB --local",
+    "db:seed:local": "wrangler d1 execute DB --local --file generated/research.sql",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "4.98.0",
+    "miniflare": "4.20260603.0"
+  },
+  "dependencies": {
+    "bcryptjs": "3.0.3"
+  }
+}

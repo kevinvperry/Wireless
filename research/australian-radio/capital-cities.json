@@ -1,0 +1,521 @@
+[
+  {
+    "city": "Sydney",
+    "network": "ABC Local Radio",
+    "station_group": "11264c4bac29",
+    "name": "702 ABC Sydney",
+    "url": "https://streaming.abc-cdn.net.au/audio/hls/localsydney.m3u8",
+    "note": ""
+  },
+  {
+    "city": "Sydney",
+    "network": "SEN",
+    "station_group": "612f55de42a8",
+    "name": "SEN 1170",
+    "url": "https://d2kkpj3tysba3i.cloudfront.net/v1/master/fbb316a042e17a2e683126d94749c2d69866fc2c/SEN_Sydney/raw/sen-syd/EncoderUnit_3.m3u8?playerParams.sitepage=https%3A%2F%2Fsen.com.au%2F&playerParams.domain=sen.com.au&playerParams.cb=cachebusterPlaceholder&playerParams.playerId=SEN-Web",
+    "note": ""
+  },
+  {
+    "city": "Sydney",
+    "network": "Hit Network",
+    "station_group": "773825606c43",
+    "name": "2DayFM 104.1 Sydney",
+    "url": "https://sa46.scastream.com.au/live/2day_128.stream/playlist.m3u8?dist=listnr-web",
+    "note": ""
+  },
+  {
+    "city": "Sydney",
+    "network": "Triple M",
+    "station_group": "285185e82eeb",
+    "name": "Triple M Sydney 104.9",
+    "url": "https://sa47.scastream.com.au/live/2mmm_128.stream/playlist.m3u8?dist=listnr-web",
+    "note": ""
+  },
+  {
+    "city": "Sydney",
+    "network": "Nova",
+    "station_group": "2bef6affd01d",
+    "name": "Nova 96.9",
+    "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/NOVA_969_AAC320.aac",
+    "note": ""
+  },
+  {
+    "city": "Sydney",
+    "network": "Smooth",
+    "station_group": "2a1af692c272",
+    "name": "Smooth FM 95.3",
+    "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/SMOOTH953_AAC320.aac",
+    "note": ""
+  },
+  {
+    "city": "Sydney",
+    "network": "KIIS",
+    "station_group": "adc3aa7bbe77",
+    "name": "KIIS 1065",
+    "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/ARN_KIIS1065.mp3",
+    "note": ""
+  },
+  {
+    "city": "Sydney",
+    "network": "Gold",
+    "station_group": "78faec2ef9b7",
+    "name": "GOLD101.7",
+    "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/ARN_WSFM.mp3",
+    "note": ""
+  },
+  {
+    "city": "Sydney",
+    "network": "Tapt Media",
+    "station_group": "44dd138bd4c1",
+    "name": "2GB",
+    "url": "https://i.mjh.nz/.r/radio-2gb.aac",
+    "note": ""
+  },
+  {
+    "city": "Melbourne",
+    "network": "ABC Local Radio",
+    "station_group": "f9e327bf23a1",
+    "name": "774 ABC Melbourne",
+    "url": "https://streaming.abc-cdn.net.au/audio/hls/localmelbourne.m3u8",
+    "note": ""
+  },
+  {
+    "city": "Melbourne",
+    "network": "SEN",
+    "station_group": "62d2e55ae9ff",
+    "name": "SEN 1116",
+    "url": "https://d2jt3l9ulybyg4.cloudfront.net/playlist.m3u8?key=monash",
+    "note": ""
+  },
+  {
+    "city": "Melbourne",
+    "network": "Hit Network",
+    "station_group": "33b5c26fda71",
+    "name": "The Fox Melbourne",
+    "url": "https://sa46.scastream.com.au/live/3fox_128.stream/playlist.m3u8?dist=listnr-web",
+    "note": ""
+  },
+  {
+    "city": "Melbourne",
+    "network": "Triple M",
+    "station_group": "89605657cb78",
+    "name": "Triple M Melbourne 105.1",
+    "url": "https://sa47.scastream.com.au/live/3mmm_128.stream/playlist.m3u8?dist=listnr-web",
+    "note": ""
+  },
+  {
+    "city": "Melbourne",
+    "network": "Nova",
+    "station_group": "5d842ee95e32",
+    "name": "Nova 100",
+    "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/NOVA_100_AAC320.aac",
+    "note": ""
+  },
+  {
+    "city": "Melbourne",
+    "network": "Smooth",
+    "station_group": "57fa9c360020",
+    "name": "Smooth FM 91.5 - Melbourne - 91.5 FM",
+    "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/SMOOTH915_AAC320.aac",
+    "note": ""
+  },
+  {
+    "city": "Melbourne",
+    "network": "KIIS",
+    "station_group": "dd86393c13d8",
+    "name": "KIIS 1011",
+    "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/ARN_KIIS1011.mp3",
+    "note": ""
+  },
+  {
+    "city": "Melbourne",
+    "network": "Gold",
+    "station_group": "dbbb4ad7c472",
+    "name": "GOLD104.3",
+    "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/ARN_GOLD1043.mp3",
+    "note": ""
+  },
+  {
+    "city": "Melbourne",
+    "network": "Tapt Media",
+    "station_group": "47cd29da5a1d",
+    "name": "3AW Melbourne",
+    "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/3AWAAC_O.aac",
+    "note": ""
+  },
+  {
+    "city": "Brisbane",
+    "network": "ABC Local Radio",
+    "station_group": "53134d345305",
+    "name": "612 ABC Brisbane",
+    "url": "https://streaming.abc-cdn.net.au/audio/hls/localbrisbane.m3u8",
+    "note": ""
+  },
+  {
+    "city": "Brisbane",
+    "network": "SEN",
+    "station_group": "7ea2e37443b4",
+    "name": "SENQ",
+    "url": "https://d2dgwrtikgx7lx.cloudfront.net/playlist.m3u8",
+    "note": ""
+  },
+  {
+    "city": "Brisbane",
+    "network": "Hit Network",
+    "station_group": "8c7ad1d3da5f",
+    "name": "B105 Brisbane",
+    "url": "https://sa47.scastream.com.au/live/4bbb_128.stream/playlist.m3u8?dist=listnr-web",
+    "note": ""
+  },
+  {
+    "city": "Brisbane",
+    "network": "Triple M",
+    "station_group": "7769426de525",
+    "name": "Triple M Brisbane 104.5",
+    "url": "https://sa47.scastream.com.au/live/4mmm_128.stream/playlist.m3u8?dist=listnr-web",
+    "note": ""
+  },
+  {
+    "city": "Brisbane",
+    "network": "Nova",
+    "station_group": "7f4a6f6ff529",
+    "name": "Nova 106.9",
+    "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/NOVA_1069_AAC320.aac",
+    "note": ""
+  },
+  {
+    "city": "Brisbane",
+    "network": "Smooth",
+    "station_group": "3c149ef44a68",
+    "name": "Smooth FM Brisbane",
+    "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/SMOOTH_BRISBANE_AAC320.aac",
+    "note": "Digital service"
+  },
+  {
+    "city": "Brisbane",
+    "network": "KIIS",
+    "station_group": "c6c15fd1586f",
+    "name": "KIIS 973",
+    "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/ARN_973FM.mp3",
+    "note": ""
+  },
+  {
+    "city": "Brisbane",
+    "network": "Gold",
+    "station_group": "d09424bfbfac",
+    "name": "GOLD Brisbane",
+    "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/BNE_GOLDAAC.m3u8",
+    "note": "Digital service"
+  },
+  {
+    "city": "Brisbane",
+    "network": "Tapt Media",
+    "station_group": "db432bcf4c61",
+    "name": "4BC Brisbane",
+    "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/4BC_O_ADP.aac",
+    "note": ""
+  },
+  {
+    "city": "Adelaide",
+    "network": "ABC Local Radio",
+    "station_group": "7de64417a171",
+    "name": "891 ABC Adelaide",
+    "url": "https://streaming.abc-cdn.net.au/audio/hls/localadelaide.m3u8",
+    "note": ""
+  },
+  {
+    "city": "Adelaide",
+    "network": "SEN",
+    "station_group": "ce7d49d13fcb",
+    "name": "SEN SA",
+    "url": "https://d3ggm8hqhlnxz2.cloudfront.net/v1/master/fbb316a042e17a2e683126d94749c2d69866fc2c/SEN_SA/raw/sen-sa/EncoderUnit_4.m3u8?playerParams.sitepage=https%3A%2F%2Fsen.com.au%2F&playerParams.domain=sen.com.au&playerParams.cb=cachebusterPlaceholder&playerParams.playerId=SEN-Web",
+    "note": ""
+  },
+  {
+    "city": "Adelaide",
+    "network": "Hit Network",
+    "station_group": "66c6f546c81c",
+    "name": "SAFM Adelaide",
+    "url": "https://sa47.scastream.com.au/live/5ssa_128.stream/playlist.m3u8?dist=listnr-web",
+    "note": ""
+  },
+  {
+    "city": "Adelaide",
+    "network": "Triple M",
+    "station_group": "1f72e1b25208",
+    "name": "Triple M Adelaide 104.7",
+    "url": "https://sa47.scastream.com.au/live/5mmm_128.stream/playlist.m3u8?dist=listnr-web",
+    "note": ""
+  },
+  {
+    "city": "Adelaide",
+    "network": "Nova",
+    "station_group": "e203995c549d",
+    "name": "Nova 919",
+    "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/NOVA_919_AAC320.aac",
+    "note": ""
+  },
+  {
+    "city": "Adelaide",
+    "network": "Smooth",
+    "station_group": "a876171726ed",
+    "name": "Smooth FM Adelaide",
+    "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/SMOOTH_ADELAIDE_AAC320.aac",
+    "note": "Digital service"
+  },
+  {
+    "city": "Adelaide",
+    "network": "KIIS",
+    "station_group": "55b73ef16c0d",
+    "name": "KIIS 1023",
+    "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/ARN_MIX1023.mp3",
+    "note": ""
+  },
+  {
+    "city": "Adelaide",
+    "network": "Gold",
+    "station_group": "398cd83cda2e",
+    "name": "GOLD1323",
+    "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/ARN_CRUISE1323.mp3",
+    "note": ""
+  },
+  {
+    "city": "Adelaide",
+    "network": "Tapt Media",
+    "status": "No separate local feed identified"
+  },
+  {
+    "city": "Perth",
+    "network": "ABC Local Radio",
+    "station_group": "1b89f545bcf2",
+    "name": "102.5 ABC Perth",
+    "url": "https://streaming.abc-cdn.net.au/audio/hls/localperth.m3u8",
+    "note": ""
+  },
+  {
+    "city": "Perth",
+    "network": "SEN",
+    "station_group": "b94a294d47ae",
+    "name": "SEN WA",
+    "url": "https://dwro5e48wopnp.cloudfront.net/playlist.m3u8",
+    "note": ""
+  },
+  {
+    "city": "Perth",
+    "network": "Hit Network",
+    "station_group": "cf0ceecd6c57",
+    "name": "Mix94.5 Perth",
+    "url": "https://sa46.scastream.com.au/live/6mix_128.stream/playlist.m3u8?dist=listnr-web",
+    "note": ""
+  },
+  {
+    "city": "Perth",
+    "network": "Triple M",
+    "station_group": "b8bbb3631e74",
+    "name": "Triple M Perth 92.9",
+    "url": "https://sa46.scastream.com.au/live/6ppm_128.stream/playlist.m3u8?dist=listnr-web",
+    "note": ""
+  },
+  {
+    "city": "Perth",
+    "network": "Nova",
+    "station_group": "cae7a9815bba",
+    "name": "Nova 93.7",
+    "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/NOVA_937_AAC320.aac",
+    "note": ""
+  },
+  {
+    "city": "Perth",
+    "network": "Smooth",
+    "station_group": "e3ef9b098113",
+    "name": "Smooth FM Perth",
+    "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/SMOOTH_PERTH_AAC320.aac",
+    "note": "Digital service"
+  },
+  {
+    "city": "Perth",
+    "network": "KIIS",
+    "station_group": "5f07222bd20d",
+    "name": "KIIS Perth",
+    "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/PER_KIISAAC.m3u8",
+    "note": "Digital service"
+  },
+  {
+    "city": "Perth",
+    "network": "Gold",
+    "station_group": "b9975bdb69f2",
+    "name": "GOLD 96FM",
+    "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/ARN_96FM.mp3",
+    "note": ""
+  },
+  {
+    "city": "Perth",
+    "network": "Tapt Media",
+    "station_group": "3f29cc24820d",
+    "name": "6PR Perth",
+    "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/6PRAAC_O.aac",
+    "note": ""
+  },
+  {
+    "city": "Hobart",
+    "network": "ABC Local Radio",
+    "station_group": "d1fe63732c57",
+    "name": "936 ABC Hobart",
+    "url": "https://streaming.abc-cdn.net.au/audio/hls/localhobart.m3u8",
+    "note": ""
+  },
+  {
+    "city": "Hobart",
+    "network": "SEN",
+    "station_group": "c0decfdb0d7a",
+    "name": "SEN Tassie",
+    "url": "https://d38x9gzrvjqxr1.cloudfront.net/playlist.m3u8",
+    "note": ""
+  },
+  {
+    "city": "Hobart",
+    "network": "Hit Network",
+    "station_group": "035905e85af3",
+    "name": "hit 100.9 Hobart",
+    "url": "https://sa47.scastream.com.au/live/7ttt_128.stream/playlist.m3u8?dist=listnr-web",
+    "note": ""
+  },
+  {
+    "city": "Hobart",
+    "network": "Triple M",
+    "station_group": "bc93a726d80e",
+    "name": "Triple M Hobart 107.3",
+    "url": "https://sa47.scastream.com.au/live/7xxx_128.stream/playlist.m3u8?dist=listnr-web",
+    "note": ""
+  },
+  {
+    "city": "Hobart",
+    "network": "Nova",
+    "status": "No separate local feed identified"
+  },
+  {
+    "city": "Hobart",
+    "network": "Smooth",
+    "status": "No separate local feed identified"
+  },
+  {
+    "city": "Hobart",
+    "network": "KIIS",
+    "status": "No separate local feed identified"
+  },
+  {
+    "city": "Hobart",
+    "network": "Gold",
+    "status": "No separate local feed identified"
+  },
+  {
+    "city": "Hobart",
+    "network": "Tapt Media",
+    "status": "No separate local feed identified"
+  },
+  {
+    "city": "Canberra",
+    "network": "ABC Local Radio",
+    "station_group": "15e980155375",
+    "name": "666 ABC Canberra",
+    "url": "https://streaming.abc-cdn.net.au/audio/hls/localcanberra.m3u8",
+    "note": ""
+  },
+  {
+    "city": "Canberra",
+    "network": "SEN",
+    "station_group": "6e88b935dc42",
+    "name": "SEN Track Canberra",
+    "url": "https://d2jvvw8ua36sw8.cloudfront.net/playlist.m3u8",
+    "note": "SEN Track racing service"
+  },
+  {
+    "city": "Canberra",
+    "network": "Hit Network",
+    "station_group": "76e630802468",
+    "name": "hit 104.7 Canberra",
+    "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/ARN_1047HIT.mp3",
+    "note": ""
+  },
+  {
+    "city": "Canberra",
+    "network": "Triple M",
+    "status": "No separate local feed identified"
+  },
+  {
+    "city": "Canberra",
+    "network": "Nova",
+    "status": "No separate local feed identified"
+  },
+  {
+    "city": "Canberra",
+    "network": "Smooth",
+    "status": "No separate local feed identified"
+  },
+  {
+    "city": "Canberra",
+    "network": "KIIS",
+    "status": "No separate local feed identified"
+  },
+  {
+    "city": "Canberra",
+    "network": "Gold",
+    "status": "No separate local feed identified"
+  },
+  {
+    "city": "Canberra",
+    "network": "Tapt Media",
+    "status": "No separate local feed identified"
+  },
+  {
+    "city": "Darwin",
+    "network": "ABC Local Radio",
+    "station_group": "941a34adbebd",
+    "name": "105.7 ABC Darwin",
+    "url": "https://streaming.abc-cdn.net.au/audio/hls/localdarwin.m3u8",
+    "note": ""
+  },
+  {
+    "city": "Darwin",
+    "network": "SEN",
+    "station_group": "3b78fdea2a3d",
+    "name": "SEN Top End",
+    "url": "https://d3elfh40orew8o.cloudfront.net/playlist.m3u8",
+    "note": ""
+  },
+  {
+    "city": "Darwin",
+    "network": "Hit Network",
+    "status": "No separate local feed identified"
+  },
+  {
+    "city": "Darwin",
+    "network": "Triple M",
+    "status": "No separate local feed identified"
+  },
+  {
+    "city": "Darwin",
+    "network": "Nova",
+    "status": "No separate local feed identified"
+  },
+  {
+    "city": "Darwin",
+    "network": "Smooth",
+    "status": "No separate local feed identified"
+  },
+  {
+    "city": "Darwin",
+    "network": "KIIS",
+    "status": "No separate local feed identified"
+  },
+  {
+    "city": "Darwin",
+    "network": "Gold",
+    "status": "No separate local feed identified"
+  },
+  {
+    "city": "Darwin",
+    "network": "Tapt Media",
+    "status": "No separate local feed identified"
+  }
+]

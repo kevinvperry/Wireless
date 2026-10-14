@@ -1,0 +1,630 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		006D08E3FE9643881A0C5DDE /* AudioRoutePickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE5F0B6C67EEBCF54CBB0BF9 /* AudioRoutePickerView.swift */; };
+		08DAD67874CBEB2500A172D1 /* SleepTimerSheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46E14DACD66F8DAD68FBCE55 /* SleepTimerSheetView.swift */; };
+		0D7808193B88750064978753 /* ProgrammeGuide.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA29A1EC84D04AB7DC690374 /* ProgrammeGuide.swift */; };
+		0E1BE1AF5844D7913660C972 /* WirelessApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C8DF2AC33887409191F2781 /* WirelessApp.swift */; };
+		1274C83EFCDCD8DB757457B0 /* RadioPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6630D03B5125433D04BF5126 /* RadioPlayerView.swift */; };
+		1FC47233BE7FFDEA69C06427 /* DelayCorrectionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34B1977BE352BBA9A863FDE9 /* DelayCorrectionTests.swift */; };
+		22B4604A476E15BE939B98DE /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CCDDE53C4D89A836A68EB050 /* Assets.xcassets */; };
+		23E33CD7E3C09DCF55E53DE1 /* StreamDiagnosticView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29D4ED78062FDB9798BCDE64 /* StreamDiagnosticView.swift */; };
+		358967CA5B027BE2CE6A8AB6 /* StationDirectoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76EECFE6B7E52C2FE1E8A08B /* StationDirectoryTests.swift */; };
+		3C729C5EB76A961FC0C64556 /* DiscoverRegions.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2CED56748D25A16D042A988 /* DiscoverRegions.swift */; };
+		4228DA29F63E7152486959CE /* SleepTimerService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 776676EA121CB50213E02B4F /* SleepTimerService.swift */; };
+		4AEAB1BE50069C484DBB86AC /* SupportContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2DF93E69BA58ED5894962B2 /* SupportContent.swift */; };
+		4AEACEEDD6D487B421DB780F /* VocalBoost.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E4068851564EEABF96B4AAD /* VocalBoost.swift */; };
+		4C6AE6F326DEEA248EFAE274 /* StationDirectory.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9002A99CCA693E52ACD1413 /* StationDirectory.swift */; };
+		55FD82A995E07EB83D1EF85D /* WirelessLayoutMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C4C5FB32A97D0A7967DB3B7 /* WirelessLayoutMetrics.swift */; };
+		86957CB1D807DBCED53ABFA6 /* AcknowledgementsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B93FC87D9BD4E8BACD869C22 /* AcknowledgementsView.swift */; };
+		87B4B8F400922775A4CF6495 /* RadioStreamEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06E77E689E1033689FB1A219 /* RadioStreamEngine.swift */; };
+		8E173D4B74CBCB45947A3036 /* PlayerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E1D262786C716DAE7D8E2FA /* PlayerTests.swift */; };
+		9B71D4835E4A77EC17C37E84 /* DelayCorrection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25D222B4D6107093651B654D /* DelayCorrection.swift */; };
+		9E9A282431B79EC5423B2A0A /* DelayCorrection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25D222B4D6107093651B654D /* DelayCorrection.swift */; };
+		A7781DD1F617CE35AD240EDD /* MobilePlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 570A0F3D564007C7DEDEFA92 /* MobilePlayer.swift */; };
+		B5E7DAD5A8EBF39FF51D1A61 /* StreamDiagnosticLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88790567F035940004B0EBAA /* StreamDiagnosticLogger.swift */; };
+		B9B9F6008DA6F9E44BD47CE0 /* DiscoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C493F3E1378AB649558A420 /* DiscoverView.swift */; };
+		C89F04449FBB07EC59415E59 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BA72FAA2C094B89B91EDDB0A /* SwiftUI.framework */; };
+		CA7BF2C861CB4E04B35CF97F /* StationDirectory.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9002A99CCA693E52ACD1413 /* StationDirectory.swift */; };
+		DE659AB256BFE3DCA18317DD /* DirectoryAudio.swift in Sources */ = {isa = PBXBuildFile; fileRef = 356B5F063701F0E28EDEFEA3 /* DirectoryAudio.swift */; };
+		E396F8FA9F67C6D9C77168E6 /* SupportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 591B7217A9AFB466BB7BCB52 /* SupportView.swift */; };
+		E51D3E997F900F74F15CC0ED /* FavouritesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F24F4BD9ABA74A114F3157D6 /* FavouritesView.swift */; };
+		FD74FF32174FAD10B063DC71 /* EnhancedLiveStreamEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F70847912CBE75BB5C5C2D6 /* EnhancedLiveStreamEngine.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		197AB86590FC06260BF1C855 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = FC4E286210C214DD22DF33B5 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = BA921306524224B290A4AA8F;
+			remoteInfo = Wireless;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		049BFE9328AA0F2618AFA984 /* WirelessTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = WirelessTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		06E77E689E1033689FB1A219 /* RadioStreamEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RadioStreamEngine.swift; sourceTree = "<group>"; };
+		0E4068851564EEABF96B4AAD /* VocalBoost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VocalBoost.swift; sourceTree = "<group>"; };
+		25D222B4D6107093651B654D /* DelayCorrection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DelayCorrection.swift; sourceTree = "<group>"; };
+		29D4ED78062FDB9798BCDE64 /* StreamDiagnosticView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamDiagnosticView.swift; sourceTree = "<group>"; };
+		2C2D848CD9841149DDB80F8A /* WirelessUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = WirelessUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		2C493F3E1378AB649558A420 /* DiscoverView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoverView.swift; sourceTree = "<group>"; };
+		34B1977BE352BBA9A863FDE9 /* DelayCorrectionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DelayCorrectionTests.swift; sourceTree = "<group>"; };
+		356B5F063701F0E28EDEFEA3 /* DirectoryAudio.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectoryAudio.swift; sourceTree = "<group>"; };
+		3C8DF2AC33887409191F2781 /* WirelessApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WirelessApp.swift; sourceTree = "<group>"; };
+		46E14DACD66F8DAD68FBCE55 /* SleepTimerSheetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepTimerSheetView.swift; sourceTree = "<group>"; };
+		570A0F3D564007C7DEDEFA92 /* MobilePlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MobilePlayer.swift; sourceTree = "<group>"; };
+		58BFE7BF60266E86CADBF19A /* Wireless.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Wireless.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		591B7217A9AFB466BB7BCB52 /* SupportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupportView.swift; sourceTree = "<group>"; };
+		6630D03B5125433D04BF5126 /* RadioPlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RadioPlayerView.swift; sourceTree = "<group>"; };
+		6BFD4212FFDC5CC34E34973C /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		76EECFE6B7E52C2FE1E8A08B /* StationDirectoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationDirectoryTests.swift; sourceTree = "<group>"; };
+		776676EA121CB50213E02B4F /* SleepTimerService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepTimerService.swift; sourceTree = "<group>"; };
+		7C4C5FB32A97D0A7967DB3B7 /* WirelessLayoutMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WirelessLayoutMetrics.swift; sourceTree = "<group>"; };
+		7E1D262786C716DAE7D8E2FA /* PlayerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerTests.swift; sourceTree = "<group>"; };
+		7F70847912CBE75BB5C5C2D6 /* EnhancedLiveStreamEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnhancedLiveStreamEngine.swift; sourceTree = "<group>"; };
+		88790567F035940004B0EBAA /* StreamDiagnosticLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamDiagnosticLogger.swift; sourceTree = "<group>"; };
+		AA29A1EC84D04AB7DC690374 /* ProgrammeGuide.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgrammeGuide.swift; sourceTree = "<group>"; };
+		B9002A99CCA693E52ACD1413 /* StationDirectory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationDirectory.swift; sourceTree = "<group>"; };
+		B93FC87D9BD4E8BACD869C22 /* AcknowledgementsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AcknowledgementsView.swift; sourceTree = "<group>"; };
+		BA72FAA2C094B89B91EDDB0A /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		CCDDE53C4D89A836A68EB050 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		DE5F0B6C67EEBCF54CBB0BF9 /* AudioRoutePickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRoutePickerView.swift; sourceTree = "<group>"; };
+		E2DF93E69BA58ED5894962B2 /* SupportContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupportContent.swift; sourceTree = "<group>"; };
+		F24F4BD9ABA74A114F3157D6 /* FavouritesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FavouritesView.swift; sourceTree = "<group>"; };
+		F2CED56748D25A16D042A988 /* DiscoverRegions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoverRegions.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		8A55741E823E6078626C7D7B /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C89F04449FBB07EC59415E59 /* SwiftUI.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		4465AB455E6A1207C3D9EEBA /* WirelessUITests */ = {
+			isa = PBXGroup;
+			children = (
+				7E1D262786C716DAE7D8E2FA /* PlayerTests.swift */,
+			);
+			path = WirelessUITests;
+			sourceTree = "<group>";
+		};
+		4511FD52EC2EE189E045C99B /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				BA72FAA2C094B89B91EDDB0A /* SwiftUI.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		627BD4C7EA0318DC48531D91 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				58BFE7BF60266E86CADBF19A /* Wireless.app */,
+				049BFE9328AA0F2618AFA984 /* WirelessTests.xctest */,
+				2C2D848CD9841149DDB80F8A /* WirelessUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		7955BE308CF5491DD4E5A747 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				B9002A99CCA693E52ACD1413 /* StationDirectory.swift */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		AFDA54A1C1DBF065306DD30B /* Wireless */ = {
+			isa = PBXGroup;
+			children = (
+				B93FC87D9BD4E8BACD869C22 /* AcknowledgementsView.swift */,
+				CCDDE53C4D89A836A68EB050 /* Assets.xcassets */,
+				DE5F0B6C67EEBCF54CBB0BF9 /* AudioRoutePickerView.swift */,
+				25D222B4D6107093651B654D /* DelayCorrection.swift */,
+				356B5F063701F0E28EDEFEA3 /* DirectoryAudio.swift */,
+				F2CED56748D25A16D042A988 /* DiscoverRegions.swift */,
+				2C493F3E1378AB649558A420 /* DiscoverView.swift */,
+				7F70847912CBE75BB5C5C2D6 /* EnhancedLiveStreamEngine.swift */,
+				F24F4BD9ABA74A114F3157D6 /* FavouritesView.swift */,
+				6BFD4212FFDC5CC34E34973C /* Info.plist */,
+				570A0F3D564007C7DEDEFA92 /* MobilePlayer.swift */,
+				AA29A1EC84D04AB7DC690374 /* ProgrammeGuide.swift */,
+				6630D03B5125433D04BF5126 /* RadioPlayerView.swift */,
+				06E77E689E1033689FB1A219 /* RadioStreamEngine.swift */,
+				776676EA121CB50213E02B4F /* SleepTimerService.swift */,
+				46E14DACD66F8DAD68FBCE55 /* SleepTimerSheetView.swift */,
+				88790567F035940004B0EBAA /* StreamDiagnosticLogger.swift */,
+				29D4ED78062FDB9798BCDE64 /* StreamDiagnosticView.swift */,
+				E2DF93E69BA58ED5894962B2 /* SupportContent.swift */,
+				591B7217A9AFB466BB7BCB52 /* SupportView.swift */,
+				0E4068851564EEABF96B4AAD /* VocalBoost.swift */,
+				3C8DF2AC33887409191F2781 /* WirelessApp.swift */,
+				7C4C5FB32A97D0A7967DB3B7 /* WirelessLayoutMetrics.swift */,
+			);
+			path = Wireless;
+			sourceTree = "<group>";
+		};
+		CE47F7ACD29954BC2C019621 = {
+			isa = PBXGroup;
+			children = (
+				7955BE308CF5491DD4E5A747 /* Shared */,
+				AFDA54A1C1DBF065306DD30B /* Wireless */,
+				E142FE54ADD958E04CDEC72F /* WirelessTests */,
+				4465AB455E6A1207C3D9EEBA /* WirelessUITests */,
+				4511FD52EC2EE189E045C99B /* Frameworks */,
+				627BD4C7EA0318DC48531D91 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		E142FE54ADD958E04CDEC72F /* WirelessTests */ = {
+			isa = PBXGroup;
+			children = (
+				34B1977BE352BBA9A863FDE9 /* DelayCorrectionTests.swift */,
+				76EECFE6B7E52C2FE1E8A08B /* StationDirectoryTests.swift */,
+			);
+			path = WirelessTests;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		B17236526130BA35A02DF5E2 /* WirelessTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8995365D857E821AE743EB28 /* Build configuration list for PBXNativeTarget "WirelessTests" */;
+			buildPhases = (
+				3DD54C69BE45EDA3FDEC9094 /* Sources */,
+				8A55741E823E6078626C7D7B /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = WirelessTests;
+			packageProductDependencies = (
+			);
+			productName = WirelessTests;
+			productReference = 049BFE9328AA0F2618AFA984 /* WirelessTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		BA921306524224B290A4AA8F /* Wireless */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1221E01D52C938CDA42E641F /* Build configuration list for PBXNativeTarget "Wireless" */;
+			buildPhases = (
+				3C5960F2BDBCBB7372B3C781 /* Sources */,
+				D7C3FB883870E9E9D549CD85 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Wireless;
+			packageProductDependencies = (
+			);
+			productName = Wireless;
+			productReference = 58BFE7BF60266E86CADBF19A /* Wireless.app */;
+			productType = "com.apple.product-type.application";
+		};
+		DA5E885382DE2B157A9D073C /* WirelessUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 0064E331D4F0828D7C0882C4 /* Build configuration list for PBXNativeTarget "WirelessUITests" */;
+			buildPhases = (
+				DD96944DF75B6ED078679219 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				528222599C3DC2E82CF62656 /* PBXTargetDependency */,
+			);
+			name = WirelessUITests;
+			packageProductDependencies = (
+			);
+			productName = WirelessUITests;
+			productReference = 2C2D848CD9841149DDB80F8A /* WirelessUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		FC4E286210C214DD22DF33B5 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					BA921306524224B290A4AA8F = {
+						ProvisioningStyle = Automatic;
+					};
+					DA5E885382DE2B157A9D073C = {
+						ProvisioningStyle = Automatic;
+						TestTargetID = BA921306524224B290A4AA8F;
+					};
+				};
+			};
+			buildConfigurationList = 463765EE8554B6912F4156B3 /* Build configuration list for PBXProject "Wireless" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = CE47F7ACD29954BC2C019621;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 627BD4C7EA0318DC48531D91 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				BA921306524224B290A4AA8F /* Wireless */,
+				B17236526130BA35A02DF5E2 /* WirelessTests */,
+				DA5E885382DE2B157A9D073C /* WirelessUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		D7C3FB883870E9E9D549CD85 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				22B4604A476E15BE939B98DE /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		3C5960F2BDBCBB7372B3C781 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				86957CB1D807DBCED53ABFA6 /* AcknowledgementsView.swift in Sources */,
+				006D08E3FE9643881A0C5DDE /* AudioRoutePickerView.swift in Sources */,
+				9B71D4835E4A77EC17C37E84 /* DelayCorrection.swift in Sources */,
+				DE659AB256BFE3DCA18317DD /* DirectoryAudio.swift in Sources */,
+				3C729C5EB76A961FC0C64556 /* DiscoverRegions.swift in Sources */,
+				B9B9F6008DA6F9E44BD47CE0 /* DiscoverView.swift in Sources */,
+				FD74FF32174FAD10B063DC71 /* EnhancedLiveStreamEngine.swift in Sources */,
+				E51D3E997F900F74F15CC0ED /* FavouritesView.swift in Sources */,
+				A7781DD1F617CE35AD240EDD /* MobilePlayer.swift in Sources */,
+				0D7808193B88750064978753 /* ProgrammeGuide.swift in Sources */,
+				1274C83EFCDCD8DB757457B0 /* RadioPlayerView.swift in Sources */,
+				87B4B8F400922775A4CF6495 /* RadioStreamEngine.swift in Sources */,
+				4228DA29F63E7152486959CE /* SleepTimerService.swift in Sources */,
+				08DAD67874CBEB2500A172D1 /* SleepTimerSheetView.swift in Sources */,
+				4C6AE6F326DEEA248EFAE274 /* StationDirectory.swift in Sources */,
+				B5E7DAD5A8EBF39FF51D1A61 /* StreamDiagnosticLogger.swift in Sources */,
+				23E33CD7E3C09DCF55E53DE1 /* StreamDiagnosticView.swift in Sources */,
+				4AEAB1BE50069C484DBB86AC /* SupportContent.swift in Sources */,
+				E396F8FA9F67C6D9C77168E6 /* SupportView.swift in Sources */,
+				4AEACEEDD6D487B421DB780F /* VocalBoost.swift in Sources */,
+				0E1BE1AF5844D7913660C972 /* WirelessApp.swift in Sources */,
+				55FD82A995E07EB83D1EF85D /* WirelessLayoutMetrics.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		3DD54C69BE45EDA3FDEC9094 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				9E9A282431B79EC5423B2A0A /* DelayCorrection.swift in Sources */,
+				1FC47233BE7FFDEA69C06427 /* DelayCorrectionTests.swift in Sources */,
+				CA7BF2C861CB4E04B35CF97F /* StationDirectory.swift in Sources */,
+				358967CA5B027BE2CE6A8AB6 /* StationDirectoryTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DD96944DF75B6ED078679219 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8E173D4B74CBCB45947A3036 /* PlayerTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		528222599C3DC2E82CF62656 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = BA921306524224B290A4AA8F /* Wireless */;
+			targetProxy = 197AB86590FC06260BF1C855 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		457389A08053DA15B57A1E2F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 3;
+				INFOPLIST_FILE = Wireless/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = au.com.kevmarl.Wireless;
+				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		464AEDBFE403950B8DCD1F3D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		7B91DFCAB97D253B1D40A2A4 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = au.com.kevmarl.WirelessUITests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Wireless;
+			};
+			name = Debug;
+		};
+		81E4675F763149A82EE6D843 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGNING_ALLOWED = NO;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = au.com.kevmarl.WirelessTests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		90B09FC9416740E23894E320 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 3;
+				INFOPLIST_FILE = Wireless/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = au.com.kevmarl.Wireless;
+				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		9E738110614CC4388966F475 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = au.com.kevmarl.WirelessUITests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Wireless;
+			};
+			name = Release;
+		};
+		AC8E3D215F59C8192F5AD1EE /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		B3CEB2EA0ACE3D2334511962 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGNING_ALLOWED = NO;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = au.com.kevmarl.WirelessTests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		0064E331D4F0828D7C0882C4 /* Build configuration list for PBXNativeTarget "WirelessUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7B91DFCAB97D253B1D40A2A4 /* Debug */,
+				9E738110614CC4388966F475 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		1221E01D52C938CDA42E641F /* Build configuration list for PBXNativeTarget "Wireless" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				457389A08053DA15B57A1E2F /* Debug */,
+				90B09FC9416740E23894E320 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		463765EE8554B6912F4156B3 /* Build configuration list for PBXProject "Wireless" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AC8E3D215F59C8192F5AD1EE /* Debug */,
+				464AEDBFE403950B8DCD1F3D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		8995365D857E821AE743EB28 /* Build configuration list for PBXNativeTarget "WirelessTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				81E4675F763149A82EE6D843 /* Debug */,
+				B3CEB2EA0ACE3D2334511962 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = FC4E286210C214DD22DF33B5 /* Project object */;
+}
