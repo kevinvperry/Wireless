@@ -1,14 +1,12 @@
 import Foundation
 import AVFoundation
 
-struct StreamTrackMetadata: Equatable, Sendable {
-    let title: String
-    let artist: String
-    let album: String?
-}
-
 private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadataOutputPushDelegate, @unchecked Sendable {
-    var receive: (@Sendable (StreamTrackMetadata?) -> Void)?
+    var receive: (@Sendable (StreamTrackMetadataEvaluation) -> Void)?
+
+    func cancelPendingMetadata() {
+        receive = nil
+    }
 
     private final class ItemsBox: @unchecked Sendable {
         let items: [AVMetadataItem]
@@ -23,69 +21,9 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
         let box = ItemsBox(groups.flatMap(\.items))
         let callback = receive
         Task {
-            callback?(await StreamTrackMetadataParser.parse(box.items))
+            let evaluation = await StreamTrackMetadataParser.evaluate(box.items)
+            callback?(evaluation)
         }
-    }
-}
-
-private enum StreamTrackMetadataParser {
-    static func parse(_ items: [AVMetadataItem]) async -> StreamTrackMetadata? {
-        var title: String?
-        var artist: String?
-        var album: String?
-
-        for item in items {
-            guard let loaded = try? await item.load(.stringValue),
-                  let value = clean(loaded) else { continue }
-            switch item.commonKey {
-            case .commonKeyTitle: title = value
-            case .commonKeyArtist: artist = value
-            case .commonKeyAlbumName: album = value
-            default:
-                if item.identifier == .icyMetadataStreamTitle { title = value }
-            }
-        }
-
-        if artist == nil, let combined = title, let split = splitCombinedTitle(combined) {
-            artist = split.artist
-            title = split.title
-        }
-        guard let acceptedTitle = acceptable(title), let acceptedArtist = acceptable(artist) else { return nil }
-        return StreamTrackMetadata(title: acceptedTitle, artist: acceptedArtist, album: acceptable(album))
-    }
-
-    private static func clean(_ value: String?) -> String? {
-        guard let value else { return nil }
-        let cleaned = value
-            .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        return cleaned.isEmpty ? nil : cleaned
-    }
-
-    private static func splitCombinedTitle(_ value: String) -> (artist: String, title: String)? {
-        for separator in [" - ", " – ", " — "] {
-            let parts = value.components(separatedBy: separator)
-            guard parts.count >= 2,
-                  let artist = clean(parts.first),
-                  let title = clean(parts.dropFirst().joined(separator: separator)) else { continue }
-            return (artist, title)
-        }
-        return nil
-    }
-
-    private static func acceptable(_ value: String?) -> String? {
-        guard let value = clean(value), value.count >= 2, value.count <= 180 else { return nil }
-        let lower = value.lowercased()
-        let rejectedPhrases = [
-            "advertisement", "commercial break", "station identification", "station id",
-            "you are listening", "you're listening", "listen live", "more music",
-            "non-stop music", "non stop music", "sponsored by", "traffic update",
-            "news update", "now playing"
-        ]
-        guard !rejectedPhrases.contains(where: lower.contains),
-              !lower.hasPrefix("http://"), !lower.hasPrefix("https://"),
-              lower.range(of: #"^[\W_]+$"#, options: .regularExpression) == nil else { return nil }
-        return value
     }
 }
 
@@ -95,7 +33,7 @@ private enum StreamTrackMetadataParser {
 /// All AVPlayer state and item replacement are confined to the main actor.
 @MainActor final class DirectoryAudio {
     var onStatus: ((PlaybackStatus, Bool) -> Void)?
-    var onTrackMetadata: ((StreamTrackMetadata?) -> Void)?
+    var onTrackMetadata: ((StreamTrackMetadataEvaluation?) -> Void)?
     private let player = AVPlayer()
     private let packetEngine = RadioStreamEngine()
     private let enhancedEngine = EnhancedLiveStreamEngine()
@@ -106,14 +44,20 @@ private enum StreamTrackMetadataParser {
     private var hlsPacketFallbackAttempted = false
     private var itemObservers: [NSObjectProtocol] = []
     private var itemStatusObservation: NSKeyValueObservation?
+    private var lastMetadataEvaluation: StreamTrackMetadataEvaluation?
+    private var lastEmbeddedMetadata: StreamTrackMetadata?
+    private var embeddedMetadataReceiptNumber = 0
+    private let metadataHeartbeatInterval: TimeInterval
+    private let metadataSilenceWarningInterval: TimeInterval
+    private let metadataFreshnessPolicy = MetadataFreshnessPolicy()
+    private var metadataTimeline: MetadataDiagnosticTimeline?
+    private var stationID = "unknown"
+    private var stationName = "Unknown station"
+    private var companionMetadataPreferred = false
 
-    init() {
-        metadataDelegate.receive = { [weak self] metadata in
-            Task { @MainActor in
-                guard let self, self.requested, !self.syncEnabled, !self.usesPacketBuffer else { return }
-                self.onTrackMetadata?(metadata)
-            }
-        }
+    init(metadataHeartbeatInterval: TimeInterval = 60, metadataSilenceWarningInterval: TimeInterval = 120) {
+        self.metadataHeartbeatInterval = metadataHeartbeatInterval
+        self.metadataSilenceWarningInterval = metadataSilenceWarningInterval
         packetEngine.onStatus = { [weak self] update in
             Task { @MainActor in
                 guard let self, self.requested, self.usesPacketBuffer else { return }
@@ -151,12 +95,15 @@ private enum StreamTrackMetadataParser {
 
     func configure(_ station: DirectoryStation, streamID: String? = nil) {
         stop()
+        stationID = station.id
+        stationName = station.name
         onTrackMetadata?(nil)
         let preferred = station.playableStreams.first { $0.id == streamID } ?? station.preferredStream
         streams = preferred.map { first in [first] + station.playableStreams.filter { $0.id != first.id } } ?? []
         index = 0; selectedStreamID = streams.first?.id
         diagnose("stream.configure", "Configured station streams", metadata: [
             "stationID": station.id,
+            "stationName": station.name,
             "requestedStreamID": streamID ?? "automatic",
             "candidateCount": "\(streams.count)"
         ])
@@ -218,8 +165,12 @@ private enum StreamTrackMetadataParser {
         packetEngine.setVolume(volume)
         enhancedEngine.setVolume(volume)
     }
+    func setCompanionMetadataPreferred(_ preferred: Bool) {
+        companionMetadataPreferred = preferred
+    }
     private func load() {
-        guard requested, streams.indices.contains(index), let url = streams[index].playableURL else { return }
+        guard requested, streams.indices.contains(index),
+              let url = StreamRequestPolicy.playbackURL(for: streams[index]) else { return }
         onTrackMetadata?(nil)
         generation = UUID(); seeking = false; selectedStreamID = streams[index].id
         packetEngine.stop(); packetEngine.suspendPreparation()
@@ -239,6 +190,7 @@ private enum StreamTrackMetadataParser {
             "codec": stream.codec,
             "bitrateKbps": stream.bitrate_kbps.map { String(format: "%.0f", $0) } ?? "unknown",
             "backend": backend,
+            "cacheStrategy": url == stream.playableURL ? "stream-default" : "sca-per-session-url",
             "syncEnabled": "\(syncEnabled)",
             "vocalBoost": vocalBoost.rawValue
         ])
@@ -256,6 +208,43 @@ private enum StreamTrackMetadataParser {
         if let agent = streams[index].request_headers.first(where: { $0.key.lowercased() == "user-agent" })?.value { options[AVURLAssetHTTPUserAgentKey] = agent }
         let item = AVPlayerItem(asset: AVURLAsset(url: url, options: options))
         if !syncEnabled {
+            metadataTimeline = MetadataDiagnosticTimeline(
+                heartbeatInterval: metadataHeartbeatInterval,
+                silenceWarningInterval: metadataSilenceWarningInterval
+            )
+            let token = generation
+            metadataDelegate.receive = { [weak self] evaluation in
+                Task { @MainActor in
+                    guard let self, self.generation == token, self.requested,
+                          !self.syncEnabled, !self.usesPacketBuffer else { return }
+                    let now = Date()
+                    let evaluation = evaluation.addingProviderDetails(
+                        self.metadataFreshnessPolicy.diagnosticDetails(for: evaluation, at: now)
+                    )
+                    var elapsed: [String: String] = [:]
+                    if var timeline = self.metadataTimeline {
+                        elapsed = timeline.record(evaluation, at: now)
+                        self.metadataTimeline = timeline
+                    }
+                    self.embeddedMetadataReceiptNumber += 1
+                    let repeated = evaluation.hasSameCandidate(as: self.lastMetadataEvaluation)
+                    let trackChanged = evaluation.metadata != nil && evaluation.metadata != self.lastEmbeddedMetadata
+                    self.lastMetadataEvaluation = evaluation
+                    var fields = evaluation.diagnosticFields
+                    fields.merge(elapsed) { _, new in new }
+                    fields["source"] = "embedded"
+                    fields["streamID"] = self.selectedStreamID ?? "unknown"
+                    fields["stationID"] = self.stationID
+                    fields["stationName"] = self.stationName
+                    fields["receiptNumber"] = "\(self.embeddedMetadataReceiptNumber)"
+                    fields["repeatedEvaluation"] = "\(repeated)"
+                    fields["acceptedTrackChanged"] = "\(trackChanged)"
+                    fields["transport"] = "avplayer-timed-metadata"
+                    self.diagnose("metadata.evaluated", "Embedded stream metadata received and evaluated", metadata: fields)
+                    if let metadata = evaluation.metadata { self.lastEmbeddedMetadata = metadata }
+                    self.onTrackMetadata?(evaluation)
+                }
+            }
             let output = AVPlayerItemMetadataOutput(identifiers: nil)
             output.setDelegate(metadataDelegate, queue: .main)
             item.add(output)
@@ -290,6 +279,7 @@ private enum StreamTrackMetadataParser {
     }
     private func tick() {
         guard requested else { return }
+        checkMetadataDiagnostics()
         if usesPacketBuffer {
             if Date().timeIntervalSince(lastAdvance) > max(45, delay + 25) { nextStream() }
             return
@@ -317,8 +307,45 @@ private enum StreamTrackMetadataParser {
         applyDelay()
         let playing = player.timeControlStatus == .playing && !seeking
         let supported = seekRange != nil
-        let detail = !syncEnabled ? "Live playback · stream buffer managed automatically." : supported ? "Delay is measured from this stream’s available live edge." : "Live playback. This stream does not provide a seekable delay buffer."
+        let preparingHLSBuffer = syncEnabled
+            && streams[index].format == "hls"
+            && seekRange == nil
+            && Date().timeIntervalSince(started) < 15
+        let detail = !syncEnabled
+            ? "Live playback · stream buffer managed automatically."
+            : supported
+                ? "Delay is measured from this stream’s available live edge."
+                : preparingHLSBuffer
+                    ? "Building an audio buffer for TV Sync. Delay controls will become available automatically."
+                    : "Live playback. This stream does not provide a seekable delay buffer."
         publish(title: playing ? "Playing" : "Buffering…", detail: detail, buffering: !playing, supportsDelay: supported)
+    }
+    private func checkMetadataDiagnostics(at now: Date = Date()) {
+        guard !syncEnabled, metadataOutput != nil, var timeline = metadataTimeline else { return }
+        let context = [
+            "source": "embedded", "stationID": stationID, "stationName": stationName,
+            "streamID": selectedStreamID ?? "unknown"
+        ]
+        if timeline.successfulHeartbeatDue(at: now), timeline.lastSuccessfulContactAt != nil {
+            var fields = timeline.elapsedFields(at: now)
+            fields.merge(context) { _, new in new }
+            fields["reason"] = "embedded-metadata-received"
+            diagnose("metadata.providerHeartbeat", "Embedded metadata path is active", metadata: fields)
+        }
+        if let warning = timeline.silenceWarningDue(at: now) {
+            var fields = timeline.elapsedFields(at: now)
+            fields.merge(context) { _, new in new }
+            fields["reason"] = "no-usable-song-metadata"
+            fields["silenceWarningNumber"] = "\(warning.number)"
+            fields["affectsDisplay"] = "\(!companionMetadataPreferred)"
+            fields["preferredSource"] = companionMetadataPreferred ? "companion" : "embedded"
+            let event = companionMetadataPreferred ? "metadata.sourceSilence" : "metadata.silence"
+            let message = companionMetadataPreferred
+                ? "Secondary embedded metadata has supplied no usable song"
+                : "No usable song metadata has been accepted"
+            diagnose(event, message, metadata: fields)
+        }
+        metadataTimeline = timeline
     }
     private func nextStream() {
         if index + 1 < streams.count {
@@ -373,8 +400,13 @@ private enum StreamTrackMetadataParser {
         ]
     }
     private func removeItemObservers() {
+        metadataDelegate.cancelPendingMetadata()
+        lastMetadataEvaluation = nil
+        lastEmbeddedMetadata = nil
+        embeddedMetadataReceiptNumber = 0
         metadataOutput?.setDelegate(nil, queue: nil)
         metadataOutput = nil
+        metadataTimeline = nil
         itemStatusObservation?.invalidate()
         itemStatusObservation = nil
         for observer in itemObservers { NotificationCenter.default.removeObserver(observer) }

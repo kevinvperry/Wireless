@@ -2,11 +2,27 @@ import SwiftUI
 
 @main
 struct WirelessApp: App {
-    @StateObject private var player = MobilePlayer()
+    @StateObject private var player = MobilePlayer.shared
+
+    init() {
+        // Install the notification delegate before launch completes so a Sleep
+        // Schedule "Still Listening" tap that wakes the app is delivered.
+        NotificationService.shared.configure()
+    }
+
     var body: some Scene {
         WindowGroup {
+            #if DEBUG
+            if ProcessInfo.processInfo.environment["WIRELESS_METADATA_PREVIEW"] == "1" {
+                WirelessMetadataPreview()
+            } else {
+                WirelessRootView(player: player)
+            }
+            #else
             WirelessRootView(player: player)
+            #endif
         }
+        .defaultSize(width: 430, height: 860)
     }
 }
 
@@ -43,9 +59,12 @@ private struct WirelessLaunchView: View {
     @State private var revealsCopy = false
 
     var body: some View {
-        ZStack {
-            Color.black.ignoresSafeArea()
-            RadialGradient(
+        GeometryReader { proxy in
+            let metrics = WirelessLayoutMetrics(width: proxy.size.width)
+            let markSize = min(280 * metrics.contentScale, proxy.size.width - (metrics.horizontalGutter * 2), proxy.size.height * 0.42)
+            ZStack {
+                Color.black.ignoresSafeArea()
+                RadialGradient(
                 colors: [Color.purple.opacity(0.20), .clear],
                 center: .center,
                 startRadius: 12,
@@ -53,25 +72,25 @@ private struct WirelessLaunchView: View {
             )
             .ignoresSafeArea()
 
-            VStack(spacing: 20) {
+            VStack(spacing: 20 * metrics.contentScale) {
                 WirelessLaunchMark(animatesScale: animatesScale,
                                    tunesNeedle: tunesNeedle,
                                    reduceMotion: reduceMotion)
-                    .frame(width: 280, height: 280)
-                    .frame(maxWidth: 360)
+                    .frame(width: markSize, height: markSize)
                     .shadow(color: Color(red: 1, green: 0.35, blue: 0.29).opacity(0.18), radius: 28)
 
                 Text("Wireless")
-                    .font(.system(size: 30, weight: .bold, design: .rounded))
+                    .font(.system(size: 30 * metrics.contentScale, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
 
                 Text("Fine Tuning Your Radio Presets")
-                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    .font(.system(size: 15 * metrics.contentScale, weight: .semibold, design: .rounded))
                     .foregroundStyle(.white.opacity(0.58))
             }
-            .padding(.horizontal, 28)
+            .padding(.horizontal, metrics.horizontalGutter)
             .opacity(revealsCopy ? 1 : 0)
             .scaleEffect(revealsCopy ? 1 : 0.92)
+            }
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Wireless. Fine Tuning Your Radio Presets")

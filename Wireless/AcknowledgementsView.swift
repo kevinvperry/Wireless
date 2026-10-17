@@ -50,6 +50,8 @@ struct AcknowledgementsView: View {
             }
             .listRowBackground(cardBackground)
         }
+        .frame(maxWidth: 720)
+        .frame(maxWidth: .infinity)
         .scrollContentBackground(.hidden)
         .background(Color.black.ignoresSafeArea())
         .navigationTitle("Acknowledgements")

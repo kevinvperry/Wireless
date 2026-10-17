@@ -33,7 +33,7 @@ The integration suite uses Miniflare and synthetic accounts/stations. It checks 
 - `GET /api/v1/catalogue`: schema version, catalogue revision and update timestamp.
 - `GET /api/v1/stations`: published stations and enabled stream alternatives.
 - `GET /api/v1/stations/:id`: one published station.
-- `GET /api/v1/filters`: available networks, states, cities and counts.
+- `GET /api/v1/filters`: available networks, subnetworks, states, cities, controlled `music_genres` (name and description), and counts.
 
 Station queries support `q`, `network`, `state`, `city`, `page` and `page_size` (default 50, maximum 100). Responses include revision and pagination metadata. Station records expose descriptive metadata, public contact information and stream alternatives with technical measurements when available. Private editorial notes, account data and audit records are excluded from the public API.
 
@@ -54,3 +54,13 @@ The `import:*` scripts and `db:seed:local` command are optional maintainer tools
 The public migrations contain schema and generic state normalisation only. Production data-correction migrations are held privately because some retain complete station snapshots and editorial history. Keep their private audit trail; publish separately reviewed factual summaries when appropriate. Keep production exports, user/session records, private editorial notes, raw research, generated imports and local deployment configuration outside it. Existing import scripts preserve editor-modified records; always review generated SQL before applying it. Back up a database privately before maintenance. Deploying an older Worker does not undo database changes.
 
 The editor uses same-origin requests, CSRF tokens, secure HttpOnly cookies, expiring sessions, forced initial password changes and login throttling. Public endpoints allow cross-origin reads without credentials. See the repository [security policy](../SECURITY.md) for reporting concerns.
+
+## Primary genres
+
+`stations.music_genre` is an optional foreign key to `music_genres.name`. The station editor provides a **Primary genre** dropdown and the list provides a matching filter. Choose one primary content style for Discover → Genres. The controlled list includes music styles plus News, Sport, Kids & Family and Soundscapes. Keep decades and secondary styles in the existing additional music tags (`genres` array). A blank assignment means not yet classified.
+
+Both station-list endpoints accept `?music_genre=Rock` (URL-encode names containing spaces or `&`). Public records expose `music_genre`; older app caches without it still decode. App genre tiles derive from assigned stations in the complete catalogue, so new assignments appear after refresh without an app update. The app retains the list for offline browsing.
+
+Apply schema migrations `0040_music_genres.sql` through `0043_expand_primary_genres.sql` before deploying the service. Extend the `music_genres` lookup through a reviewed migration when a new style is needed. Future stations can select any existing value immediately. The original `genres_json` is retained. Older editors that omit `music_genre` preserve its saved value; an explicit blank or null clears it. Merges preserve the destination assignment, or inherit a unanimous source assignment. Conflicting sources require a destination choice.
+
+The audit began with the Music, Arts & Music and Country Music sub-networks, then covered every published Gold, Hit Network, KIIS, LiSTNR, Nova, Smooth and Triple M station. Assignments, reviewed exclusions, evidence and factual corrections are documented in `Docs/MUSIC_GENRE_AUDIT.md`, `Docs/LISTNR_GENRE_AUDIT.md` and `Docs/COMMERCIAL_NETWORK_GENRE_AUDIT.md`; private exports and data migrations remain outside the public source history.

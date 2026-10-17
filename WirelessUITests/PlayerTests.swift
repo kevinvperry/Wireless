@@ -10,13 +10,24 @@ final class PlayerTests: XCTestCase {
         app.buttons["settingsButton"].tap()
         XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
         let version = app.staticTexts["Version"]
-        XCTAssertTrue(version.waitForExistence(timeout: 3))
+        for _ in 0..<5 {
+            if version.isHittable { break }
+            app.swipeUp()
+        }
+        XCTAssertTrue(version.isHittable)
         for _ in 0..<5 { version.tap() }
-        let diagnostics = app.staticTexts["Stream Diagnostics"]
+        let diagnostics = app.buttons["streamDiagnostics"]
         XCTAssertTrue(diagnostics.waitForExistence(timeout: 3))
         diagnostics.tap()
         XCTAssertTrue(app.navigationBars["Stream Diagnostics"].waitForExistence(timeout: 3))
         XCTAssertTrue(app.switches["Record Stream Diagnostics"].exists)
+        XCTAssertTrue(app.staticTexts["Metadata summary"].exists)
+        let focus = app.segmentedControls["diagnosticFocus"]
+        XCTAssertTrue(focus.exists)
+        focus.buttons["All"].tap()
+        XCTAssertTrue(focus.buttons["All"].isSelected)
+        app.buttons["Refresh"].tap()
+        XCTAssertTrue(focus.buttons["All"].isSelected)
     }
 
     @MainActor
@@ -81,6 +92,7 @@ final class PlayerTests: XCTestCase {
         XCTAssertTrue(support.waitForExistence(timeout: 3))
         support.tap()
         XCTAssertTrue(app.navigationBars["Support"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["Return to Player"].exists)
         XCTAssertTrue(app.staticTexts["Getting Started"].exists)
         XCTAssertTrue(app.staticTexts["TV Sync"].exists)
         app.staticTexts["TV Sync"].tap()
@@ -120,6 +132,34 @@ final class PlayerTests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any)["audioSourceSelector"].exists)
         XCTAssertEqual(app.buttons["Audio Controls"].frame.width, 44, accuracy: 1)
         XCTAssertEqual(app.buttons["Sleep Timer"].frame.width, 44, accuracy: 1)
+    }
+
+    @MainActor
+    func testTVSyncRevealsOnlyDelayControlsWhenEnabled() {
+        let app = XCUIApplication()
+        app.launch()
+
+        if app.buttons["BackButton"].waitForExistence(timeout: 3) {
+            app.buttons["BackButton"].tap()
+        }
+
+        let syncPane = app.buttons["Sync"]
+        XCTAssertTrue(syncPane.waitForExistence(timeout: 10))
+        syncPane.tap()
+
+        let syncToggle = app.switches["syncEnabled"]
+        XCTAssertTrue(syncToggle.waitForExistence(timeout: 3))
+        if syncToggle.value as? String == "1" { syncToggle.tap() }
+
+        XCTAssertFalse(app.descendants(matching: .any)["syncDelayTile"].exists)
+        XCTAssertFalse(app.buttons["Play"].exists)
+        XCTAssertFalse(app.buttons["Pause"].exists)
+
+        syncToggle.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["syncDelayTile"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["Saved audio delay"].exists)
+        XCTAssertFalse(app.buttons["Play"].exists)
+        XCTAssertFalse(app.buttons["Pause"].exists)
     }
 
     @MainActor
@@ -187,7 +227,8 @@ final class PlayerTests: XCTestCase {
         if !wasEnabled { toggle.tap() }
 
         app.buttons["Playing"].tap()
-        XCTAssertEqual(app.staticTexts["playbackStatus"].label, "Sync Enabled")
+        XCTAssertEqual(app.staticTexts["playbackStatus"].label, "TV Sync Enabled")
+        XCTAssertEqual(app.staticTexts["playbackStatus"].frame.height, 24, accuracy: 1)
         let measured = app.staticTexts["playbackPositionDetail"].label
         XCTAssertTrue(measured == "Measuring…" || measured.hasPrefix("Measured: "))
 
@@ -201,12 +242,30 @@ final class PlayerTests: XCTestCase {
     func testDiscoverRegionTilesAndPriority() {
         let app = XCUIApplication()
         app.launch()
-        app.buttons["Discover"].tap()
-        XCTAssertTrue(app.buttons["browseNational"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.buttons["region-Melbourne"].exists)
-        XCTAssertTrue(app.buttons["browseNetworks"].exists)
+        let discover = app.buttons["Discover"]
+        XCTAssertTrue(discover.waitForExistence(timeout: 5))
+        discover.tap()
+        if !app.buttons["browseNetworks"].waitForExistence(timeout: 3) { discover.tap() }
+        XCTAssertTrue(app.buttons["browseNetworks"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["browseLocations"].exists)
+        XCTAssertTrue(app.buttons["browseGenres"].exists)
+        XCTAssertTrue(app.buttons["browseNews"].exists)
+        XCTAssertTrue(app.buttons["browseSport"].exists)
+        XCTAssertTrue(app.buttons["browseCommunitySpecialist"].exists)
         let screenshot = XCTAttachment(screenshot: app.screenshot())
         screenshot.name = "Discover regions"; screenshot.lifetime = .keepAlways; add(screenshot)
+        app.buttons["browseNews"].tap()
+        XCTAssertTrue(app.navigationBars["News"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Play ")).firstMatch.waitForExistence(timeout: 10))
+        app.navigationBars["News"].buttons.firstMatch.tap()
+        app.buttons["browseSport"].tap()
+        XCTAssertTrue(app.navigationBars["Sport"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Play ")).firstMatch.waitForExistence(timeout: 10))
+        app.navigationBars["Sport"].buttons.firstMatch.tap()
+        app.buttons["browseLocations"].tap()
+        XCTAssertTrue(app.navigationBars["Locations"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["browseNational"].exists)
+        XCTAssertTrue(app.buttons["region-Melbourne"].exists)
         app.buttons["region-Melbourne"].tap()
         XCTAssertTrue(app.navigationBars["Melbourne"].waitForExistence(timeout: 5))
         let playRows = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Play "))
@@ -218,17 +277,138 @@ final class PlayerTests: XCTestCase {
         XCTAssertTrue(app.buttons["Sync"].waitForExistence(timeout: 5))
         app.buttons["Pause"].tap()
         app.buttons["Discover"].tap()
+        app.buttons["browseLocations"].tap()
         app.buttons["browseNational"].tap()
         XCTAssertTrue(app.navigationBars["National"].waitForExistence(timeout: 5))
         app.buttons["Return to Player"].tap()
         app.buttons["Discover"].tap()
+        app.buttons["browseLocations"].tap()
         app.swipeUp(); app.swipeUp()
-        XCTAssertTrue(app.buttons["browseLocations"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["browseOtherLocations"].waitForExistence(timeout: 5))
         for _ in 0..<4 where !app.buttons["state-Victoria"].exists { app.swipeUp() }
         XCTAssertTrue(app.buttons["state-Victoria"].exists)
         app.buttons["state-Victoria"].tap()
         XCTAssertTrue(app.navigationBars["Victoria"].waitForExistence(timeout: 5))
         XCTAssertGreaterThan(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Play ")).count, 0)
+    }
+
+    @MainActor
+    func testDiscoverGenresBrowseAndScopedSearch() {
+        let app = XCUIApplication()
+        app.launch()
+        if app.buttons["Discover"].waitForExistence(timeout: 3) { app.buttons["Discover"].tap() }
+        XCTAssertTrue(app.buttons["browseGenres"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Find your station"].exists)
+        XCTAssertTrue(app.staticTexts["News and Talkback"].exists)
+        XCTAssertTrue(app.buttons["browseNews"].exists)
+        XCTAssertTrue(app.buttons["browseSport"].exists)
+        XCTAssertTrue(app.buttons["browseCommunitySpecialist"].exists)
+        app.buttons["browseGenres"].tap()
+        XCTAssertTrue(app.navigationBars["Music"].waitForExistence(timeout: 5))
+        let search = app.textFields["genreSearch"]
+        XCTAssertTrue(search.exists)
+        XCTAssertTrue(app.buttons["browse-genre-Country"].waitForExistence(timeout: 30))
+        XCTAssertFalse(app.buttons["browse-genre-News"].exists)
+        XCTAssertFalse(app.buttons["browse-genre-Sport"].exists)
+        let shot = XCTAttachment(screenshot: app.screenshot()); shot.name = "Discover Genres"; shot.lifetime = .keepAlways; add(shot)
+        search.tap(); search.typeText("Country")
+        XCTAssertTrue(app.buttons["browse-genre-Country"].exists)
+        XCTAssertFalse(app.buttons["browse-genre-Rock"].exists)
+        app.buttons["browse-genre-Country"].tap()
+        XCTAssertTrue(app.navigationBars["Country"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Play Nova Fresh Country"].waitForExistence(timeout: 10))
+        for _ in 0..<5 where !app.buttons["Play Triple M Country"].exists { app.swipeUp() }
+        XCTAssertTrue(app.buttons["Play Triple M Country"].exists)
+        XCTAssertFalse(app.buttons["Play KIIS Dance"].exists)
+        let stations = XCTAttachment(screenshot: app.screenshot()); stations.name = "Country stations"; stations.lifetime = .keepAlways; add(stations)
+        let stationSearch = app.textFields["stationSearch"]
+        for _ in 0..<5 where !stationSearch.isHittable { app.swipeDown() }
+        stationSearch.tap(); stationSearch.typeText("Nova")
+        XCTAssertTrue(app.buttons["Play Nova Fresh Country"].exists)
+        XCTAssertFalse(app.buttons["Play Triple M Country"].exists)
+        app.navigationBars["Country"].buttons.firstMatch.tap()
+        XCTAssertTrue(app.navigationBars["Music"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    func testSydneyShowsTopRatingStationsInPopularityOrder() {
+        let app = XCUIApplication()
+        app.launch()
+        if app.buttons["Discover"].waitForExistence(timeout: 3) { app.buttons["Discover"].tap() }
+        XCTAssertTrue(app.buttons["browseLocations"].waitForExistence(timeout: 10))
+        app.buttons["browseLocations"].tap()
+        XCTAssertTrue(app.buttons["region-Sydney"].waitForExistence(timeout: 5))
+        app.buttons["region-Sydney"].tap()
+
+        XCTAssertTrue(app.navigationBars["Sydney"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Top Rating Stations"].waitForExistence(timeout: 30))
+        let smooth = app.buttons["Play Smooth FM 95.3"]
+        let twoGB = app.buttons["Play 2GB"]
+        let nova = app.buttons["Play Nova 96.9"]
+        XCTAssertTrue(smooth.exists)
+        XCTAssertTrue(twoGB.exists)
+        XCTAssertTrue(nova.exists)
+        XCTAssertLessThan(smooth.frame.minY, twoGB.frame.minY)
+        XCTAssertLessThan(twoGB.frame.minY, nova.frame.minY)
+
+        let shot = XCTAttachment(screenshot: app.screenshot())
+        shot.name = "Sydney top rating stations"
+        shot.lifetime = .keepAlways
+        add(shot)
+    }
+
+    @MainActor
+    func testMelbourneShowsTopRatingStationsInPopularityOrder() {
+        let app = XCUIApplication()
+        app.launch()
+        if app.buttons["Discover"].waitForExistence(timeout: 3) { app.buttons["Discover"].tap() }
+        XCTAssertTrue(app.buttons["browseLocations"].waitForExistence(timeout: 10))
+        app.buttons["browseLocations"].tap()
+        XCTAssertTrue(app.buttons["region-Melbourne"].waitForExistence(timeout: 5))
+        app.buttons["region-Melbourne"].tap()
+
+        XCTAssertTrue(app.navigationBars["Melbourne"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Top Rating Stations"].waitForExistence(timeout: 30))
+        let threeAW = app.buttons["Play 3AW Melbourne"]
+        let gold = app.buttons["Play GOLD104.3"]
+        let smooth = app.buttons["Play Smooth FM 91.5"]
+        XCTAssertTrue(threeAW.exists)
+        XCTAssertTrue(gold.exists)
+        XCTAssertTrue(smooth.exists)
+        XCTAssertLessThan(threeAW.frame.minY, gold.frame.minY)
+        XCTAssertLessThan(gold.frame.minY, smooth.frame.minY)
+
+        let shot = XCTAttachment(screenshot: app.screenshot())
+        shot.name = "Melbourne top rating stations"
+        shot.lifetime = .keepAlways
+        add(shot)
+    }
+
+    @MainActor
+    func testBrisbaneShowsTopRatingStationsInPopularityOrder() {
+        let app = XCUIApplication()
+        app.launch()
+        if app.buttons["Discover"].waitForExistence(timeout: 3) { app.buttons["Discover"].tap() }
+        XCTAssertTrue(app.buttons["browseLocations"].waitForExistence(timeout: 10))
+        app.buttons["browseLocations"].tap()
+        XCTAssertTrue(app.buttons["region-Brisbane"].waitForExistence(timeout: 5))
+        app.buttons["region-Brisbane"].tap()
+
+        XCTAssertTrue(app.navigationBars["Brisbane"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Top Rating Stations"].waitForExistence(timeout: 30))
+        let tripleM = app.buttons["Play Triple M Brisbane 104.5"]
+        let fourBH = app.buttons["Play 4BH"]
+        let b105 = app.buttons["Play B105 Brisbane"]
+        XCTAssertTrue(tripleM.exists)
+        XCTAssertTrue(fourBH.exists)
+        XCTAssertTrue(b105.exists)
+        XCTAssertLessThan(tripleM.frame.minY, fourBH.frame.minY)
+        XCTAssertLessThan(fourBH.frame.minY, b105.frame.minY)
+
+        let shot = XCTAttachment(screenshot: app.screenshot())
+        shot.name = "Brisbane top rating stations"
+        shot.lifetime = .keepAlways
+        add(shot)
     }
 
     @MainActor
@@ -240,11 +420,119 @@ final class PlayerTests: XCTestCase {
         XCTAssertTrue(networks.waitForExistence(timeout: 10))
         networks.tap()
         XCTAssertTrue(app.navigationBars["Networks"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Major broadcasters"].exists)
+        XCTAssertTrue(app.staticTexts["ABC"].exists)
+        XCTAssertTrue(app.staticTexts["ACE Radio"].exists)
+        XCTAssertTrue(app.staticTexts["ARN Regional"].exists)
+        XCTAssertTrue(app.staticTexts["All Networks"].exists)
+        let networksScreenshot = XCTAttachment(screenshot: app.screenshot())
+        networksScreenshot.name = "Networks major broadcasters"
+        networksScreenshot.lifetime = .keepAlways
+        add(networksScreenshot)
+        XCTAssertFalse(app.textFields["locationSearch"].exists)
+        XCTAssertFalse(app.searchFields["Search networks"].exists)
         let abc = app.buttons["browse-network-ABC"]
         XCTAssertTrue(abc.waitForExistence(timeout: 30))
         abc.tap()
         XCTAssertTrue(app.navigationBars["ABC"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["abc-subnetwork-ABC Local Radio"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["abc-subnetwork-Radio National"].exists)
+        XCTAssertTrue(app.buttons["abc-subnetwork-ABC Sport"].exists)
+        XCTAssertTrue(app.buttons["abc-subnetwork-ABC Country"].exists)
+        app.buttons["abc-subnetwork-ABC Local Radio"].tap()
+        XCTAssertTrue(app.navigationBars["ABC Local Radio"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Play ")).firstMatch.waitForExistence(timeout: 10))
+    }
+
+    @MainActor
+    func testSpecialistNetworkTilesAndOrdering() {
+        let app = XCUIApplication()
+        app.launch()
+        if app.buttons["Discover"].waitForExistence(timeout: 3) { app.buttons["Discover"].tap() }
+        XCTAssertTrue(app.buttons["browseNetworks"].waitForExistence(timeout: 10))
+        app.buttons["browseNetworks"].tap()
+
+        let specialist = app.buttons["browse-network-Community and Specialist stations"]
+        XCTAssertFalse(specialist.exists)
+        app.navigationBars["Networks"].buttons.firstMatch.tap()
+        XCTAssertTrue(app.buttons["browseCommunitySpecialist"].waitForExistence(timeout: 5))
+        app.buttons["browseCommunitySpecialist"].tap()
+        for category in ["Community", "Religion", "Foreign Language", "Country Music", "Indigenous", "Arts & Music", "Radio Reading", "Youth & Education", "Seniors", "LGBTQIA+"] {
+            XCTAssertTrue(app.buttons["community-and-specialist-stations-subnetwork-\(category)"].exists)
+        }
+
+        let lastTile = app.buttons["community-and-specialist-stations-subnetwork-LGBTQIA+"]
+        let miniPlayer = app.buttons["Return to Player"]
+        XCTAssertTrue(miniPlayer.exists)
+        for _ in 0..<8 where miniPlayer.frame.minY - lastTile.frame.maxY < 12 { app.swipeUp() }
+        XCTAssertTrue(lastTile.isHittable)
+        XCTAssertGreaterThanOrEqual(miniPlayer.frame.minY - lastTile.frame.maxY, 12)
+    }
+
+    @MainActor
+    func testCommercialNetworkSubnetworkBrowsers() {
+        let app = XCUIApplication()
+        app.launch()
+        if app.buttons["Discover"].waitForExistence(timeout: 3) { app.buttons["Discover"].tap() }
+        app.buttons["browseNetworks"].tap()
+
+        let tripleM = app.buttons["browse-network-Triple M"]
+        XCTAssertTrue(tripleM.waitForExistence(timeout: 30))
+        tripleM.tap()
+        XCTAssertTrue(app.buttons["triple-m-subnetwork-Metro"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["triple-m-subnetwork-Regional"].exists)
+        XCTAssertTrue(app.buttons["triple-m-subnetwork-Music"].exists)
+        XCTAssertTrue(app.buttons["triple-m-subnetwork-Sport"].exists)
+        app.navigationBars["Triple M"].buttons.firstMatch.tap()
+
+        let hit = app.buttons["browse-network-Hit Network"]
+        XCTAssertTrue(hit.waitForExistence(timeout: 10))
+        hit.tap()
+        XCTAssertTrue(app.buttons["hit-network-subnetwork-Metro"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["hit-network-subnetwork-Regional"].exists)
+        XCTAssertTrue(app.buttons["hit-network-subnetwork-Music"].exists)
+    }
+
+    @MainActor
+    func testARNNetworkSubnetworkBrowsers() {
+        let app = XCUIApplication()
+        app.launch()
+        if app.buttons["Discover"].waitForExistence(timeout: 3) { app.buttons["Discover"].tap() }
+        app.buttons["browseNetworks"].tap()
+
+        let kiis = app.buttons["browse-network-KIIS"]
+        XCTAssertTrue(kiis.waitForExistence(timeout: 30))
+        kiis.tap()
+        XCTAssertTrue(app.buttons["kiis-subnetwork-Metro"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["kiis-subnetwork-Music"].exists)
+        app.navigationBars["KIIS"].buttons.firstMatch.tap()
+
+        let gold = app.buttons["browse-network-Gold"]
+        XCTAssertTrue(gold.waitForExistence(timeout: 10))
+        gold.tap()
+        XCTAssertTrue(app.buttons["gold-subnetwork-Metro"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["gold-subnetwork-Music"].exists)
+    }
+
+    @MainActor
+    func testNovaEntertainmentNetworkSubnetworkBrowsers() {
+        let app = XCUIApplication()
+        app.launch()
+        if app.buttons["Discover"].waitForExistence(timeout: 3) { app.buttons["Discover"].tap() }
+        app.buttons["browseNetworks"].tap()
+
+        let nova = app.buttons["browse-network-Nova"]
+        XCTAssertTrue(nova.waitForExistence(timeout: 30))
+        nova.tap()
+        XCTAssertTrue(app.buttons["nova-subnetwork-Metro"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["nova-subnetwork-Music"].exists)
+        app.navigationBars["Nova"].buttons.firstMatch.tap()
+
+        let smooth = app.buttons["browse-network-Smooth"]
+        XCTAssertTrue(smooth.waitForExistence(timeout: 10))
+        smooth.tap()
+        XCTAssertTrue(app.buttons["smooth-subnetwork-Metro"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["smooth-subnetwork-Music"].exists)
     }
 
     @MainActor
@@ -327,6 +615,8 @@ final class PlayerTests: XCTestCase {
         let remove = app.buttons["Remove SEN 1116 from Favourites"]
         if !remove.exists { app.buttons["Add SEN 1116 to Favourites"].tap() }
         remove.tap()
+        XCTAssertTrue(app.buttons["Remove from Favourites"].waitForExistence(timeout: 3))
+        app.buttons["Remove from Favourites"].tap()
         app.buttons["Return to Player"].tap()
         app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Favourites, ")).firstMatch.tap()
         XCTAssertTrue(app.staticTexts["No favourites yet"].waitForExistence(timeout: 3))
@@ -369,6 +659,13 @@ final class PlayerTests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any)["detailsStationArtwork"].waitForExistence(timeout: 3))
         XCTAssertTrue(app.descendants(matching: .any)["stationDescriptionCard"].exists)
         XCTAssertTrue(app.descendants(matching: .any)["stationMetadataGrid"].exists)
+        XCTAssertTrue(app.staticTexts["LOCATION"].exists)
+        XCTAssertTrue(app.staticTexts["STATE"].exists)
+        XCTAssertTrue(app.staticTexts["FREQUENCY"].exists)
+        XCTAssertTrue(app.staticTexts["REGION"].exists)
+        XCTAssertTrue(app.staticTexts["NETWORK"].exists)
+        XCTAssertFalse(app.staticTexts["STATION LOCATION"].exists)
+        XCTAssertFalse(app.staticTexts["STATION STATE"].exists)
         XCTAssertTrue(app.links["stationContact-Talkback-0"].exists)
         app.buttons["Playing"].tap()
         let playing = NSPredicate(format: "label == %@", "Playing")
@@ -384,6 +681,8 @@ final class PlayerTests: XCTestCase {
         let shot = XCTAttachment(screenshot: app.screenshot())
         shot.name = "Directory favourites"; shot.lifetime = .keepAlways; add(shot)
         app.buttons["Remove 3AW Melbourne from Favourites"].firstMatch.tap()
+        XCTAssertTrue(app.buttons["Remove from Favourites"].waitForExistence(timeout: 3))
+        app.buttons["Remove from Favourites"].tap()
     }
 
     @MainActor

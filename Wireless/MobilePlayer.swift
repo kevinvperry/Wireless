@@ -20,11 +20,17 @@ private func makeNowPlayingArtwork(_ image: UIImage) -> MPMediaItemArtwork {
 /// Radio-specific adaptation of Autohop's NowPlayingService and audio route handling.
 @MainActor
 final class MobilePlayer: ObservableObject {
-    @Published var syncEnabled = UserDefaults.standard.object(forKey: "syncEnabled") as? Bool ?? true {
+    /// Shared by the iPhone window and the CarPlay scene so both drive one player.
+    static let shared = MobilePlayer()
+    static let syncEnabledDefaultsKey = "syncEnabled"
+    static let syncDefaultOffMigrationKey = "syncEnabledDefaultOffMigration.v1"
+
+    @Published var syncEnabled: Bool {
         didSet {
-            UserDefaults.standard.set(syncEnabled, forKey: "syncEnabled")
+            defaults.set(syncEnabled, forKey: Self.syncEnabledDefaultsKey)
             directoryAudio.setSyncEnabled(syncEnabled)
-            trackMetadata = nil
+            applyTrackMetadata(nil, source: "settings.tv-sync")
+            startCompanionMetadataIfNeeded()
             if !syncEnabled { measured = nil }
             updateAudioSessionMode()
             publishNowPlaying()
@@ -37,7 +43,8 @@ final class MobilePlayer: ObservableObject {
         didSet {
             UserDefaults.standard.set(vocalBoost.rawValue, forKey: "vocalBoostLevel")
             directoryAudio.setVocalBoost(vocalBoost)
-            trackMetadata = nil
+            applyTrackMetadata(nil, source: "settings.vocal-boost")
+            startCompanionMetadataIfNeeded()
             updateAudioSessionMode()
             publishNowPlaying()
             diagnose("settings.vocalBoost", "Vocal Boost changed", metadata: ["level": vocalBoost.rawValue])
@@ -58,11 +65,19 @@ final class MobilePlayer: ObservableObject {
             defaults.set(selectedStreamID, forKey: streamSelectionKey(for: station.id))
         }
         directoryAudio.configure(station, streamID: selectedStreamID)
-        if requested { directoryAudio.start() }
+        if requested {
+            directoryAudio.start()
+            startCompanionMetadataIfNeeded()
+        }
     } }
     let library: StationLibrary
     let sleepTimer = SleepTimerService()
+    let sleepSchedule = SleepScheduleService()
+    let sleepScheduleSettings = SleepScheduleSettings()
+    private var sleepScheduleTimer: Timer?
+    private var sleepScheduleFadeTask: Task<Void, Never>?
     private let directoryAudio = DirectoryAudio()
+    private let companionMetadata = CompanionMetadataProvider()
     private let defaults: UserDefaults
 
     var shouldOpenDiscoverOnLaunch: Bool {
@@ -87,17 +102,22 @@ final class MobilePlayer: ObservableObject {
 
     func playStation(_ value: DirectoryStation) {
         pause()
-        diagnose("station.selected", "Station selected", metadata: ["stationID": value.id])
-        station = value; supportsDelay = false; measured = nil; trackMetadata = nil
+        diagnose("station.selected", "Station selected", metadata: ["stationID": value.id, "stationName": value.name])
+        applyTrackMetadata(nil, source: "station-change")
+        station = value; supportsDelay = false; measured = nil
         resetNowPlayingArtwork()
         selectedStreamID = savedStreamID(for: value) ?? value.preferredStream?.id ?? ""
         directoryAudio.configure(value, streamID: selectedStreamID)
         directoryAudio.setDelay(delay)
         if let data = try? JSONEncoder().encode(value) { defaults.set(data, forKey: "lastPlayedStation.v1") }
+        library.recordRecent(value)
         refreshDetails()
         play()
     }
-    private func startEngine() { directoryAudio.start() }
+    private func startEngine() {
+        directoryAudio.start()
+        startCompanionMetadataIfNeeded()
+    }
     private func reconnectEngine() { directoryAudio.reconnect() }
     private func updateAudioSessionMode() {
         let mode: AVAudioSession.Mode = !syncEnabled && vocalBoost != .off ? .spokenAudio : .default
@@ -117,6 +137,8 @@ final class MobilePlayer: ObservableObject {
     private var hadConnection = true
     private var isForeground = true
     private var lastMetadata = ""
+    private var trackMetadataSource: String?
+    private var companionMetadataEnabled = false
     private var nowPlayingArtwork: MPMediaItemArtwork?
     private var artworkRequestURL: URL?
     private var artworkTask: Task<Void, Never>?
@@ -127,12 +149,31 @@ final class MobilePlayer: ObservableObject {
     private var lastDiagnosticStatus = ""
     private var lastMeasuredDiagnosticAt = Date.distantPast
     private var lastMeasuredDiagnosticValue: Double?
+    private let metadataFreshnessPolicy = MetadataFreshnessPolicy()
+    private var displayedMetadataFirstSeenAt: Date?
+    private var displayedMetadataLastSeenAt: Date?
+    private var displayedMetadataReceiptCount = 0
+    private var displayedMetadataHints: [String] = []
+    private var displayedMetadataEmbeddedTimestamp: Date?
+    private var expiredMetadataThisSession: StreamTrackMetadata?
 
     private func diagnose(_ event: String, _ message: String, metadata: [String: String] = [:]) {
         StreamDiagnosticLogger.shared.record(event, message, metadata: metadata)
     }
 
     init(defaults: UserDefaults = .standard) {
+        let initialSyncEnabled: Bool
+        if defaults.bool(forKey: Self.syncDefaultOffMigrationKey) {
+            initialSyncEnabled = defaults.object(forKey: Self.syncEnabledDefaultsKey) as? Bool ?? false
+        } else {
+            // One-time product-default migration. This deliberately resets TV Sync
+            // for existing installations when they first run this build, then
+            // preserves the user's choice on every subsequent launch.
+            initialSyncEnabled = false
+            defaults.set(false, forKey: Self.syncEnabledDefaultsKey)
+            defaults.set(true, forKey: Self.syncDefaultOffMigrationKey)
+        }
+        _syncEnabled = Published(initialValue: initialSyncEnabled)
         self.defaults = defaults
         let library = StationLibrary(defaults: defaults)
         self.library = library
@@ -148,12 +189,23 @@ final class MobilePlayer: ObservableObject {
             self.recordPlaybackStatus(update, supportsDelay: supported)
             self.requested = update.active; self.status = update.title; self.detail = update.detail
             self.buffering = update.buffering; self.progress = update.progress; self.measured = update.measuredDelay
+            if !update.active { self.companionMetadata.stop() }
             self.supportsDelay = supported; self.updateRecoveryGrace(); self.publishNowPlaying()
         }
-        directoryAudio.onTrackMetadata = { [weak self] metadata in
+        directoryAudio.onTrackMetadata = { [weak self] evaluation in
             guard let self else { return }
-            self.trackMetadata = self.syncEnabled ? nil : metadata
-            self.publishNowPlaying()
+            guard let evaluation else {
+                self.applyTrackMetadata(nil, source: "embedded-reset")
+                return
+            }
+            if self.syncEnabled {
+                self.diagnose("metadata.displaySuppressed", "Track metadata suppressed", metadata: [
+                    "reason": "tv-sync", "source": "embedded", "stationID": self.station.id,
+                    "stationName": self.station.name
+                ])
+                return
+            }
+            self.applyMetadataEvaluation(evaluation, source: "embedded")
         }
         directoryAudio.setSyncEnabled(syncEnabled)
         directoryAudio.setVocalBoost(vocalBoost)
@@ -165,6 +217,7 @@ final class MobilePlayer: ObservableObject {
             guard let self, self.requested else { return }
             self.pause()
         }
+        configureSleepSchedule()
         if selected.preferredStream != nil { directoryAudio.configure(selected, streamID: selectedStreamID) }
         registerRemoteControls()
         if #available(iOS 27.0, *) {
@@ -255,14 +308,28 @@ final class MobilePlayer: ObservableObject {
 
     func play() {
         diagnose("player.play", "Play requested", metadata: ["stationID": station.id, "streamID": selectedStreamID])
+        cancelSleepScheduleFade()
         if !sleepTimer.checkAutoRestart() {
             sleepTimer.restoreFullVolume()
         }
+        // Starting from a pause begins a new listening session for Sleep
+        // Schedule (Autohop arms on each playback start).
+        if !requested { sleepSchedule.playbackStarted() }
         let token = UUID()
         activationID = token
         requested = true
         resumeAfterInterruption = false
         status = "Connecting…"
+        if ProcessInfo.processInfo.isiOSAppOnMac {
+            // AVAudioSession activation is not implemented for iPhone/iPad
+            // apps running on Mac. macOS owns the audio route and AVPlayer /
+            // AVAudioEngine can start without an explicit iOS session.
+            diagnose("audio.activationBypassed", "Audio session activation bypassed", metadata: ["platform": "iOS-on-Mac"])
+            startEngine()
+            refreshRoute()
+            publishNowPlaying()
+            return
+        }
         do {
             let session = AVAudioSession.sharedInstance()
             let mode: AVAudioSession.Mode = !syncEnabled && vocalBoost != .off ? .spokenAudio : .default
@@ -316,6 +383,8 @@ final class MobilePlayer: ObservableObject {
         if requested { diagnose("player.pause", "Pause requested", metadata: ["stationID": station.id, "streamID": selectedStreamID]) }
         activationID = UUID()
         requested = false
+        companionMetadata.stop()
+        cancelSleepScheduleFade()
         endRecoveryGrace()
         resumeAfterInterruption = false
         directoryAudio.stop()
@@ -336,7 +405,78 @@ final class MobilePlayer: ObservableObject {
         play()
     }
 
-    func toggle() { requested ? pause() : play() }
+    func toggle() {
+        respondToSleepSchedulePrompt(via: "play/pause")
+        requested ? pause() : play()
+    }
+
+    /// Answers the Sleep Schedule "still listening?" prompt. Any play/pause
+    /// command while prompting counts as a response, as in Autohop.
+    func respondToSleepSchedulePrompt(via source: String) {
+        guard sleepSchedule.isPrompting else { return }
+        sleepSchedule.userResponded()
+        diagnose("sleepSchedule.stillListening", "Listener confirmed still listening", metadata: ["source": source])
+    }
+
+    // MARK: - Sleep Schedule
+
+    private func configureSleepSchedule() {
+        sleepScheduleSettings.onChange = { [weak self] in
+            guard let self else { return }
+            self.sleepSchedule.updateConfig(self.sleepScheduleSettings.config, isPlaying: self.requested)
+        }
+        sleepSchedule.updateConfig(sleepScheduleSettings.config, isPlaying: requested)
+        sleepSchedule.onPrompt = { [weak self] in
+            NotificationService.shared.postSleepSchedulePrompt()
+            self?.diagnose("sleepSchedule.prompt", "Sleep Schedule asking if still listening (playback continues)")
+        }
+        sleepSchedule.onPromptDismissed = {
+            NotificationService.shared.clearSleepSchedulePrompt()
+        }
+        NotificationService.shared.setStillListeningHandler { [weak self] in
+            self?.respondToSleepSchedulePrompt(via: "notification")
+        }
+        // Adapted from Autohop's PlaybackCoordinator: fade over the Sleep Timer's
+        // 30 s curve, then pause. Live radio has no prompt point to rewind to.
+        sleepSchedule.onAsleep = { [weak self] in
+            guard let self, self.requested else { return }
+            self.sleepScheduleFadeTask?.cancel()
+            self.sleepScheduleFadeTask = Task { @MainActor [weak self] in
+                var remaining = SleepTimerService.gradualFadeDuration
+                while remaining > 0 {
+                    guard !Task.isCancelled, let self else { return }
+                    self.directoryAudio.setVolume(SleepTimerService.gradualFadeVolume(remaining: remaining))
+                    try? await Task.sleep(for: .milliseconds(500))
+                    remaining -= 0.5
+                }
+                guard !Task.isCancelled, let self else { return }
+                self.directoryAudio.setVolume(0)
+                self.sleepScheduleFadeTask = nil
+                self.pause()
+                self.directoryAudio.setVolume(1)
+                self.diagnose("sleepSchedule.asleep", "No response to prompt — faded out and paused", metadata: [
+                    "fadeSeconds": "\(Int(SleepTimerService.gradualFadeDuration))"
+                ])
+            }
+        }
+        let timer = Timer(timeInterval: 0.5, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                guard let self else { return }
+                if self.sleepTimer.isActive { self.sleepSchedule.suspendForSession() }
+                self.sleepSchedule.tick(isPlaying: self.requested)
+                self.expireStaleMetadataIfNeeded()
+            }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        sleepScheduleTimer = timer
+    }
+
+    private func cancelSleepScheduleFade() {
+        guard let task = sleepScheduleFadeTask else { return }
+        task.cancel()
+        sleepScheduleFadeTask = nil
+        directoryAudio.setVolume(1)
+    }
     func adjust(_ amount: Double) { delay = min(30, max(0, delay + amount)) }
     func sceneChanged(_ phase: ScenePhase) {
         diagnose("app.scene", "Scene phase changed", metadata: ["phase": String(describing: phase), "playing": "\(requested)", "buffering": "\(buffering)"])
@@ -404,8 +544,14 @@ final class MobilePlayer: ObservableObject {
     }
     private func registerRemoteControls() {
         let centre = MPRemoteCommandCenter.shared()
-        centre.playCommand.addTarget { [weak self] _ in Task { @MainActor in self?.play() }; return .success }
-        centre.pauseCommand.addTarget { [weak self] _ in Task { @MainActor in self?.pause() }; return .success }
+        centre.playCommand.addTarget { [weak self] _ in Task { @MainActor in
+            self?.respondToSleepSchedulePrompt(via: "remote play")
+            self?.play()
+        }; return .success }
+        centre.pauseCommand.addTarget { [weak self] _ in Task { @MainActor in
+            self?.respondToSleepSchedulePrompt(via: "remote pause")
+            self?.pause()
+        }; return .success }
         centre.togglePlayPauseCommand.addTarget { [weak self] _ in Task { @MainActor in self?.toggle() }; return .success }
         for command in [centre.nextTrackCommand, centre.previousTrackCommand, centre.skipForwardCommand,
                         centre.skipBackwardCommand, centre.changePlaybackPositionCommand, centre.changePlaybackRateCommand] {
@@ -491,5 +637,201 @@ final class MobilePlayer: ObservableObject {
             guide.startTapt(website: source.website, timeZoneIdentifier: source.timeZoneIdentifier)
         }
         else { guide.stop() }
+    }
+
+    private func startCompanionMetadataIfNeeded() {
+        companionMetadata.stop()
+        companionMetadataEnabled = false
+        directoryAudio.setCompanionMetadataPreferred(false)
+        guard requested else {
+            diagnose("metadata.providerDecision", "Companion metadata unavailable", metadata: [
+                "reason": "playback-not-requested", "stationID": station.id, "stationName": station.name
+            ])
+            return
+        }
+        guard !syncEnabled else {
+            diagnose("metadata.providerDecision", "Companion metadata unavailable", metadata: [
+                "reason": "tv-sync-enabled", "stationID": station.id, "stationName": station.name
+            ])
+            return
+        }
+        let stationID = station.id
+        companionMetadataEnabled = CompanionMetadataSource.source(for: station, selectedStreamID: selectedStreamID) != nil
+        directoryAudio.setCompanionMetadataPreferred(companionMetadataEnabled)
+        companionMetadata.start(station: station, selectedStreamID: selectedStreamID) { [weak self] evaluation in
+            guard let self, self.requested, !self.syncEnabled, self.station.id == stationID else { return }
+            self.applyMetadataEvaluation(evaluation, source: "companion")
+        }
+    }
+
+    private func applyMetadataEvaluation(_ evaluation: StreamTrackMetadataEvaluation, source: String) {
+        let preferredSource = companionMetadataEnabled ? "companion" : "embedded"
+        let previousSource = trackMetadataSource ?? "none"
+        let now = Date()
+        let action: String
+        let reason: String
+
+        if let metadata = evaluation.metadata {
+            let timestampDetails = metadataFreshnessPolicy.diagnosticDetails(for: evaluation, at: now)
+            let timestampIsStale = timestampDetails["candidateTimestampStale"] == "true"
+            let expiredAndUnchanged = expiredMetadataThisSession == metadata
+            if timestampIsStale || expiredAndUnchanged {
+                let staleCandidateCanClearDisplay = trackMetadata != nil
+                    && (trackMetadataSource == source || source == preferredSource)
+                action = staleCandidateCanClearDisplay ? "cleared-stale" : "suppressed-stale"
+                reason = timestampIsStale ? "embedded-timestamp-stale" : "session-expired-unchanged"
+                recordStaleMetadata(
+                    metadata,
+                    evaluation: evaluation.addingProviderDetails(timestampDetails),
+                    source: source,
+                    reason: reason,
+                    now: now,
+                    onlyOnce: expiredAndUnchanged
+                )
+                expiredMetadataThisSession = metadata
+                if staleCandidateCanClearDisplay {
+                    applyTrackMetadata(nil, source: "stale-metadata", resetFreshness: false)
+                }
+            } else {
+                if expiredMetadataThisSession != nil { expiredMetadataThisSession = nil }
+                action = trackMetadata == metadata ? "retained-unchanged" : "displayed"
+                reason = source == preferredSource ? "preferred-source-accepted" : "fallback-source-accepted"
+                if trackMetadata == metadata {
+                    displayedMetadataLastSeenAt = now
+                    displayedMetadataReceiptCount += 1
+                } else {
+                    applyTrackMetadata(metadata, source: source)
+                    displayedMetadataFirstSeenAt = now
+                    displayedMetadataLastSeenAt = now
+                    displayedMetadataReceiptCount = 1
+                    displayedMetadataHints = evaluation.classificationHints
+                    displayedMetadataEmbeddedTimestamp = metadataFreshnessPolicy.embeddedTimestamp(in: evaluation)
+                }
+            }
+        } else if !MetadataSourceArbitration.shouldApplyEmptyResult(
+            source: source,
+            companionEnabled: companionMetadataEnabled,
+            currentSource: trackMetadataSource
+        ) {
+            action = "suppressed"
+            reason = trackMetadataSource == "companion"
+                ? "lower-priority-empty-cannot-clear-companion"
+                : "lower-priority-empty-with-companion-enabled"
+        } else {
+            action = trackMetadata == nil ? "retained-empty" : "cleared"
+            reason = source == preferredSource ? "preferred-source-rejected-or-empty" : "active-source-rejected-or-empty"
+            applyTrackMetadata(nil, source: source)
+        }
+
+        var fields = evaluation.diagnosticFields
+        fields.merge([
+            "action": action,
+            "affectsDisplay": "\(action == "displayed" || action == "cleared")",
+            "currentDisplaySourceBeforeDecision": previousSource,
+            "preferredSource": preferredSource,
+            "reason": reason,
+            "source": source,
+            "stationID": station.id,
+            "stationName": station.name
+        ]) { _, new in new }
+        diagnose("metadata.displayDecision", "Metadata display decision recorded", metadata: fields)
+    }
+
+    private func applyTrackMetadata(_ metadata: StreamTrackMetadata?, source: String, resetFreshness: Bool = true) {
+        guard trackMetadata != metadata else {
+            if metadata != nil { trackMetadataSource = source }
+            return
+        }
+        let previous = trackMetadata
+        trackMetadata = metadata
+        trackMetadataSource = metadata == nil ? nil : source
+        if metadata == nil, resetFreshness {
+            displayedMetadataFirstSeenAt = nil
+            displayedMetadataLastSeenAt = nil
+            displayedMetadataReceiptCount = 0
+            displayedMetadataHints = []
+            displayedMetadataEmbeddedTimestamp = nil
+            expiredMetadataThisSession = nil
+        }
+        if let metadata {
+            diagnose("metadata.displayed", "Track metadata displayed", metadata: [
+                "album": metadata.album ?? "<none>",
+                "artist": metadata.artist,
+                "source": source,
+                "stationID": station.id,
+                "stationName": station.name,
+                "title": metadata.title
+            ])
+        } else if let previous {
+            diagnose("metadata.displayCleared", "Track metadata display cleared", metadata: [
+                "previousArtist": previous.artist,
+                "previousTitle": previous.title,
+                "source": source,
+                "stationID": station.id,
+                "stationName": station.name
+            ])
+        }
+        publishNowPlaying()
+    }
+
+    private func expireStaleMetadataIfNeeded(now: Date = Date()) {
+        guard requested, !syncEnabled, let metadata = trackMetadata,
+              let firstSeenAt = displayedMetadataFirstSeenAt else { return }
+        let isMusic = displayedMetadataHints == ["music-candidate"]
+        let lifetime = isMusic
+            ? metadataFreshnessPolicy.musicDisplayLifetime
+            : metadataFreshnessPolicy.nonMusicDisplayLifetime
+        guard now.timeIntervalSince(firstSeenAt) >= lifetime else { return }
+        recordStaleMetadata(
+            metadata,
+            evaluation: StreamTrackMetadataEvaluation(
+                metadata: metadata,
+                title: metadata.title,
+                artist: metadata.artist,
+                album: metadata.album,
+                outcome: .accepted,
+                classificationHints: displayedMetadataHints
+            ),
+            source: trackMetadataSource ?? "unknown",
+            reason: "unchanged-display-expired",
+            now: now,
+            onlyOnce: false
+        )
+        expiredMetadataThisSession = metadata
+        applyTrackMetadata(nil, source: "stale-expiry", resetFreshness: false)
+    }
+
+    private func recordStaleMetadata(
+        _ metadata: StreamTrackMetadata,
+        evaluation: StreamTrackMetadataEvaluation,
+        source: String,
+        reason: String,
+        now: Date,
+        onlyOnce: Bool
+    ) {
+        if onlyOnce { return }
+        let formatter = ISO8601DateFormatter()
+        var fields = metadataFreshnessPolicy.diagnosticDetails(for: evaluation, at: now)
+        if let displayedMetadataEmbeddedTimestamp {
+            fields["displayedEmbeddedTimestamp"] = formatter.string(from: displayedMetadataEmbeddedTimestamp)
+            fields["displayedEmbeddedTimestampAgeSeconds"] = String(
+                format: "%.1f",
+                now.timeIntervalSince(displayedMetadataEmbeddedTimestamp)
+            )
+        }
+        fields.merge([
+            "artist": metadata.artist,
+            "classificationHints": evaluation.classificationHints.joined(separator: ","),
+            "displayAgeSeconds": String(format: "%.1f", now.timeIntervalSince(displayedMetadataFirstSeenAt ?? now)),
+            "firstSeenAt": displayedMetadataFirstSeenAt.map { formatter.string(from: $0) } ?? "not-displayed-this-session",
+            "identicalReceiptCount": "\(max(0, displayedMetadataReceiptCount - 1))",
+            "lastSeenAt": displayedMetadataLastSeenAt.map { formatter.string(from: $0) } ?? "not-displayed-this-session",
+            "reason": reason,
+            "source": source,
+            "stationID": station.id,
+            "stationName": station.name,
+            "title": metadata.title
+        ]) { _, new in new }
+        diagnose("metadata.stale", "Stale metadata was prevented from remaining on display", metadata: fields)
     }
 }

@@ -16,3 +16,13 @@ test('main station results drive shared artwork selection',async()=>{
  assert.match(script,/data-test-stream/);
  assert.match(script,/New and changed streams are being tested automatically/);
 });
+
+test('network artwork uses the shared square crop editor',async()=>{
+ const html=await fs.readFile('public/admin/index.html','utf8');
+ const script=await fs.readFile('public/admin/app.js','utf8');
+ assert.match(html,/id="network-artwork-button"/);
+ assert.match(html,/id="network-artwork-dialog"/);
+ assert.match(html,/id="network-artwork-file"/);
+ assert.match(script,/loadCrop\(e\.target\.files\[0\],'network'\)/);
+ assert.match(script,/X-Network-Version/);
+});

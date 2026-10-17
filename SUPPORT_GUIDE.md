@@ -17,11 +17,21 @@ On a first installation with no saved station, Wireless opens Discover instead o
 
 The Discover page provides several ways to browse the directory:
 
-- **Networks** groups stations by broadcaster.
+- **Search by Network** begins with an alphabetical grid of major broadcasters using network artwork maintained in the Wireless directory. **All Networks** then lists every network, including the featured broadcasters, alphabetically. ACE Radio Network appears as **ACE Radio**, ARN as **ARN Regional** and Hit Network as **Hit**. Networks with distinct services open a second set of tiles.
+- **Search by Location** opens National, capital-city, Other Locations and State tiles.
+- **Music** opens a searchable list of music and audio genres, including Kids & Family and Soundscapes. A station can appear under more than one relevant genre. News and Sport have their own top-level destinations.
+- **News and Talkback** and **Sport** open their matching station lists directly.
+- **Community & Specialist** opens tiles for Community, Religion, Foreign Language, Country Music, Indigenous, Arts & Music, Radio Reading, Youth & Education, Seniors and LGBTQIA+ services. Established broadcasters such as SBS remain under their official network.
+- **Not yet categorised** is always last and contains directory records that still require a confirmed network or specialist classification.
 - **National** contains stations whose coverage is marked National in the directory.
-- **Browse by location** prioritises the principal stations for each capital city. Other Locations opens the wider town and regional directory.
+- **Browse by location** opens the principal stations for each capital city. Sydney, Melbourne, Brisbane, Adelaide and Perth begin with **Top Rating Stations**, ordered by their supplied current ratings results, followed by all other stations for that city alphabetically. Other Locations opens the wider town and regional directory.
 - **Browse by State** filters stations by their Australian state, territory or National coverage.
-- **Search** finds stations by name, network, location or other directory information.
+- The main **Search stations** field finds stations by name, network, location or other directory information. **Other Locations** also provides a local search field; the Networks page uses a direct tile list.
+- Nova is organised into **Metro**, **Music**, **Talkback** and **MediaWorks New Zealand**. FIVEAA is listed under Talkback; MediaWorks' New Zealand services have their own tile.
+
+Station lists include an alphabetical index for quick navigation. The final rows have extra scroll space so they can be brought fully above the mini-player. Favourites retains your chosen manual order.
+
+The compact mini-player remains available at the bottom of Discover and every page opened from it, including Settings and Support. Tap it to return to the main player or use its Play/Pause control without leaving the current page.
 
 Wireless downloads the published station directory and keeps its last complete copy for browsing when the directory service is temporarily unavailable. Stream playback still requires a suitable internet connection.
 
@@ -32,16 +42,18 @@ The main player has three panes:
 | Pane | Purpose |
 |---|---|
 | Playing | Station artwork, programme or song information, live-position bar, Play/Pause, audio controls, Sleep Timer and favourite shortcuts. |
-| Details | Station description, contact links, location, state, genres, stream type and bitrate. Programme information appears here when the broadcaster supplies it. |
+| Details | Station description, contact links, location, state, frequency, region, network, genres, stream type and bitrate. Programme information appears here when the broadcaster supplies it. |
 | Sync | TV Sync on/off control, selected audio delay, half-second adjustment buttons and measured stream delay. |
 
-The progress bar represents the current live position and buffering state. With TV Sync enabled, the captions show **Sync Enabled** and the measured stream delay. When reception is interrupted, Wireless attempts to reconnect automatically without requiring another press of Play.
+The progress bar represents the current live position and buffering state. With TV Sync enabled, the captions show **TV Sync Enabled** and the measured stream delay. When reception is interrupted, Wireless attempts to reconnect automatically without requiring another press of Play.
 
-Where a music stream supplies reliable track metadata, Wireless can show the song title, artist and album beneath the station name. This metadata is also sent to the Lock Screen, Control Centre and connected vehicles. Track metadata is available only during normal playback with TV Sync off. Wireless continues showing station information when no suitable track metadata is available.
+Where a music stream or supported broadcaster now-playing service supplies reliable track metadata, Wireless shows **song title · artist** on the top row, with the **station name below**. The mini-player uses the same order. Album information, when supplied, remains available in the mini-player and system playback metadata. Song information is also sent to the Lock Screen, Control Centre and connected vehicles. Triple M and Hit Metro and Regional broadcast stations use metadata embedded directly in their selected stream. Wireless also supports ABC music services, supported Triton StreamTheWorld feeds and official LiSTNR now-playing data for LiSTNR and SCA digital music stations. A brief gap is normal when a broadcaster reports that no current track is available. Track metadata is available only during normal playback with TV Sync off.
+
+Triple M and Hit embedded metadata is displayed without content-based filtering of `Asset Link`, `Asset Spot` or `Asset Stop` values, so current broadcaster playout labels may appear temporarily. Wireless does, however, prevent an old timestamped value from replacing current information and clears metadata that remains unchanged beyond its freshness limit. Each SCA playback session also uses a new stream request identifier so a previous session's playlist is not deliberately reused.
 
 ## Favourites
 
-Tap the heart button on the player to add or remove the current station from Favourites. The outlined heart in the top-right corner shows the number of saved stations and opens the complete Favourites list.
+Tap the heart button on the player to add or remove the current station from Favourites. Wireless asks for confirmation before removing a station so an accidental tap does not change the list. The outlined heart in the top-right corner shows the number of saved stations and opens the complete Favourites list.
 
 Use **Reorder** in Favourites to drag stations into your preferred order. The first two saved favourites other than the currently selected station appear as quick-play tiles at the bottom of the Playing pane. Tapping either tile starts that station immediately.
 
@@ -51,12 +63,17 @@ Favourites are stored on the device. iCloud synchronisation is not currently inc
 
 TV Sync delays live radio commentary so it can better match television pictures received through another service.
 
+When TV Sync is off, the Sync pane shows only the **Sync audio to picture** tile. Turning it on reveals the **Saved audio delay** tile and its adjustment controls.
+
 1. Open the **Sync** pane.
 2. Turn on **Sync audio to picture**.
-3. Use the slider for larger changes or the minus and plus buttons for half-second adjustments.
-4. Compare the commentary with the television picture and continue adjusting until they align.
+3. Choose a clear moment on the television, such as a ball being kicked or someone beginning to speak.
+4. If you hear the commentary before you see the action, increase the delay. If you see the action first, decrease it.
+5. Use the slider for larger changes or the minus and plus buttons for half-second adjustments until the sound matches the picture.
 
-Wireless displays both the selected delay and the measured delay available from the active stream. The selected delay is saved for future listening.
+Wireless displays both your saved delay and the delay currently available from the active stream. Your chosen delay is remembered for the next time you use TV Sync. Playback remains controlled from the main Playing pane, not from the Sync pane.
+
+When TV Sync is first turned on, Wireless may briefly show that it is building an audio buffer. The delay controls become available automatically when enough audio has been retained. This temporary preparation message does not mean the stream is incompatible.
 
 Direct MP3 and AAC streams can be retained in Wireless's packet buffer. Compatible AAC HLS streams may use a seekable live window or a retained-packet fallback. Some HLS formats do not expose enough audio history for TV Sync; the Sync pane explains when the active stream cannot provide a seekable delay buffer.
 
@@ -83,9 +100,29 @@ Vocal Boost is available for compatible direct MP3 and AAC streams. Enabling it 
 
 ## Sleep Timer
 
-Tap the moon button on the Playing pane to open Sleep Timer. Choose a duration and Wireless will pause playback automatically when the timer expires.
+Tap the moon button on the Playing pane to open Sleep Timer. Choose a duration and Wireless will pause playback automatically when the timer expires. The sheet also opens **Sleep Schedule**, described below.
 
 While a timer is active, reopen Sleep Timer to view the countdown, add five minutes or cancel it. Wireless gradually fades the volume during the final 30 seconds before pausing. Starting playback again after the timer has expired restores normal volume.
+
+## Sleep Schedule
+
+Sleep Schedule is a recurring, nightly sleep timer. Set it up once and it works every night, with no taps required at bedtime.
+
+1. Tap the moon button on the Playing pane, then choose **Sleep Schedule** at the bottom of the Sleep Timer sheet.
+2. Turn on the toggle and choose your **Active Hours**, for example 9:00 pm to 6:00 am. The window can cross midnight, and matching start and end times keep the schedule available all day.
+3. Choose how often Wireless should check in: **10, 15, 20, 40 or 60 minutes** of playback.
+
+Start playing a station during your active hours and the schedule arms itself. After the chosen duration, a soft chime plays over the station for up to a minute. Playback continues while the chime plays.
+
+- **Still awake?** Tap **Still Listening** in the app or on the lock-screen notification (no need to unlock), or use Play/Pause on the Lock Screen, headphones or CarPlay. The station continues and the next check-in cycle starts.
+- **Asleep?** Without a response, the station fades out over 30 seconds and pauses. Press Play in the morning to return to the live broadcast.
+- **Active Hours ended?** Wireless dismisses any pending check-in and its notification. The station continues normally and Sleep Schedule does not ask again outside the selected window.
+
+During your active hours, a bed icon appears beside the Discover button at the top of the player. While a station plays, it shows the minutes until the next check-in. Tap it to open Sleep Schedule.
+
+Setting the regular Sleep Timer overrides the schedule for that listening session without changing the saved schedule. Turning Sleep Schedule off keeps your saved hours and interval for next time.
+
+When you first turn Sleep Schedule on, Wireless asks for notification permission so the check-in can appear on the Lock Screen, including during Sleep Focus. If notifications are off, the chime still plays and Play/Pause or the in-app button still count as a response.
 
 ## Background Playback and System Controls
 
@@ -94,6 +131,19 @@ Wireless continues playing when the app moves to the background or the device is
 The Lock Screen, Control Centre, headphone controls, AirPlay and compatible connected vehicles provide Play/Pause control and display station artwork. Song information is included when the active stream supplies acceptable metadata during normal playback.
 
 Wireless pauses if an audio output such as wired headphones is disconnected. After a temporary loss of reception, playback attempts to resume automatically when connectivity returns. A deliberate manual Pause is respected.
+
+When Stream Diagnostics is enabled, its Metadata view records every metadata result received from the stream and supported companion services. Use the **Metadata**, **Playback** and **All** selector to change the visible records; Wireless remembers that selection. Dedicated raw fields preserve the broadcaster's exact title, artist and album text without trimming or normalising it; control characters are escaped only to keep each log entry parseable. Each result also records its display-ready interpretation, classification, whether it repeated or changed, and the exact display decision. Advertisements, programme labels and technical markers remain visible in the diagnostic record. Provider records include the station name, service identifier, transport, response details and why a source was enabled or unavailable. For Triple M and Hit broadcast stations, the provider decision records that embedded stream metadata is authoritative. Heartbeats separately report the ages of the last provider contact, distinct candidate, usable receipt and genuine track change. `metadata.silence` identifies a period with no usable metadata receipts, while `metadata.sourceSilence` identifies an inactive secondary source. `metadata.stale` records the first and last sighting, repeat count, embedded timestamp age, display age and reason whenever an old or unchanged value is suppressed or cleared. Authentication values and device names remain excluded from exported logs.
+
+## CarPlay
+
+Open Wireless in CarPlay to control the same player as your iPhone. CarPlay opens on the player once a station has been chosen, or on Favourites before then.
+
+- Choose **Favourites** in the top-right corner of the player to open your saved stations.
+- Favourites also lists your recently played stations. Choose **Discover** in the top-right corner of Favourites to browse Networks, Locations, Music, News and Talkback, Sport, and Community & Specialist stations.
+- Choose a station to start playing it and return to the player.
+- Use the heart button on the player to add or remove the current station from Favourites.
+
+Favourites changed in CarPlay also update on your iPhone. Auto Resume applies when Wireless starts from CarPlay.
 
 ## Settings
 

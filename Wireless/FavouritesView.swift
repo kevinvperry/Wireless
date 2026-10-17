@@ -9,6 +9,7 @@ struct FavouritesView: View {
     let close: () -> Void
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var editMode: EditMode = .inactive
+    @State private var pendingRemoval: DirectoryStation?
 
     private var isReordering: Bool { editMode.isEditing }
 
@@ -39,6 +40,8 @@ struct FavouritesView: View {
                         .scrollContentBackground(.hidden)
                         .environment(\.editMode, $editMode)
                     }
+                    .frame(maxWidth: metrics.listMaximumWidth)
+                    .frame(maxWidth: .infinity)
                 }
             }
             }
@@ -59,6 +62,24 @@ struct FavouritesView: View {
         }
         .preferredColorScheme(.dark)
         .presentationBackground(.regularMaterial)
+        .confirmationDialog(
+            "Remove \(pendingRemoval?.name ?? "this station") from Favourites?",
+            isPresented: Binding(
+                get: { pendingRemoval != nil },
+                set: { if !$0 { pendingRemoval = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Remove from Favourites", role: .destructive) {
+                if let station = pendingRemoval, library.contains(station) {
+                    library.toggle(station)
+                }
+                pendingRemoval = nil
+            }
+            Button("Cancel", role: .cancel) { pendingRemoval = nil }
+        } message: {
+            Text("You can add this station again from Discover.")
+        }
     }
 
     private func reorderBar(metrics: WirelessLayoutMetrics) -> some View {
@@ -133,7 +154,7 @@ struct FavouritesView: View {
             .accessibilityLabel("Play \(station.name)")
 
             if !isReordering {
-                Button { library.toggle(station) } label: {
+                Button { pendingRemoval = station } label: {
                     Image(systemName: "heart.fill")
                         .font(.title3.bold()).foregroundStyle(.purple)
                         .frame(width: 44, height: 44)

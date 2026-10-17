@@ -33,13 +33,17 @@ struct DirectoryStation: Codable, Identifiable, Equatable, Sendable {
     let id: String
     let name: String
     let network: String
+    var subnetwork: String? = nil
     let country: String
     let state: String
     let cities: [String]
     let tags: [String]
     var frequency: String? = nil
+    var metro_regional: String? = nil
     var tagline: String? = nil
     var genres: [String]? = nil
+    var music_genre: String? = nil
+    var browse_genres: [String]? = nil
     let description: String
     let website_url: String
     let logo_url: String
@@ -136,6 +140,18 @@ struct CatalogueSnapshot: Codable {
     let revision: Int
     let date: Date
     let stations: [DirectoryStation]
+    var networkArtwork: [NetworkArtwork]? = nil
+}
+
+struct NetworkArtwork: Codable, Equatable, Sendable {
+    let network: String
+    let image_url: String
+}
+
+private struct NetworkArtworkPage: Decodable {
+    let schema_version: Int
+    let revision: Int
+    let networks: [NetworkArtwork]
 }
 
 enum CatalogueError: LocalizedError {
@@ -178,7 +194,14 @@ struct CatalogueClient: Sendable {
                 stations += result.stations
                 if !result.has_more {
                     guard stations.count == total, Set(stations.map(\.id)).count == total else { throw CatalogueError.invalidResponse }
-                    return CatalogueSnapshot(revision: result.revision, date: Date(), stations: stations)
+                    var artworkRequest = URLRequest(url: baseURL.appendingPathComponent("api/v1/networks"))
+                    artworkRequest.timeoutInterval = 20
+                    artworkRequest.cachePolicy = .reloadRevalidatingCacheData
+                    let (artworkData, artworkResponse) = try await session.data(for: artworkRequest)
+                    guard (artworkResponse as? HTTPURLResponse)?.statusCode == 200 else { throw CatalogueError.invalidResponse }
+                    let artwork = try JSONDecoder().decode(NetworkArtworkPage.self, from: artworkData)
+                    guard artwork.schema_version == 1, artwork.revision == result.revision else { break }
+                    return CatalogueSnapshot(revision: result.revision, date: Date(), stations: stations, networkArtwork: artwork.networks)
                 }
             }
         }
@@ -188,10 +211,13 @@ struct CatalogueClient: Sendable {
 
 @MainActor final class StationLibrary: ObservableObject {
     @Published private(set) var stations: [DirectoryStation] = []
+    @Published private(set) var networkArtwork: [NetworkArtwork] = []
     @Published private(set) var favourites: [DirectoryStation] = []
+    @Published private(set) var recents: [DirectoryStation] = []
     @Published private(set) var isLoading = false
     @Published private(set) var error: String?
     @Published private(set) var refreshedAt: Date?
+    private var refreshTask: Task<Void, Never>?
     private var revision: Int?
     private let defaults: UserDefaults
     private let cacheURL: URL
@@ -201,13 +227,28 @@ struct CatalogueClient: Sendable {
         self.defaults = defaults; self.client = client
         self.cacheURL = cacheURL ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("Wireless/catalogue-v1.json")
         if let data = try? Data(contentsOf: self.cacheURL), let snapshot = try? JSONDecoder().decode(CatalogueSnapshot.self, from: data) {
-            stations = snapshot.stations; refreshedAt = snapshot.date; revision = snapshot.revision
+            stations = snapshot.stations; networkArtwork = snapshot.networkArtwork ?? []; refreshedAt = snapshot.date; revision = snapshot.revision
         }
         if let data = defaults.data(forKey: "stationFavourites.v1"), let saved = try? JSONDecoder().decode([DirectoryStation].self, from: data) { favourites = saved }
         else {
             favourites = defaults.object(forKey: "senFavourite") as? Bool == true ? [.sen] : []
             saveFavourites()
         }
+
+        if let data = defaults.data(forKey: Self.recentsKey), let saved = try? JSONDecoder().decode([DirectoryStation].self, from: data) { recents = saved }
+    }
+    static let recentsKey = "stationRecents.v1"
+    static let recentsLimit = 10
+    /// Most recently played first. Used by CarPlay's Recently Played list.
+    func recordRecent(_ station: DirectoryStation) {
+        guard station.id != DirectoryStation.unselected.id else { return }
+        recents.removeAll { $0.id == station.id }
+        recents.insert(station, at: 0)
+        if recents.count > Self.recentsLimit { recents.removeLast(recents.count - Self.recentsLimit) }
+        saveRecents()
+    }
+    private func saveRecents() {
+        if let data = try? JSONEncoder().encode(recents) { defaults.set(data, forKey: Self.recentsKey) }
     }
     func contains(_ station: DirectoryStation) -> Bool { favourites.contains { $0.id == station.id } }
     func toggle(_ station: DirectoryStation) {
@@ -230,15 +271,24 @@ struct CatalogueClient: Sendable {
         if let data = try? JSONEncoder().encode(favourites) { defaults.set(data, forKey: "stationFavourites.v1") }
     }
     func refresh() async {
-        guard !isLoading else { return }
+        // Navigation can cancel the departing view's task while the next page
+        // requests the same catalogue. Share work independently of either view.
+        if let refreshTask { await refreshTask.value; return }
+        let task = Task { await self.refreshCatalogue() }
+        refreshTask = task
+        await task.value
+        refreshTask = nil
+    }
+    private func refreshCatalogue() async {
         isLoading = true; error = nil
         defer { isLoading = false }
         do {
             if let revision, try await client.revision() == revision { return }
             let snapshot = try await client.fetch()
-            stations = snapshot.stations; refreshedAt = snapshot.date; revision = snapshot.revision
+            stations = snapshot.stations; networkArtwork = snapshot.networkArtwork ?? []; refreshedAt = snapshot.date; revision = snapshot.revision
             let lookup = Dictionary(uniqueKeysWithValues: stations.map { ($0.id, $0) })
             favourites = favourites.map { lookup[$0.id] ?? $0 }; saveFavourites()
+            recents = recents.map { lookup[$0.id] ?? $0 }; saveRecents()
             do {
                 try FileManager.default.createDirectory(at: cacheURL.deletingLastPathComponent(), withIntermediateDirectories: true)
                 try JSONEncoder().encode(snapshot).write(to: cacheURL, options: .atomic)
@@ -248,14 +298,23 @@ struct CatalogueClient: Sendable {
         catch { self.error = "Couldn’t refresh the directory. Showing saved stations. Check your connection and retry." }
     }
     func available(_ station: DirectoryStation) -> Bool { stations.contains { $0.id == station.id } }
+    var musicGenres: [String] {
+        Array(Set(stations.flatMap { station in
+            [station.music_genre].compactMap { $0 } + (station.browse_genres ?? [])
+        }.filter { !$0.isEmpty })).sorted { $0.localizedStandardCompare($1) == .orderedAscending }
+    }
     var networks: [String] { Array(Set(stations.map(\.network).filter { !$0.isEmpty })).sorted() }
+    func networkArtworkURL(for network: String) -> URL? {
+        guard let value = networkArtwork.first(where: { $0.network == network })?.image_url else { return nil }
+        return URL(string: value)
+    }
     var cities: [String] { Array(Set(stations.flatMap(\.cities))).sorted() }
-    func results(favouritesOnly: Bool, query: String, network: String, city: String, state: String = "") -> [DirectoryStation] {
+    func results(favouritesOnly: Bool, query: String, network: String, city: String, state: String = "", subnetwork: String = "", musicGenre: String = "") -> [DirectoryStation] {
         let words = query.trimmingCharacters(in: .whitespacesAndNewlines)
         let matches = (favouritesOnly ? favourites : stations).filter {
-            (network.isEmpty || $0.network == network) && (city.isEmpty || $0.cities.contains(city)) &&
+            (musicGenre.isEmpty || $0.music_genre == musicGenre || ($0.browse_genres ?? []).contains { $0.caseInsensitiveCompare(musicGenre) == .orderedSame }) && (network.isEmpty || $0.network == network) && (subnetwork.isEmpty || $0.subnetwork == subnetwork) && (city.isEmpty || $0.cities.contains(city)) &&
             (state.isEmpty || $0.state.caseInsensitiveCompare(state) == .orderedSame) &&
-            (words.isEmpty || [$0.name, $0.network, $0.location, $0.tags.joined(separator: " ")].joined(separator: " ").localizedStandardContains(words))
+            (words.isEmpty || [$0.name, $0.network, $0.subnetwork ?? "", $0.music_genre ?? "", ($0.genres ?? []).joined(separator: " "), $0.location, $0.tags.joined(separator: " ")].joined(separator: " ").localizedStandardContains(words))
         }
         return favouritesOnly ? matches : matches.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
     }

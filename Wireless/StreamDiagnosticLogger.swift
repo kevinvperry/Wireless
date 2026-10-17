@@ -1,7 +1,9 @@
 import Foundation
 
 /// A stream-focused adaptation of Autohop's capped, exportable diagnostic log.
-/// Entries intentionally omit stream URLs, audio-route names and track metadata.
+/// Metadata diagnostics intentionally retain broadcaster-supplied title, artist,
+/// album, programme-label and technical-marker strings so display faults can be
+/// diagnosed. Authentication values and device names remain excluded.
 final class StreamDiagnosticLogger: @unchecked Sendable {
     static let shared = StreamDiagnosticLogger()
 
@@ -38,7 +40,7 @@ final class StreamDiagnosticLogger: @unchecked Sendable {
         let safeEvent = Self.clean(event)
         let safeMessage = Self.clean(message)
         let fields = metadata
-            .map { (Self.clean($0.key), Self.clean($0.value)) }
+            .map { (Self.clean($0.key), Self.metadataValue($0.value, key: $0.key)) }
             .sorted { $0.0 < $1.0 }
             .map { "\($0.0)=\(Self.quote($0.1))" }
             .joined(separator: " ")
@@ -62,10 +64,10 @@ final class StreamDiagnosticLogger: @unchecked Sendable {
             var output = "Wireless Stream Diagnostic Log\n"
             output += "Version: \(Self.appVersion)\n"
             output += "Created: \(formatter.string(from: Date()))\n"
-            output += "Privacy: stream URLs are recorded; authentication values, device names and programme metadata are excluded.\n\n"
+            output += "Privacy: stream URLs and broadcaster-supplied metadata are recorded; authentication values and device names are excluded.\n\n"
             if let previous = try? String(contentsOf: rotatedURL, encoding: .utf8) { output += previous }
             if let current = try? String(contentsOf: logURL, encoding: .utf8) { output += current }
-            try Self.redact(output).write(to: destination, atomically: true, encoding: .utf8)
+            try output.write(to: destination, atomically: true, encoding: .utf8)
         }
     }
 
@@ -118,7 +120,20 @@ final class StreamDiagnosticLogger: @unchecked Sendable {
     }
 
     private static func quote(_ value: String) -> String {
-        "\"" + value.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"") + "\""
+        "\"" + value
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
+            .replacingOccurrences(of: "\n", with: "\\n")
+            .replacingOccurrences(of: "\r", with: "\\r")
+            .replacingOccurrences(of: "\t", with: "\\t") + "\""
+    }
+
+    private static func metadataValue(_ value: String, key: String) -> String {
+        let rawBroadcasterFields = [
+            "title", "artist", "album", "receivedTitleRaw", "receivedArtistRaw", "receivedAlbumRaw",
+            "abcPreviousTitle", "abcPreviousArtist"
+        ]
+        return rawBroadcasterFields.contains(key) ? value : clean(value)
     }
 
     private static func redact(_ value: String) -> String {

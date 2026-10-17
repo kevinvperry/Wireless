@@ -9,7 +9,7 @@ function detectedType(bytes){
   return null;
 }
 
-async function imagePayload(request){
+export async function imagePayload(request){
   const declared=Number(request.headers.get('Content-Length')||0);
   if(declared>MAX_BYTES)fail(413,'The cropped artwork must be no larger than 3 MB.');
   const bytes=new Uint8Array(await request.arrayBuffer());

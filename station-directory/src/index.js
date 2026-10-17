@@ -2,6 +2,7 @@ import {HTTPError,fail,json,secured} from './http.js';
 import {login,authenticate,requireWrite,logout,changePassword,publicEditor,listEditors,createEditor,updateEditor,sha256} from './auth.js';
 import {listStations,getStation,saveStation,mergeStations,filters} from './catalogue.js';
 import {serveArtwork,uploadArtwork,uploadSharedArtwork,assignSharedArtwork} from './artwork.js';
+import {listNetworkArtwork,uploadNetworkArtwork} from './network-artwork.js';
 import {requestStreamTest,processPendingStreamTests} from './stream-testing.js';
 
 async function publicResponse(request,data){
@@ -21,6 +22,7 @@ async function route(request,env,ctx){
     if(request.method!=='GET')fail(405,'This catalogue API is read-only.',{'Allow':'GET, OPTIONS'});
     if(path==='/api/v1/stations')return publicResponse(request,await listStations(env.DB,url));
     if(path==='/api/v1/filters')return publicResponse(request,await filters(env.DB));
+    if(path==='/api/v1/networks')return publicResponse(request,await listNetworkArtwork(env.DB));
     if(path==='/api/v1/catalogue')return publicResponse(request,{schema_version:1,...await env.DB.prepare('SELECT revision,updated_at FROM catalogue_meta WHERE id=1').first()});
     const match=path.match(/^\/api\/v1\/stations\/([\w-]+)$/);if(match)return publicResponse(request,await getStation(env.DB,match[1]));
     fail(404,'Endpoint not found.');
@@ -42,6 +44,7 @@ async function route(request,env,ctx){
     if(path==='/api/admin/stations/merge'&&request.method==='POST')return mergeStations(request,env.DB,editor);
     if(path==='/api/admin/artwork'&&request.method==='POST')return uploadSharedArtwork(request,env,editor);
     if(path==='/api/admin/filters'&&request.method==='GET')return json(await filters(env.DB,true));
+    if(path==='/api/admin/networks'&&request.method==='GET')return json(await listNetworkArtwork(env.DB,true));
     if(path==='/api/admin/users'&&request.method==='GET')return listEditors(env.DB,editor);
     if(path==='/api/admin/users'&&request.method==='POST')return createEditor(request,env.DB,editor);
     if(path==='/api/admin/audit'&&request.method==='GET')return json({events:(await env.DB.prepare('SELECT * FROM audit_log ORDER BY created_at DESC,id DESC LIMIT 100').all()).results});
@@ -52,6 +55,8 @@ async function route(request,env,ctx){
     if(match&&request.method==='POST'){const response=await requestStreamTest(request,env.DB,editor,match[1],match[2]);ctx.waitUntil(processPendingStreamTests(env,1));return response;}
     match=path.match(/^\/api\/admin\/stations\/([\w-]+)\/artwork$/);
     if(match&&request.method==='POST')return uploadArtwork(request,env,editor,match[1]);
+    match=path.match(/^\/api\/admin\/networks\/(.+)\/artwork$/);
+    if(match&&request.method==='POST')return uploadNetworkArtwork(request,env,editor,match[1]);
     match=path.match(/^\/api\/admin\/artwork\/([\w-]+)\/assign$/);
     if(match&&request.method==='POST')return assignSharedArtwork(request,env,editor,match[1]);
     match=path.match(/^\/api\/admin\/users\/([\w-]+)$/);if(match&&request.method==='PATCH')return updateEditor(request,env.DB,editor,match[1]);

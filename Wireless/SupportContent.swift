@@ -40,7 +40,7 @@ struct WirelessSupportSection: Identifiable {
 enum WirelessSupportGuide {
     static let sections: [WirelessSupportSection] = [
         gettingStarted, discover, player, favourites, sync, streams,
-        vocalBoost, sleepTimer, systemPlayback, settings, troubleshooting
+        vocalBoost, sleepTimer, sleepSchedule, systemPlayback, carPlay, settings, troubleshooting
     ]
 
     private static let gettingStarted = WirelessSupportSection(
@@ -60,16 +60,22 @@ enum WirelessSupportGuide {
 
     private static let discover = WirelessSupportSection(
         id: "discover", icon: "dot.radiowaves.left.and.right", title: "Discovering Stations",
-        summary: "Browse networks, cities, states and National radio",
+        summary: "Browse music genres, networks, cities, states and National radio",
         blocks: [
             .paragraph("Discover provides several ways to browse the station directory:"),
             .table([
-                ["Networks", "Groups stations by broadcaster."],
+                ["Search by Network", "Shows major broadcasters alphabetically in a grid using the network artwork maintained in the Wireless directory. All Networks then lists every network, including the featured broadcasters, alphabetically. ACE Radio Network appears as ACE Radio, ARN as ARN Regional and Hit Network as Hit. Networks with distinct services offer sub-network tiles."],
+                ["Search by Location", "Opens National, capital-city, Other Locations and State tiles."],
+                ["Music", "Opens searchable music and audio genres, including Kids & Family and Soundscapes. A station can appear under more than one relevant genre. News and Sport have their own top-level destinations."],
+                ["News and Talkback", "Opens news, current affairs and talk stations directly."],
+                ["Sport", "Opens sport commentary, analysis and racing stations directly."],
+                ["Community & Specialist", "Opens Community, Religion, Foreign Language, Country Music, Indigenous, Arts & Music, Radio Reading, Youth & Education, Seniors and LGBTQIA+ tiles."],
                 ["National", "Stations whose directory coverage is marked National."],
-                ["Browse by location", "Capital-city stations are prioritised. Other Locations opens the wider town and regional directory."],
+                ["Browse by location", "Opens capital-city stations. Sydney, Melbourne, Brisbane, Adelaide and Perth begin with Top Rating Stations in current ratings order, followed by all other stations for that city alphabetically. Other Locations opens the wider town and regional directory."],
                 ["Browse by State", "Filters by Australian state, territory or National coverage."],
-                ["Search", "Finds stations by name, network, location or other directory information."]
+                ["Search", "The main station search finds stations by name, network and location. Other Locations also has a local search field; Networks uses a direct tile list."]
             ]),
+            .paragraph("Station lists include an alphabetical index for quick navigation. Favourites retains your chosen manual order. The mini-player remains available at the bottom of Discover and every page opened from it, including Settings and Support. Lists include enough scroll space to bring their final rows fully above it. Tap it to return to Playing or use Play/Pause without leaving the current page."),
             .callout(.tip, "Wireless keeps the last complete directory for browsing if the directory service is temporarily unavailable. Stream playback still requires a suitable internet connection.")
         ]
     )
@@ -80,12 +86,13 @@ enum WirelessSupportGuide {
         blocks: [
             .table([
                 ["Playing", "Artwork, programme or song information, live-position bar, Play/Pause, audio controls, Sleep Timer and favourite shortcuts."],
-                ["Details", "Station description, contact links, location, state, genres, stream type and bitrate. Programme information appears when available."],
+                ["Details", "Station description, contact links, location, state, frequency, region, network, genres, stream type and bitrate. Programme information appears when available."],
                 ["Sync", "TV Sync on/off, selected delay, half-second controls and measured stream delay."]
             ]),
-            .paragraph("The progress bar represents live position and buffering. With TV Sync enabled, its captions show **Sync Enabled** and the measured stream delay. Wireless attempts to reconnect automatically after reception is interrupted."),
+            .paragraph("The progress bar represents live position and buffering. With TV Sync enabled, its captions show **TV Sync Enabled** and the measured stream delay. Wireless attempts to reconnect automatically after reception is interrupted."),
             .heading("Song and programme information"),
-            .paragraph("When a music stream supplies reliable metadata, Wireless can show song title, artist and album beneath the station name and publish it to system playback surfaces. Track metadata is available only during normal playback with TV Sync off. Station information remains visible when no suitable track metadata is available.")
+            .paragraph("When a music stream or supported broadcaster now-playing service supplies reliable metadata, Wireless shows **song title · artist** on the top row and the **station name below**, including in the mini-player. Album information remains available in the mini-player and system playback metadata when supplied. Triple M and Hit Metro and Regional broadcast stations use metadata embedded directly in their selected stream. Wireless also supports ABC music services, supported Triton StreamTheWorld feeds and official LiSTNR now-playing data for LiSTNR and SCA digital music stations. A brief gap is normal when a broadcaster reports that no current track is available. Track metadata is available only during normal playback with TV Sync off."),
+            .paragraph("Triple M and Hit embedded metadata is displayed without content-based filtering of Asset Link, Asset Spot or Asset Stop values, so current broadcaster playout labels may appear temporarily. Wireless does, however, prevent an old timestamped value from replacing current information and clears metadata that remains unchanged beyond its freshness limit. Each SCA playback session also uses a new stream request identifier so a previous session's playlist is not deliberately reused.")
         ]
     )
 
@@ -93,7 +100,7 @@ enum WirelessSupportGuide {
         id: "favourites", icon: "heart", title: "Favourites",
         summary: "Save, reorder and quickly play your preferred stations",
         blocks: [
-            .paragraph("Tap the heart button on the player to add or remove the current station. The outlined heart in the top-right corner shows the number saved and opens the full Favourites list."),
+            .paragraph("Tap the heart button on the player to add or remove the current station. Wireless asks for confirmation before removing a station. The outlined heart in the top-right corner shows the number saved and opens the full Favourites list."),
             .paragraph("Use **Reorder** to drag stations into your preferred order. The first two favourites other than the current station appear as quick-play tiles at the bottom of Playing."),
             .callout(.note, "Favourites are stored on the device. iCloud synchronisation is not currently included.")
         ]
@@ -103,13 +110,16 @@ enum WirelessSupportGuide {
         id: "tv-sync", icon: "dot.radiowaves.left.and.right", title: "TV Sync",
         summary: "Delay radio commentary to match television pictures",
         blocks: [
+            .paragraph("TV pictures can arrive a few seconds after live radio. TV Sync holds the radio back so the commentary and picture happen together. When TV Sync is off, the Sync pane shows only the **Sync audio to picture** tile. Turning it on reveals the **Saved audio delay** controls."),
             .steps([
                 "Open the **Sync** pane.",
                 "Turn on **Sync audio to picture**.",
-                "Use the slider for larger changes or the minus and plus buttons for half-second adjustments.",
-                "Compare commentary with the television picture and continue adjusting until they align."
+                "Choose a clear moment, such as a ball being kicked or someone beginning to speak.",
+                "If you hear the commentary before you see the action, increase the delay. If you see the action first, decrease it.",
+                "Use the slider for larger changes or the minus and plus buttons for half-second adjustments until the sound matches the picture."
             ]),
-            .paragraph("Wireless shows the selected delay and the measured delay available from the active stream. The selected delay is saved."),
+            .paragraph("Wireless shows your saved delay and the delay available from the active stream. Your chosen delay is remembered. Playback remains controlled from the main Playing pane."),
+            .paragraph("When TV Sync is first turned on, Wireless may briefly show that it is building an audio buffer. The controls become available automatically when enough audio has been retained. This does not mean the stream is incompatible."),
             .paragraph("Direct MP3 and AAC streams can be retained in Wireless's packet buffer. Compatible AAC HLS may use a seekable live window or retained-packet fallback. Some HLS formats do not expose enough audio history for Sync."),
             .callout(.warning, "HLS arrives in segments, so measured delay can move in small steps. Wireless avoids repeated HLS corrections that would cause micro-stutters. If performance is poor, try another stream in **Audio Controls**.")
         ]
@@ -153,6 +163,31 @@ enum WirelessSupportGuide {
         ]
     )
 
+    // Adapted from Autohop's Sleep Schedule support section for live radio.
+    private static let sleepSchedule = WirelessSupportSection(
+        id: "sleep-schedule", icon: "bed.double.fill", title: "Sleep Schedule",
+        summary: "A recurring nightly timer that checks if you're awake",
+        blocks: [
+            .paragraph("Sleep Schedule is a **recurring, nightly sleep timer** — set it up once and it works every night, with no taps required at bedtime."),
+            .heading("Setting it up"),
+            .steps([
+                "Tap the moon button on Playing, then choose **Sleep Schedule** at the bottom of the Sleep Timer sheet.",
+                "Turn on the toggle and choose your **Active Hours** — for example 9:00 pm to 6:00 am. The window can cross midnight, and matching start and end times keep it available all day.",
+                "Choose how often Wireless should check in: **10, 15, 20, 40 or 60 minutes** of playback."
+            ]),
+            .paragraph("During your active hours, a **bed icon** appears beside the Discover button at the top of the player. While a station plays, it shows the minutes until the next check-in. Tap it to open Sleep Schedule."),
+            .heading("How a night works"),
+            .paragraph("Start playing a station during your active hours and the schedule arms itself. After the chosen duration, a **soft, meditative chime** plays over the station — playback doesn't stop — asking, in effect, \"are you still listening?\""),
+            .bullets([
+                "**Still awake?** Tap **Still Listening** in the app or on the lock-screen notification (no need to unlock your phone), or use Play/Pause on the Lock Screen, your headphones or CarPlay. The station continues and the cycle restarts.",
+                "**Asleep?** If you don't respond within a minute, the station fades out over 30 seconds and pauses. Press Play in the morning to return to the live broadcast.",
+                "**Active Hours ended?** Wireless dismisses any pending check-in and its notification. Your station continues normally, but Sleep Schedule will not ask again outside the selected window."
+            ]),
+            .callout(.tip, "**Tip:** Setting the regular Sleep Timer overrides the schedule for that listening session — handy for nights when you want a fixed cutoff instead of check-ins."),
+            .callout(.note, "When you first turn Sleep Schedule on, Wireless asks for notification permission so the check-in can appear on the Lock Screen. If notifications are off, the chime still plays and Play/Pause or the in-app button still count as a response.")
+        ]
+    )
+
     private static let systemPlayback = WirelessSupportSection(
         id: "background", icon: "lock.iphone", title: "Background and System Controls",
         summary: "Lock Screen, Control Centre, AirPlay and reconnection",
@@ -163,7 +198,23 @@ enum WirelessSupportGuide {
                 "Wireless pauses if an audio output such as wired headphones is disconnected.",
                 "Playback attempts to resume after temporary reception loss.",
                 "A deliberate manual Pause is respected."
-            ])
+            ]),
+            .paragraph("When Stream Diagnostics is enabled, its Metadata view records every metadata result received from the stream and supported companion services. Use the **Metadata**, **Playback** and **All** selector to change the visible records; Wireless remembers that selection. Dedicated raw fields preserve the broadcaster's exact title, artist and album text without trimming or normalising it; control characters are escaped only to keep each log entry parseable. Each result also records its display-ready interpretation, classification, whether it repeated or changed, and the exact display decision. Advertisements, programme labels and technical markers remain visible in the diagnostic record. Provider records include the station name, service identifier, transport, response details and why a source was enabled or unavailable. For Triple M and Hit broadcast stations, the provider decision records that embedded stream metadata is authoritative. Heartbeats separately report provider contact, the last distinct candidate, the last usable receipt and the last genuine track change. metadata.silence identifies a period with no usable metadata receipts, metadata.sourceSilence identifies an inactive secondary source, and metadata.stale records the first and last sighting, repeat count, embedded timestamp age, display age and reason whenever an old or unchanged value is suppressed or cleared. Authentication values and device names remain excluded from exported logs.")
+        ]
+    )
+
+    private static let carPlay = WirelessSupportSection(
+        id: "carplay", icon: "car.fill", title: "CarPlay",
+        summary: "The player, Favourites and Discover in the car",
+        blocks: [
+            .paragraph("Open Wireless in CarPlay to control the same player as your iPhone. CarPlay opens on the player once a station has been chosen, or on Favourites before then."),
+            .bullets([
+                "Choose Favourites in the top-right corner of the player to open your saved stations.",
+                "Favourites also lists your recently played stations. Choose Discover in the top-right corner of Favourites to browse Networks, Locations, Music, News and Talkback, Sport, and Community & Specialist stations.",
+                "Choose a station to start playing it and return to the player.",
+                "Use the heart button on the player to add or remove the current station from Favourites."
+            ]),
+            .paragraph("Favourites changed in CarPlay also update on your iPhone. Auto Resume applies when Wireless starts from CarPlay.")
         ]
     )
 

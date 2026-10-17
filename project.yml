@@ -15,11 +15,21 @@ targets:
         CFBundleDisplayName: Wireless
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        ITSAppUsesNonExemptEncryption: false
         WirelessTagline: Fine Tuning Your Radio Presets
         UILaunchScreen:
           UIColorName: LaunchBackground
           UIImageName: WirelessLaunchMark
         UIBackgroundModes: [audio]
+        # CarPlay Audio App scene, adapted from Autohop. The SwiftUI WindowGroup
+        # still owns the iPhone/iPad window; this only adds the CarPlay role.
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: true
+          UISceneConfigurations:
+            CPTemplateApplicationSceneSessionRoleApplication:
+              - UISceneConfigurationName: CarPlay
+                UISceneClassName: CPTemplateApplicationScene
+                UISceneDelegateClassName: $(PRODUCT_MODULE_NAME).CarPlaySceneDelegate
         NSAppTransportSecurity:
           NSAllowsArbitraryLoads: true
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
@@ -33,8 +43,21 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         PRODUCT_BUNDLE_IDENTIFIER: au.com.kevmarl.Wireless
         MARKETING_VERSION: "1.0"
-        CURRENT_PROJECT_VERSION: "3"
+        CURRENT_PROJECT_VERSION: "10"
         CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: QT3N6256FG
+    # Declared here (not just in Xcode's Signing & Capabilities UI) so
+    # `xcodegen generate` preserves the entitlement and CODE_SIGN_ENTITLEMENTS.
+    entitlements:
+      path: Wireless/Wireless.entitlements
+      properties:
+        # CarPlay Audio App (CarPlay framework). Same team as Autohop's approval.
+        com.apple.developer.carplay-audio: true
+        # Sleep Schedule's "Are you still listening?" prompt breaks through
+        # Sleep Focus, as in Autohop.
+        com.apple.developer.usernotifications.time-sensitive: true
+    dependencies:
+      - sdk: CarPlay.framework
   WirelessUITests:
     type: bundle.ui-testing
     platform: iOS
@@ -57,7 +80,12 @@ targets:
     sources:
       - path: WirelessTests
       - path: Shared/StationDirectory.swift
+      - path: Shared/StationListOrganisation.swift
       - path: Wireless/DelayCorrection.swift
+      - path: Wireless/StreamTrackMetadata.swift
+      - path: Wireless/CompanionMetadataProvider.swift
+      - path: Wireless/StreamDiagnosticLogger.swift
+      - path: Wireless/SleepScheduleService.swift
     settings:
       base:
         SWIFT_VERSION: 5.0

@@ -69,6 +69,7 @@ struct RadioPlayerView: View {
     @ObservedObject var player: MobilePlayer
     @ObservedObject private var library: StationLibrary
     @ObservedObject private var sleepTimer: SleepTimerService
+    @ObservedObject private var sleepSchedule: SleepScheduleService
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage("keepScreenAwakeDuringPlayback") private var keepScreenAwake = false
@@ -77,11 +78,13 @@ struct RadioPlayerView: View {
     @State private var showFavourites = false
     @State private var showAudio = false
     @State private var showSleepTimer = false
+    @State private var confirmsUnfavourite = false
 
     init(player: MobilePlayer) {
         self.player = player
         self.library = player.library
         self.sleepTimer = player.sleepTimer
+        self.sleepSchedule = player.sleepSchedule
         _path = State(initialValue: player.shouldOpenDiscoverOnLaunch ? ["Discover"] : [])
     }
 
@@ -109,12 +112,18 @@ struct RadioPlayerView: View {
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: String.self) { destination in
                 Group {
-                    if destination == "Discover" { stationList(favouritesOnly: false) }
+                    if destination == Self.sleepScheduleRoute { SleepScheduleView(settings: player.sleepScheduleSettings) }
+                    else if destination == "Discover" { stationList(favouritesOnly: false) }
                     else if destination == DiscoverBrowseRoute.national { stationList(favouritesOnly: false, state: "National") }
                     else if let region = DiscoverRegion(rawValue: destination) { stationList(favouritesOnly: false, region: region) }
+                    else if destination == DiscoverBrowseRoute.genres { DiscoverFacetView(library: library, kind: .genres) }
+                    else if let genre = DiscoverBrowseRoute.genreValue(destination) { stationList(favouritesOnly: false, musicGenre: genre) }
                     else if destination == DiscoverBrowseRoute.networks { DiscoverFacetView(library: library, kind: .networks) }
-                    else if destination == DiscoverBrowseRoute.locations { DiscoverFacetView(library: library, kind: .locations) }
+                    else if destination == DiscoverBrowseRoute.locations { DiscoverLocationBrowseView(library: library) }
+                    else if destination == DiscoverBrowseRoute.otherLocations { DiscoverFacetView(library: library, kind: .locations) }
+                    else if let network = DiscoverBrowseRoute.networkValue(destination), NetworkSubnetworkCatalogue.services(for: network) != nil { NetworkSubnetworkView(library: library, network: network) }
                     else if let network = DiscoverBrowseRoute.networkValue(destination) { stationList(favouritesOnly: false, network: network) }
+                    else if let subnetwork = DiscoverBrowseRoute.subnetworkValue(destination) { stationList(favouritesOnly: false, network: subnetwork.network, subnetwork: subnetwork.value) }
                     else if let city = DiscoverBrowseRoute.locationValue(destination) { stationList(favouritesOnly: false, city: city) }
                     else if let state = DiscoverBrowseRoute.stateValue(destination) { stationList(favouritesOnly: false, state: state) }
                     else { EmptyView() }
@@ -123,8 +132,10 @@ struct RadioPlayerView: View {
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar(.visible, for: .navigationBar)
                 .background(Color.black)
-                .safeAreaInset(edge: .bottom, spacing: 0) { miniPlayer }
             }
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if !path.isEmpty { miniPlayer }
         }
         .sheet(isPresented: $showFavourites) {
             FavouritesView(
@@ -140,8 +151,16 @@ struct RadioPlayerView: View {
             AudioControlsSheet(player: player) { showAudio = false }
         }
         .sheet(isPresented: $showSleepTimer) {
-            SleepTimerSheetView(sleepTimer: sleepTimer)
+            SleepTimerSheetView(sleepTimer: sleepTimer, sleepScheduleSettings: player.sleepScheduleSettings)
         }
+        // Sleep Schedule "still listening?" prompt — mostly answered from the
+        // lock screen, but shown here while the screen is on (Autohop parity).
+        .overlay {
+            if sleepSchedule.isPrompting {
+                sleepSchedulePromptOverlay
+            }
+        }
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: sleepSchedule.isPrompting)
         .onChange(of: scenePhase) { _, phase in
             player.sceneChanged(phase)
             if phase == .active { pane = .playing }
@@ -154,6 +173,18 @@ struct RadioPlayerView: View {
         .onDisappear { UIApplication.shared.isIdleTimerDisabled = false }
         .onChange(of: player.hasDetails) { _, available in
             if !available && pane == .details { pane = .playing }
+        }
+        .confirmationDialog(
+            "Remove \(player.station.name) from Favourites?",
+            isPresented: $confirmsUnfavourite,
+            titleVisibility: .visible
+        ) {
+            Button("Remove from Favourites", role: .destructive) {
+                if library.contains(player.station) { library.toggle(player.station) }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("You can add this station again from Discover.")
         }
     }
 
@@ -175,6 +206,9 @@ struct RadioPlayerView: View {
                     .frame(width: metrics.navigationControl, height: metrics.navigationControl)
                     .glassEffect(in: Circle())
             }.foregroundStyle(.white).accessibilityLabel("Discover")
+            // Sleep Schedule indicator — appears only while inside the nightly
+            // active-hours window and pushes the Sleep Schedule page.
+            sleepScheduleIndicator(metrics: metrics)
             Spacer(minLength: 0)
             HStack(spacing: 2) {
                 ForEach(visiblePanes) { item in
@@ -213,57 +247,71 @@ struct RadioPlayerView: View {
                 .frame(height: metrics.navigationControl)
                 .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 9))
             }.accessibilityLabel("Favourites, \(library.favourites.count) stations")
-        }.padding(.horizontal, 16)
+        }
+        .padding(.horizontal, metrics.horizontalGutter)
+        .frame(maxWidth: metrics.playerMaximumWidth)
+        .frame(maxWidth: .infinity)
     }
 
     private func playing(size: CGSize) -> some View {
-        ScrollView {
-            VStack(spacing: 14) {
-                let side = max(100, size.width - 44)
-                StationImage(station: player.station, cornerRadius: 20).frame(width: side, height: side)
-                    .background { Circle().fill(.purple.opacity(0.34)).blur(radius: 45) }
-                    .padding(.top, 11)
-                VStack(spacing: 6) {
-                    Text(player.station.name)
-                        .font(.system(size: 16, weight: .bold))
-                        .multilineTextAlignment(.center)
-                    if !player.syncEnabled, let track = player.trackMetadata {
-                        Text([track.title, track.artist, track.album].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · "))
-                            .font(.system(size: 12))
-                            .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.center)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.75)
-                            .accessibilityLabel("\(track.title), by \(track.artist)" + (track.album.map { ", from \($0)" } ?? ""))
-                            .accessibilityIdentifier("currentTrackTitle")
-                    } else {
-                        if player.displayTitle != player.station.name {
-                            Text(player.displayTitle)
-                                .font(.system(size: 12))
-                                .foregroundStyle(.secondary)
-                                .multilineTextAlignment(.center)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.75)
-                        } else {
-                            Text([player.station.network, player.station.location].filter { !$0.isEmpty }.joined(separator: " · "))
-                                .font(.system(size: 12)).foregroundStyle(.secondary)
-                        }
+        let metrics = WirelessLayoutMetrics(width: size.width)
+        let availableWidth = min(size.width, metrics.playerMaximumWidth) - (metrics.horizontalGutter * 2)
+        let wideArtwork = min(metrics.playerArtworkMaximumWidth, max(260, (availableWidth - 28) * 0.5))
+        let portraitArtwork = min(
+            metrics.playerArtworkMaximumWidth,
+            max(100, availableWidth),
+            max(240, size.height - 420)
+        )
+        return ScrollView {
+            Group {
+                if metrics.usesWidePlayerLayout && availableWidth >= 760 {
+                    HStack(alignment: .center, spacing: 28) {
+                        playerArtwork(side: wideArtwork)
+                        playingControls(metrics: metrics)
+                            .frame(maxWidth: metrics.playerControlColumnMaximumWidth)
+                    }
+                } else {
+                    VStack(spacing: 14) {
+                        playerArtwork(side: portraitArtwork)
+                        playingControls(metrics: metrics)
                     }
                 }
-                liveProgress
-                    .padding(.horizontal, 22)
+            }
+            .frame(maxWidth: metrics.playerMaximumWidth)
+            .padding(.horizontal, metrics.horizontalGutter)
+            .padding(.top, 11)
+            .padding(.bottom, 30)
+            .frame(maxWidth: .infinity)
+        }
+    }
 
-                Button { player.toggle() } label: {
-                    Image(systemName: player.requested ? "pause.fill" : "play.fill")
-                        .font(.system(size: 28)).foregroundStyle(.white)
-                        .frame(width: 76, height: 76)
-                        .glassEffect(.regular.tint(.purple), in: Circle())
-                        .shadow(color: .purple.opacity(0.35), radius: 14)
-                }.accessibilityLabel(player.requested ? "Pause" : "Play")
-                playerActionRow
-                favouriteShortcuts
-            }.frame(maxWidth: 620).padding(.horizontal, 22).padding(.bottom, 30)
-                .frame(maxWidth: .infinity)
+    private func playerArtwork(side: CGFloat) -> some View {
+        StationImage(station: player.station, cornerRadius: 20)
+            .frame(width: side, height: side)
+            .background { Circle().fill(.purple.opacity(0.34)).blur(radius: 45) }
+    }
+
+    @ViewBuilder
+    private func playingControls(metrics: WirelessLayoutMetrics) -> some View {
+        VStack(spacing: 14) {
+            PlayerMetadataText(
+                stationName: player.station.name,
+                stationDetail: player.displayTitle != player.station.name
+                    ? player.displayTitle
+                    : [player.station.network, player.station.location].filter { !$0.isEmpty }.joined(separator: " · "),
+                track: player.syncEnabled ? nil : player.trackMetadata,
+                contentScale: metrics.contentScale
+            )
+            liveProgress.padding(.horizontal, metrics.horizontalGutter)
+            Button { player.toggle() } label: {
+                Image(systemName: player.requested ? "pause.fill" : "play.fill")
+                    .font(.system(size: 28 * metrics.contentScale)).foregroundStyle(.white)
+                    .frame(width: 76 * metrics.contentScale, height: 76 * metrics.contentScale)
+                    .glassEffect(.regular.tint(.purple), in: Circle())
+                    .shadow(color: .purple.opacity(0.35), radius: 14)
+            }.accessibilityLabel(player.requested ? "Pause" : "Play")
+            playerActionRow
+            favouriteShortcuts
         }
     }
 
@@ -340,8 +388,18 @@ struct RadioPlayerView: View {
                                 : (delayed ? String(format: "%.1f seconds behind live", player.delay) : "At live edge"))
 
             HStack {
-                Text(player.syncEnabled ? "Sync Enabled" : player.status)
-                    .accessibilityIdentifier("playbackStatus")
+                if player.syncEnabled {
+                    Text("TV Sync Enabled")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(.purple)
+                        .padding(.horizontal, 10)
+                        .frame(height: 24)
+                        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 9))
+                        .accessibilityIdentifier("playbackStatus")
+                } else {
+                    Text(player.status)
+                        .accessibilityIdentifier("playbackStatus")
+                }
                 Spacer()
                 Text(progressDetail(showingBufferProgress: showingBufferProgress,
                                     displayedProgress: displayedProgress,
@@ -471,10 +529,19 @@ struct RadioPlayerView: View {
             spacing: 10
         ) {
             if !player.station.cities.isEmpty {
-                metaCard("Station location", player.station.cities.joined(separator: ", "), metrics: metrics)
+                metaCard("Location", player.station.cities.joined(separator: ", "), metrics: metrics)
             }
             if !player.station.state.isEmpty {
-                metaCard("Station state", australianStateName(player.station.state), metrics: metrics)
+                metaCard("State", australianStateName(player.station.state), metrics: metrics)
+            }
+            if let frequency = nonEmpty(player.station.frequency) {
+                metaCard("Frequency", frequency, metrics: metrics)
+            }
+            if let region = nonEmpty(player.station.metro_regional) {
+                metaCard("Region", region, metrics: metrics)
+            }
+            if !player.station.network.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                metaCard("Network", player.station.network, metrics: metrics)
             }
             ForEach(Array(uniqueGenres.enumerated()), id: \.offset) { _, genre in
                 metaCard("Genre", genre, metrics: metrics)
@@ -513,9 +580,14 @@ struct RadioPlayerView: View {
             ?? player.station.preferredStream
     }
 
+    private func nonEmpty(_ value: String?) -> String? {
+        guard let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines), !trimmed.isEmpty else { return nil }
+        return trimmed
+    }
+
     private var uniqueGenres: [String] {
         var seen = Set<String>()
-        return (player.station.genres ?? []).compactMap { value in
+        return ([player.station.music_genre].compactMap { $0 } + (player.station.genres ?? [])).compactMap { value in
             let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !trimmed.isEmpty else { return nil }
             let key = trimmed.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
@@ -593,7 +665,13 @@ struct RadioPlayerView: View {
             audioSourceButton
                 .frame(maxWidth: .infinity, alignment: .center)
 
-            Button { library.toggle(player.station) } label: {
+            Button {
+                if library.contains(player.station) {
+                    confirmsUnfavourite = true
+                } else {
+                    library.toggle(player.station)
+                }
+            } label: {
                 HStack(spacing: 6) {
                     Image(systemName: library.contains(player.station) ? "heart.fill" : "heart")
                     Text(library.contains(player.station) ? "Unfavourite" : "Favourite")
@@ -652,6 +730,86 @@ struct RadioPlayerView: View {
                          in: RoundedRectangle(cornerRadius: 9))
     }
 
+    static let sleepScheduleRoute = "SleepSchedule"
+
+    // MARK: - Sleep Schedule indicator (copied from Autohop's PlayerView)
+
+    /// Bed icon + minutes (rounded up) until the next "still listening?"
+    /// prompt while counting; icon alone when paused or idle. TimelineView
+    /// re-evaluates every 30 s so the pill appears/disappears at the window
+    /// edges; the @Published phase keeps the digit live while counting.
+    @ViewBuilder
+    private func sleepScheduleIndicator(metrics: WirelessLayoutMetrics) -> some View {
+        TimelineView(.periodic(from: .now, by: 30)) { context in
+            if sleepSchedule.isActive(context.date) {
+                let minutes = sleepSchedule.minutesUntilPrompt
+                Button { path.append(Self.sleepScheduleRoute) } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: "bed.double.fill")
+                            .font(.system(size: metrics.navigationFont, weight: .bold))
+                        if let minutes {
+                            Text("\(minutes)")
+                                .font(.system(size: metrics.navigationFont * 0.8, weight: .bold))
+                                .monospacedDigit()
+                        }
+                    }
+                    .foregroundStyle(Color.purple.opacity(0.85))
+                    .padding(.horizontal, 12)
+                    .frame(height: metrics.navigationControl)
+                    .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 9))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(minutes.map { "Sleep Schedule active, \($0) minutes until prompt" } ?? "Sleep Schedule active")
+                .accessibilityIdentifier("sleepSchedule.indicator")
+            }
+        }
+    }
+
+    // MARK: - Sleep Schedule prompt overlay (copied from Autohop's PlayerView)
+
+    private var sleepSchedulePromptOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.72).ignoresSafeArea()
+
+            VStack(spacing: 22) {
+                Image(systemName: "moon.zzz.fill")
+                    .font(.system(size: 40, weight: .semibold))
+                    .foregroundStyle(.purple)
+
+                Text("Are you still listening?")
+                    .font(.system(size: 22, weight: .bold))
+                    .foregroundStyle(.white)
+
+                Text("Playback fades out soon unless you respond.")
+                    .font(.system(size: 14))
+                    .foregroundStyle(Color(white: 0.6))
+
+                // Deliberately huge tap target — easy to hit half-asleep
+                // without aiming. Fills the width and stands well off the
+                // bottom edge.
+                Button {
+                    // Confirm without toggling — the station is still playing.
+                    player.respondToSleepSchedulePrompt(via: "in-app button")
+                } label: {
+                    Text("Still Listening")
+                        .font(.system(size: 26, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(minHeight: 160)
+                        .background(Color.purple)
+                        .clipShape(RoundedRectangle(cornerRadius: 28))
+                        .contentShape(RoundedRectangle(cornerRadius: 28))
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("sleepSchedule.stillListening")
+            }
+            .frame(maxWidth: 560)
+            .padding(.horizontal, 24)
+            .padding(.vertical, 32)
+        }
+        .transition(.opacity)
+    }
+
     private var sleepTimerButtonLabel: some View {
         ZStack(alignment: .topTrailing) {
             playerActionIcon(sleepTimer.isActive ? "moon.zzz.fill" : "moon.zzz",
@@ -683,8 +841,8 @@ struct RadioPlayerView: View {
         return ScrollView {
             VStack(alignment: .leading, spacing: 26) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Match the moment").font(.system(size: metrics.detailTitle, weight: .bold))
-                    Text("Delay the radio commentary to line up with your television picture.")
+                    Text("Match radio with your TV").font(.system(size: metrics.detailTitle, weight: .bold))
+                    Text("TV pictures can arrive a few seconds after live radio. TV Sync holds the radio back so the commentary and picture happen together.")
                         .font(.system(size: metrics.detailBody)).foregroundStyle(.secondary)
                 }
                 VStack(alignment: .leading, spacing: 10) {
@@ -692,61 +850,73 @@ struct RadioPlayerView: View {
                         .font(.headline)
                         .accessibilityIdentifier("syncEnabled")
                     Text(player.syncEnabled
-                         ? "Use your saved delay to match the television picture."
-                         : "Sync is off. Wireless returns to the live stream and uses a short reliability buffer for smooth, stable playback. Your delay setting is saved.")
+                         ? "TV Sync is on. Adjust the saved delay below until the commentary matches the picture."
+                         : "Turn this on while watching TV. Wireless will keep your saved delay for next time.")
                         .font(.subheadline).foregroundStyle(.secondary)
-                }.padding(22).background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 20))
-                VStack(spacing: 22) {
-                    Text(player.syncEnabled ? "Audio delay" : "Saved audio delay").font(.headline)
-                    Text(String(format: "%.1f s", player.delay))
-                        .font(.system(.largeTitle, design: .rounded).bold()).monospacedDigit()
-                    Slider(value: $player.delay, in: 0...30, step: 0.5)
-                        .accessibilityLabel("Audio delay")
-                        .accessibilityValue(String(format: "%.1f seconds", player.delay))
-                    HStack {
-                        Button { player.adjust(-0.5) } label: { Label("0.5 s", systemImage: "minus").playerPill() }
-                            .disabled(player.delay <= 0).accessibilityLabel("Decrease delay by half a second")
-                        Spacer()
-                        Button { player.adjust(0.5) } label: { Label("0.5 s", systemImage: "plus").playerPill() }
-                            .disabled(player.delay >= 30).accessibilityLabel("Increase delay by half a second")
-                    }.frame(minHeight: 44)
-                    LabeledContent("Measured stream delay", value: player.syncEnabled ? (player.measured.map { String(format: "%.1f s", $0) } ?? "—") : "Off")
-                        .font(.subheadline).monospacedDigit()
-                }.disabled(!player.syncEnabled || !player.supportsDelay)
-                    .padding(22).background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 20))
-                if player.syncEnabled && !player.supportsDelay { Text("This stream format does not provide audio Wireless can retain for Sync.").foregroundStyle(.secondary) }
-                VStack(alignment: .leading, spacing: 10) {
-                    Text(player.status).font(.headline)
-                    Text(player.detail).foregroundStyle(.secondary)
-                    if player.buffering && player.requested { ProgressView(value: player.progress) }
-                    Button(player.requested ? "Pause" : "Play", systemImage: player.requested ? "pause.fill" : "play.fill") { player.toggle() }
-                        .buttonStyle(.borderedProminent)
                 }
+                .padding(22)
+                .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 20))
+
                 if player.syncEnabled {
-                Text("Wireless retains compatible MP3, AAC and AAC HLS audio for Sync. Other HLS formats depend on the broadcaster providing a seekable live window.")
-                Text("Measured delay excludes broadcaster and wireless speaker latency. AirPlay and AirPods can add delay beyond this value.")
-                    .foregroundStyle(.secondary)
-                } else {
-                    Text("Turning Sync off returns playback to the live stream. Wireless buffers around five seconds where the stream format allows, then plays without TV-delay correction. Audio quality remains as supplied by the broadcaster.")
+                    VStack(alignment: .leading, spacing: 18) {
+                        Text("Saved audio delay").font(.headline)
+                        Text(String(format: "%.1f s", player.delay))
+                            .font(.system(.largeTitle, design: .rounded).bold()).monospacedDigit()
+                            .frame(maxWidth: .infinity, alignment: .center)
+                        Text("If you hear the commentary before you see the action, increase the delay. If you see the action first, decrease it.")
+                            .font(.subheadline).foregroundStyle(.secondary)
+                        Slider(value: $player.delay, in: 0...30, step: 0.5)
+                            .accessibilityLabel("Saved audio delay")
+                            .accessibilityValue(String(format: "%.1f seconds", player.delay))
+                        HStack {
+                            Button { player.adjust(-0.5) } label: { Label("0.5 s", systemImage: "minus").playerPill() }
+                                .disabled(player.delay <= 0).accessibilityLabel("Decrease delay by half a second")
+                            Spacer()
+                            Button { player.adjust(0.5) } label: { Label("0.5 s", systemImage: "plus").playerPill() }
+                                .disabled(player.delay >= 30).accessibilityLabel("Increase delay by half a second")
+                        }.frame(minHeight: 44)
+                        LabeledContent("Delay available from stream", value: player.measured.map { String(format: "%.1f s", $0) } ?? "Checking…")
+                            .font(.subheadline).monospacedDigit()
+                    }
+                    .disabled(!player.supportsDelay)
+                    .padding(22)
+                    .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 20))
+                    .accessibilityIdentifier("syncDelayTile")
+
+                    if !player.supportsDelay {
+                        Text(player.detail.contains("Building an audio buffer")
+                             ? player.detail
+                             : "TV Sync is not available with this station’s current stream. Open Audio Controls and try another stream.")
+                            .font(.subheadline).foregroundStyle(.secondary)
+                    }
+
+                    Text("Tip: Use a clear moment, such as a ball being kicked or someone beginning to speak, then adjust until the sound matches the picture.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                    Text("Wireless remembers this delay for the next time you use TV Sync. Wireless speakers and AirPlay may add extra delay.")
                         .font(.footnote).foregroundStyle(.secondary)
                 }
             }.padding(22).frame(maxWidth: 720).frame(maxWidth: .infinity)
         }
     }
 
-    private func stationList(favouritesOnly: Bool, region: DiscoverRegion? = nil, network: String = "", city: String = "", state: String = "") -> some View {
+    private func stationList(favouritesOnly: Bool, region: DiscoverRegion? = nil, network: String = "", subnetwork: String = "", city: String = "", state: String = "", musicGenre: String = "") -> some View {
         DiscoverView(library: player.library, currentID: player.station.id, isPlaying: player.requested, favouritesOnly: favouritesOnly, play: { station in
             player.playStation(station); showFavourites = false; path = []; pane = .playing
         }, browse: {
             showFavourites = false; path = ["Discover"]
-        }, region: region, networkFilter: network, cityFilter: city, stateFilter: state)
+        }, region: region, networkFilter: network, subnetworkFilter: subnetwork, cityFilter: city, stateFilter: state, musicGenreFilter: musicGenre)
     }
 
     private func discoverTitle(_ destination: String) -> String {
+        if destination == Self.sleepScheduleRoute { return "Sleep Schedule" }
+        if destination == DiscoverBrowseRoute.genres { return "Music" }
+        if let genre = DiscoverBrowseRoute.genreValue(destination) { return genre }
         if destination == DiscoverBrowseRoute.networks { return "Networks" }
-        if destination == DiscoverBrowseRoute.locations { return "Other Locations" }
+        if destination == DiscoverBrowseRoute.locations { return "Locations" }
+        if destination == DiscoverBrowseRoute.otherLocations { return "Other Locations" }
         if destination == DiscoverBrowseRoute.national { return "National" }
         if let network = DiscoverBrowseRoute.networkValue(destination) { return network }
+        if let subnetwork = DiscoverBrowseRoute.subnetworkValue(destination) { return subnetwork.value }
         if let city = DiscoverBrowseRoute.locationValue(destination) { return city }
         if let state = DiscoverBrowseRoute.stateValue(destination) { return state }
         return destination
@@ -862,12 +1032,11 @@ private struct WirelessMiniPlayerBar: View {
     }
 
     private var primaryTitle: String {
-        if !player.syncEnabled, let track = player.trackMetadata { return track.title }
+        if !player.syncEnabled, let track = player.trackMetadata { return track.displayTitle }
         return player.station.name
     }
 
     private var secondaryTitle: String {
-        if !player.syncEnabled, let track = player.trackMetadata { return track.artist }
         return player.station.name
     }
 

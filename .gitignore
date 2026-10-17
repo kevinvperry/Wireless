@@ -50,3 +50,11 @@ station-directory/migrations/*
 !station-directory/migrations/0005_shared_artwork_and_merges.sql
 !station-directory/migrations/0006_normalise_australian_states.sql
 !station-directory/migrations/0014_stream_testing.sql
+!station-directory/migrations/0040_music_genres.sql
+!station-directory/migrations/0041_expand_music_genres.sql
+!station-directory/migrations/0042_add_soundscapes_genre.sql
+!station-directory/migrations/0043_expand_primary_genres.sql
+!station-directory/migrations/0044_add_tradie_genre.sql
+!station-directory/migrations/0045_refine_pop_rock_genres.sql
+!station-directory/migrations/0051_multiple_browse_genres.sql
+!station-directory/migrations/0042_add_soundscapes_genre.sql

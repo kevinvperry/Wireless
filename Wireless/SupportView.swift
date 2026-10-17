@@ -18,6 +18,8 @@ struct WirelessSupportView: View {
                     .foregroundStyle(.secondary)
             }
         }
+        .frame(maxWidth: 900)
+        .frame(maxWidth: .infinity)
         .scrollContentBackground(.hidden)
         .background(Color.black.ignoresSafeArea())
         .navigationTitle("Support")
