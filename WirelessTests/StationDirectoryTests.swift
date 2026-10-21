@@ -256,8 +256,14 @@ private final class GenreRefreshProtocol: URLProtocol {
         DispatchQueue.global().asyncAfter(deadline: .now() + 0.1) { [self] in
             var station = DirectoryStation.sen
             station.music_genre = "Rock"
-            let record = try! JSONSerialization.jsonObject(with: JSONEncoder().encode(station))
-            let data = try! JSONSerialization.data(withJSONObject: ["schema_version": 1, "revision": 99, "page": 1, "total": 1, "has_more": false, "stations": [record]])
+            let payload: [String: Any]
+            if request.url?.path.hasSuffix("/api/v1/networks") == true {
+                payload = ["schema_version": 1, "revision": 99, "networks": []]
+            } else {
+                let record = try! JSONSerialization.jsonObject(with: JSONEncoder().encode(station))
+                payload = ["schema_version": 1, "revision": 99, "page": 1, "total": 1, "has_more": false, "stations": [record]]
+            }
+            let data = try! JSONSerialization.data(withJSONObject: payload)
             client?.urlProtocol(self, didReceive: HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: ["Content-Type": "application/json"])!, cacheStoragePolicy: .notAllowed)
             client?.urlProtocol(self, didLoad: data)
             client?.urlProtocolDidFinishLoading(self)

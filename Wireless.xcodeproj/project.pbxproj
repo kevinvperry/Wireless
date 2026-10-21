@@ -14,6 +14,7 @@
 		0E1BE1AF5844D7913660C972 /* WirelessApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C8DF2AC33887409191F2781 /* WirelessApp.swift */; };
 		1274C83EFCDCD8DB757457B0 /* RadioPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6630D03B5125433D04BF5126 /* RadioPlayerView.swift */; };
 		1A550EFD3663A227D9535BDE /* CarPlayStationPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47A2A61AFBF289006DDAA5D2 /* CarPlayStationPresenter.swift */; };
+		1AB81CB4588920248D4C2095 /* WirelessContact.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3717973812D13753B64AA286 /* WirelessContact.swift */; };
 		1FC47233BE7FFDEA69C06427 /* DelayCorrectionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34B1977BE352BBA9A863FDE9 /* DelayCorrectionTests.swift */; };
 		22B4604A476E15BE939B98DE /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CCDDE53C4D89A836A68EB050 /* Assets.xcassets */; };
 		23E33CD7E3C09DCF55E53DE1 /* StreamDiagnosticView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29D4ED78062FDB9798BCDE64 /* StreamDiagnosticView.swift */; };
@@ -22,6 +23,7 @@
 		3C729C5EB76A961FC0C64556 /* DiscoverRegions.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2CED56748D25A16D042A988 /* DiscoverRegions.swift */; };
 		3D8FF267AA6E72161211EC8A /* SleepScheduleService.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACA583DD67F921EB96066384 /* SleepScheduleService.swift */; };
 		3DDF2F5DDA8C96B73598FB06 /* SleepScheduleService.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACA583DD67F921EB96066384 /* SleepScheduleService.swift */; };
+		412F25FAC85D50C1022B90C2 /* WirelessContactTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15C674C8AE307BA75136D01F /* WirelessContactTests.swift */; };
 		4228DA29F63E7152486959CE /* SleepTimerService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 776676EA121CB50213E02B4F /* SleepTimerService.swift */; };
 		4588990CBB470EAB42A2D669 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F137CB8302F4CCFFB5D3A867 /* NotificationService.swift */; };
 		4642152C38CEE3D957B5498D /* StreamTrackMetadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE1362AA3B04385625EA8C94 /* StreamTrackMetadata.swift */; };
@@ -51,6 +53,7 @@
 		C8E710ADFE49E904E1AEDDB7 /* StreamDiagnosticLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88790567F035940004B0EBAA /* StreamDiagnosticLogger.swift */; };
 		CA7BF2C861CB4E04B35CF97F /* StationDirectory.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9002A99CCA693E52ACD1413 /* StationDirectory.swift */; };
 		DE659AB256BFE3DCA18317DD /* DirectoryAudio.swift in Sources */ = {isa = PBXBuildFile; fileRef = 356B5F063701F0E28EDEFEA3 /* DirectoryAudio.swift */; };
+		E1AF39BD2B6BFE81EDAA2C26 /* WirelessContact.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3717973812D13753B64AA286 /* WirelessContact.swift */; };
 		E396F8FA9F67C6D9C77168E6 /* SupportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 591B7217A9AFB466BB7BCB52 /* SupportView.swift */; };
 		E51D3E997F900F74F15CC0ED /* FavouritesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F24F4BD9ABA74A114F3157D6 /* FavouritesView.swift */; };
 		E9D7118009B5E543896324EB /* StationListOrganisation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 099593907025706B72796BE6 /* StationListOrganisation.swift */; };
@@ -73,12 +76,14 @@
 		06E77E689E1033689FB1A219 /* RadioStreamEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RadioStreamEngine.swift; sourceTree = "<group>"; };
 		099593907025706B72796BE6 /* StationListOrganisation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationListOrganisation.swift; sourceTree = "<group>"; };
 		0E4068851564EEABF96B4AAD /* VocalBoost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VocalBoost.swift; sourceTree = "<group>"; };
+		15C674C8AE307BA75136D01F /* WirelessContactTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WirelessContactTests.swift; sourceTree = "<group>"; };
 		25D222B4D6107093651B654D /* DelayCorrection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DelayCorrection.swift; sourceTree = "<group>"; };
 		29D4ED78062FDB9798BCDE64 /* StreamDiagnosticView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamDiagnosticView.swift; sourceTree = "<group>"; };
 		2C2D848CD9841149DDB80F8A /* WirelessUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = WirelessUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		2C493F3E1378AB649558A420 /* DiscoverView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoverView.swift; sourceTree = "<group>"; };
 		34B1977BE352BBA9A863FDE9 /* DelayCorrectionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DelayCorrectionTests.swift; sourceTree = "<group>"; };
 		356B5F063701F0E28EDEFEA3 /* DirectoryAudio.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectoryAudio.swift; sourceTree = "<group>"; };
+		3717973812D13753B64AA286 /* WirelessContact.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WirelessContact.swift; sourceTree = "<group>"; };
 		3C8DF2AC33887409191F2781 /* WirelessApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WirelessApp.swift; sourceTree = "<group>"; };
 		45AF71D0E042FF2350372216 /* CarPlay.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CarPlay.framework; path = System/Library/Frameworks/CarPlay.framework; sourceTree = SDKROOT; };
 		46E14DACD66F8DAD68FBCE55 /* SleepTimerSheetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepTimerSheetView.swift; sourceTree = "<group>"; };
@@ -182,6 +187,7 @@
 			children = (
 				B9002A99CCA693E52ACD1413 /* StationDirectory.swift */,
 				099593907025706B72796BE6 /* StationListOrganisation.swift */,
+				3717973812D13753B64AA286 /* WirelessContact.swift */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -243,6 +249,7 @@
 				91FFC7D91231CDB151A40688 /* SleepScheduleServiceTests.swift */,
 				76EECFE6B7E52C2FE1E8A08B /* StationDirectoryTests.swift */,
 				81ED0C6EA381C06DF5A478BD /* StreamTrackMetadataTests.swift */,
+				15C674C8AE307BA75136D01F /* WirelessContactTests.swift */,
 			);
 			path = WirelessTests;
 			sourceTree = "<group>";
@@ -393,6 +400,7 @@
 				E396F8FA9F67C6D9C77168E6 /* SupportView.swift in Sources */,
 				4AEACEEDD6D487B421DB780F /* VocalBoost.swift in Sources */,
 				0E1BE1AF5844D7913660C972 /* WirelessApp.swift in Sources */,
+				1AB81CB4588920248D4C2095 /* WirelessContact.swift in Sources */,
 				55FD82A995E07EB83D1EF85D /* WirelessLayoutMetrics.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -412,6 +420,8 @@
 				C8E710ADFE49E904E1AEDDB7 /* StreamDiagnosticLogger.swift in Sources */,
 				B2974319EDD6D7321D088AAC /* StreamTrackMetadata.swift in Sources */,
 				0D78887AA33D15E59DD98787 /* StreamTrackMetadataTests.swift in Sources */,
+				E1AF39BD2B6BFE81EDAA2C26 /* WirelessContact.swift in Sources */,
+				412F25FAC85D50C1022B90C2 /* WirelessContactTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -442,7 +452,7 @@
 				CODE_SIGN_ENTITLEMENTS = Wireless/Wireless.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 11;
 				DEVELOPMENT_TEAM = QT3N6256FG;
 				INFOPLIST_FILE = Wireless/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
@@ -560,7 +570,7 @@
 				CODE_SIGN_ENTITLEMENTS = Wireless/Wireless.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 11;
 				DEVELOPMENT_TEAM = QT3N6256FG;
 				INFOPLIST_FILE = Wireless/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;

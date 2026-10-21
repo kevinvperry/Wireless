@@ -40,7 +40,7 @@ struct WirelessSupportSection: Identifiable {
 enum WirelessSupportGuide {
     static let sections: [WirelessSupportSection] = [
         gettingStarted, discover, player, favourites, sync, streams,
-        vocalBoost, sleepTimer, sleepSchedule, systemPlayback, carPlay, settings, troubleshooting
+        vocalBoost, sleepTimer, sleepSchedule, systemPlayback, carPlay, settings, contact, troubleshooting
     ]
 
     private static let gettingStarted = WirelessSupportSection(
@@ -91,8 +91,8 @@ enum WirelessSupportGuide {
             ]),
             .paragraph("The progress bar represents live position and buffering. With TV Sync enabled, its captions show **TV Sync Enabled** and the measured stream delay. Wireless attempts to reconnect automatically after reception is interrupted."),
             .heading("Song and programme information"),
-            .paragraph("When a music stream or supported broadcaster now-playing service supplies reliable metadata, Wireless shows **song title · artist** on the top row and the **station name below**, including in the mini-player. Album information remains available in the mini-player and system playback metadata when supplied. Triple M and Hit Metro and Regional broadcast stations use metadata embedded directly in their selected stream. Wireless also supports ABC music services, supported Triton StreamTheWorld feeds and official LiSTNR now-playing data for LiSTNR and SCA digital music stations. A brief gap is normal when a broadcaster reports that no current track is available. Track metadata is available only during normal playback with TV Sync off."),
-            .paragraph("Triple M and Hit embedded metadata is displayed without content-based filtering of Asset Link, Asset Spot or Asset Stop values, so current broadcaster playout labels may appear temporarily. Wireless does, however, prevent an old timestamped value from replacing current information and clears metadata that remains unchanged beyond its freshness limit. Each SCA playback session also uses a new stream request identifier so a previous session's playlist is not deliberately reused.")
+            .paragraph("When a music stream or supported broadcaster now-playing service supplies reliable metadata, Wireless shows **song title · artist** on the top row and the **station name below**, including in the mini-player. Album information remains available in the mini-player when supplied. CarPlay and other system playback surfaces use their third text line for the station name. Triple M and Hit Metro and Regional broadcast stations use metadata embedded directly in their selected stream. Wireless also supports ABC music services, supported Triton StreamTheWorld feeds and official LiSTNR now-playing data for LiSTNR and SCA digital music stations. A brief gap is normal when a broadcaster reports that no current track is available. Track metadata is available only during normal playback with TV Sync off."),
+            .paragraph("Triple M and Hit embedded metadata remains authoritative. During some national networked programmes, a station may repeatedly supply an old technical playout marker rather than current song information. Wireless hides only exact Asset Link, Asset Spot and Asset Stop markers, records them in Stream Diagnostics, and clears any previous song rather than leaving it frozen on screen. It also prevents old timestamped values from replacing current information and clears metadata that remains unchanged beyond its freshness limit. Each SCA playback session uses a new stream request identifier so a previous session's playlist is not deliberately reused.")
         ]
     )
 
@@ -199,7 +199,7 @@ enum WirelessSupportGuide {
                 "Playback attempts to resume after temporary reception loss.",
                 "A deliberate manual Pause is respected."
             ]),
-            .paragraph("When Stream Diagnostics is enabled, its Metadata view records every metadata result received from the stream and supported companion services. Use the **Metadata**, **Playback** and **All** selector to change the visible records; Wireless remembers that selection. Dedicated raw fields preserve the broadcaster's exact title, artist and album text without trimming or normalising it; control characters are escaped only to keep each log entry parseable. Each result also records its display-ready interpretation, classification, whether it repeated or changed, and the exact display decision. Advertisements, programme labels and technical markers remain visible in the diagnostic record. Provider records include the station name, service identifier, transport, response details and why a source was enabled or unavailable. For Triple M and Hit broadcast stations, the provider decision records that embedded stream metadata is authoritative. Heartbeats separately report provider contact, the last distinct candidate, the last usable receipt and the last genuine track change. metadata.silence identifies a period with no usable metadata receipts, metadata.sourceSilence identifies an inactive secondary source, and metadata.stale records the first and last sighting, repeat count, embedded timestamp age, display age and reason whenever an old or unchanged value is suppressed or cleared. Authentication values and device names remain excluded from exported logs.")
+            .paragraph("When Stream Diagnostics is enabled, its Metadata view records every metadata result received from the stream and supported companion services. Use the **Metadata**, **Playback** and **All** selector to change the visible records; Wireless remembers that selection. Dedicated raw fields preserve the broadcaster's exact title, artist and album text without trimming or normalising it; control characters are escaped only to keep each log entry parseable. Each result also records its display-ready interpretation, classification, whether it repeated or changed, and the exact display decision. Advertisements, programme labels and technical markers remain visible in the diagnostic record even when they are hidden from the player. Provider records include the station name, service identifier, transport, response details and why a source was enabled or unavailable. For Triple M and Hit broadcast stations, the provider decision records that embedded stream metadata is authoritative. Heartbeats separately report provider contact, the last distinct candidate, the last usable song receipt and the last genuine track change. Rejected technical markers and stale candidates do not reset the usable-song timer. metadata.silence identifies a period with no usable song metadata, metadata.sourceSilence identifies an inactive secondary source, and metadata.stale records the first and last sighting, repeat count, embedded timestamp age, display age and reason whenever an old or unchanged value is suppressed or cleared. Authentication values and device names remain excluded from exported logs.")
         ]
     )
 
@@ -208,6 +208,7 @@ enum WirelessSupportGuide {
         summary: "The player, Favourites and Discover in the car",
         blocks: [
             .paragraph("Open Wireless in CarPlay to control the same player as your iPhone. CarPlay opens on the player once a station has been chosen, or on Favourites before then."),
+            .paragraph("The CarPlay player shows the song title, artist and station name when current song information is available. At other times it shows the station name, network and location or frequency, instead of repeating the station name."),
             .bullets([
                 "Choose Favourites in the top-right corner of the player to open your saved stations.",
                 "Favourites also lists your recently played stations. Choose Discover in the top-right corner of Favourites to browse Networks, Locations, Music, News and Talkback, Sport, and Community & Specialist stations.",
@@ -229,6 +230,22 @@ enum WirelessSupportGuide {
                 ["Share TestFlight link", "Opens the system share sheet with the Wireless TestFlight invitation."]
             ]),
             .paragraph("Settings also provides this guide and the installed app version. The About section links to Wireless’s public GitHub repository and MIT Licence. Wireless’s original code and documentation use the MIT Licence; Vocal Boost retains MPL-2.0, with details in Open Source Acknowledgements.")
+        ]
+    )
+
+    private static let contact = WirelessSupportSection(
+        id: "contact", icon: "envelope", title: "Contact and Station Reports",
+        summary: "Report technical, directory, ownership or legal concerns",
+        blocks: [
+            .paragraph("Open **Settings > Contact Wireless** to ask a question, report a general problem or raise a legal concern directly with the Wireless developer."),
+            .paragraph("For a concern about a particular station, open that station’s **Details** pane and choose **Report an issue with this station**. Include the station name and the relevant technical, directory, ownership or legal concern in the form."),
+            .bullets([
+                "Playback or stream failures",
+                "Incorrect station, network, location or contact information",
+                "Artwork, trademark or branding concerns",
+                "Station ownership, inclusion, removal or other legal requests"
+            ]),
+            .callout(.note, "Broadcasters and rights holders can use the same station-report action to request a correction, replacement stream or removal from the Wireless directory.")
         ]
     )
 

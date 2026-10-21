@@ -177,7 +177,8 @@ enum ABCNowPlayingParser {
         return StreamTrackMetadataParser.evaluate(
             title: track.title,
             artist: track.artist,
-            album: track.releaseTitle ?? track.release?.title
+            album: track.releaseTitle ?? track.release?.title,
+            blocksSCAAssetMarkers: false
         ).addingProviderDetails(details)
     }
 }

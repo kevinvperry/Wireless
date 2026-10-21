@@ -35,10 +35,12 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
     var onStatus: ((PlaybackStatus, Bool) -> Void)?
     var onTrackMetadata: ((StreamTrackMetadataEvaluation?) -> Void)?
     private let player = AVPlayer()
+    private let metadataSidecarPlayer = AVPlayer()
     private let packetEngine = RadioStreamEngine()
     private let enhancedEngine = EnhancedLiveStreamEngine()
     private let metadataDelegate = StreamMetadataOutputDelegate()
     private var metadataOutput: AVPlayerItemMetadataOutput?
+    private var metadataSidecarOutput: AVPlayerItemMetadataOutput?
     private var usesPacketBuffer = false
     private var usesEnhancedPlayback = false
     private var hlsPacketFallbackAttempted = false
@@ -129,6 +131,7 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
         timer?.invalidate(); timer = nil
         removeItemObservers()
         player.pause(); player.replaceCurrentItem(with: nil)
+        stopMetadataSidecar()
         packetEngine.stop(); packetEngine.suspendPreparation()
         enhancedEngine.stop()
     }
@@ -177,6 +180,7 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
         enhancedEngine.stop()
         removeItemObservers()
         player.pause(); player.replaceCurrentItem(with: nil)
+        stopMetadataSidecar()
         let stream = streams[index]
         usesPacketBuffer = syncEnabled && stream.format != "hls" && stream.supportsPacketBuffer
         usesEnhancedPlayback = !syncEnabled && vocalBoost != .off && ["mp3", "aac"].contains(stream.format)
@@ -201,6 +205,7 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
         if usesEnhancedPlayback {
             enhancedEngine.configure(stream: stream, level: vocalBoost)
             enhancedEngine.start()
+            startMetadataSidecar(url: url, stream: stream, token: generation)
             publish(title: "Connecting…", detail: "Preparing Vocal Boost", buffering: true, supportsDelay: false)
             return
         }
@@ -208,43 +213,7 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
         if let agent = streams[index].request_headers.first(where: { $0.key.lowercased() == "user-agent" })?.value { options[AVURLAssetHTTPUserAgentKey] = agent }
         let item = AVPlayerItem(asset: AVURLAsset(url: url, options: options))
         if !syncEnabled {
-            metadataTimeline = MetadataDiagnosticTimeline(
-                heartbeatInterval: metadataHeartbeatInterval,
-                silenceWarningInterval: metadataSilenceWarningInterval
-            )
-            let token = generation
-            metadataDelegate.receive = { [weak self] evaluation in
-                Task { @MainActor in
-                    guard let self, self.generation == token, self.requested,
-                          !self.syncEnabled, !self.usesPacketBuffer else { return }
-                    let now = Date()
-                    let evaluation = evaluation.addingProviderDetails(
-                        self.metadataFreshnessPolicy.diagnosticDetails(for: evaluation, at: now)
-                    )
-                    var elapsed: [String: String] = [:]
-                    if var timeline = self.metadataTimeline {
-                        elapsed = timeline.record(evaluation, at: now)
-                        self.metadataTimeline = timeline
-                    }
-                    self.embeddedMetadataReceiptNumber += 1
-                    let repeated = evaluation.hasSameCandidate(as: self.lastMetadataEvaluation)
-                    let trackChanged = evaluation.metadata != nil && evaluation.metadata != self.lastEmbeddedMetadata
-                    self.lastMetadataEvaluation = evaluation
-                    var fields = evaluation.diagnosticFields
-                    fields.merge(elapsed) { _, new in new }
-                    fields["source"] = "embedded"
-                    fields["streamID"] = self.selectedStreamID ?? "unknown"
-                    fields["stationID"] = self.stationID
-                    fields["stationName"] = self.stationName
-                    fields["receiptNumber"] = "\(self.embeddedMetadataReceiptNumber)"
-                    fields["repeatedEvaluation"] = "\(repeated)"
-                    fields["acceptedTrackChanged"] = "\(trackChanged)"
-                    fields["transport"] = "avplayer-timed-metadata"
-                    self.diagnose("metadata.evaluated", "Embedded stream metadata received and evaluated", metadata: fields)
-                    if let metadata = evaluation.metadata { self.lastEmbeddedMetadata = metadata }
-                    self.onTrackMetadata?(evaluation)
-                }
-            }
+            configureMetadataReceiver(token: generation, transport: "avplayer-timed-metadata")
             let output = AVPlayerItemMetadataOutput(identifiers: nil)
             output.setDelegate(metadataDelegate, queue: .main)
             item.add(output)
@@ -257,6 +226,75 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
         started = Date(); lastAdvance = started; lastTime = -1; pendingDelay = true
         player.play()
         publish(title: "Connecting…", detail: "\(streams[index].format.uppercased()) · \(streams[index].label)", buffering: true, supportsDelay: false)
+    }
+
+    private func configureMetadataReceiver(token: UUID, transport: String) {
+        metadataTimeline = MetadataDiagnosticTimeline(
+            heartbeatInterval: metadataHeartbeatInterval,
+            silenceWarningInterval: metadataSilenceWarningInterval
+        )
+        metadataDelegate.receive = { [weak self] evaluation in
+            Task { @MainActor in
+                guard let self, self.generation == token, self.requested,
+                      !self.syncEnabled, !self.usesPacketBuffer else { return }
+                let now = Date()
+                let evaluation = evaluation.addingProviderDetails(
+                    self.metadataFreshnessPolicy.diagnosticDetails(for: evaluation, at: now)
+                )
+                var elapsed: [String: String] = [:]
+                if var timeline = self.metadataTimeline {
+                    elapsed = timeline.record(evaluation, at: now)
+                    self.metadataTimeline = timeline
+                }
+                self.embeddedMetadataReceiptNumber += 1
+                let repeated = evaluation.hasSameCandidate(as: self.lastMetadataEvaluation)
+                let trackChanged = evaluation.metadata != nil && evaluation.metadata != self.lastEmbeddedMetadata
+                self.lastMetadataEvaluation = evaluation
+                var fields = evaluation.diagnosticFields
+                fields.merge(elapsed) { _, new in new }
+                fields["source"] = "embedded"
+                fields["streamID"] = self.selectedStreamID ?? "unknown"
+                fields["stationID"] = self.stationID
+                fields["stationName"] = self.stationName
+                fields["receiptNumber"] = "\(self.embeddedMetadataReceiptNumber)"
+                fields["repeatedEvaluation"] = "\(repeated)"
+                fields["acceptedTrackChanged"] = "\(trackChanged)"
+                fields["transport"] = transport
+                self.diagnose("metadata.evaluated", "Embedded stream metadata received and evaluated", metadata: fields)
+                if let metadata = evaluation.metadata { self.lastEmbeddedMetadata = metadata }
+                self.onTrackMetadata?(evaluation)
+            }
+        }
+    }
+
+    private func startMetadataSidecar(url: URL, stream: StationStream, token: UUID) {
+        configureMetadataReceiver(token: token, transport: "avplayer-muted-sidecar")
+        var options: [String: Any] = [:]
+        if let agent = stream.request_headers.first(where: { $0.key.lowercased() == "user-agent" })?.value {
+            options[AVURLAssetHTTPUserAgentKey] = agent
+        }
+        let item = AVPlayerItem(asset: AVURLAsset(url: url, options: options))
+        let output = AVPlayerItemMetadataOutput(identifiers: nil)
+        output.setDelegate(metadataDelegate, queue: .main)
+        item.add(output)
+        metadataSidecarOutput = output
+        metadataOutput = output
+        metadataSidecarPlayer.volume = 0
+        metadataSidecarPlayer.replaceCurrentItem(with: item)
+        metadataSidecarPlayer.play()
+        diagnose("metadata.providerStarted", "Muted embedded metadata sidecar started", metadata: [
+            "stationID": stationID,
+            "stationName": stationName,
+            "streamID": stream.id,
+            "transport": "avplayer-muted-sidecar",
+            "reason": "audio-engine-does-not-expose-timed-metadata"
+        ])
+    }
+
+    private func stopMetadataSidecar() {
+        metadataSidecarPlayer.pause()
+        metadataSidecarPlayer.replaceCurrentItem(with: nil)
+        metadataSidecarOutput = nil
     }
     private var seekRange: CMTimeRange? {
         guard let range = player.currentItem?.seekableTimeRanges.last?.timeRangeValue,

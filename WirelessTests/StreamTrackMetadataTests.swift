@@ -2,6 +2,38 @@ import XCTest
 import AVFoundation
 
 final class StreamTrackMetadataTests: XCTestCase {
+    func testCarPlayNowPlayingUsesStationContextWhenTrackMetadataIsAbsent() {
+        let text = NowPlayingTextProjection.make(
+            stationName: "Triple M Melbourne 105.1",
+            network: "Triple M",
+            location: "Melbourne",
+            frequency: "105.1 FM",
+            track: nil
+        )
+
+        XCTAssertEqual(text.title, "Triple M Melbourne 105.1")
+        XCTAssertEqual(text.artist, "Triple M")
+        XCTAssertEqual(text.album, "Melbourne · 105.1 FM")
+    }
+
+    func testCarPlayNowPlayingAlwaysUsesStationNameWithTrackMetadata() {
+        let text = NowPlayingTextProjection.make(
+            stationName: "Triple M Melbourne 105.1",
+            network: "Triple M",
+            location: "Melbourne",
+            frequency: "105.1 FM",
+            track: StreamTrackMetadata(
+                title: "The Boys Light Up",
+                artist: "Australian Crawl",
+                album: "The Boys Light Up"
+            )
+        )
+
+        XCTAssertEqual(text.title, "The Boys Light Up")
+        XCTAssertEqual(text.artist, "Australian Crawl")
+        XCTAssertEqual(text.album, "Triple M Melbourne 105.1")
+    }
+
     func testMetadataEvaluationExplainsAdvertisingProgrammeAndTechnicalValues() {
         let advert = StreamTrackMetadataParser.evaluate(title: "Commercial Break", artist: "Station")
         XCTAssertEqual(advert.outcome, .rejectedTitle)
@@ -15,7 +47,7 @@ final class StreamTrackMetadataTests: XCTestCase {
             title: "Asset Spot 15.699 2026-10-14T06:41:01.564Z",
             artist: "Station"
         )
-        XCTAssertEqual(marker.outcome, .accepted)
+        XCTAssertEqual(marker.outcome, .rejectedTitle)
         XCTAssertTrue(marker.classificationHints.contains("technical-marker"))
     }
 
@@ -122,7 +154,7 @@ final class StreamTrackMetadataTests: XCTestCase {
             title: "Never Tear Us Apart", artist: "INXS", album: "Kick"
         ))
         let marker = Data(#"{"data":{"stations":[{"currentTrack":{"title":"Asset Link 31.8","artistName":"Triple M","albumName":null}}]}}"#.utf8)
-        XCTAssertEqual(LiSTNRNowPlayingParser.evaluate(marker).outcome, .accepted)
+        XCTAssertEqual(LiSTNRNowPlayingParser.evaluate(marker).outcome, .rejectedTitle)
         let acknowledgement = Data(#"{"data":{"message":"connected"}}"#.utf8)
         XCTAssertFalse(LiSTNRNowPlayingParser.containsStationPayload(acknowledgement))
         XCTAssertTrue(LiSTNRNowPlayingParser.containsStationPayload(nowPlaying))
@@ -152,6 +184,29 @@ final class StreamTrackMetadataTests: XCTestCase {
         XCTAssertEqual(timeline.elapsedFields(at: start.addingTimeInterval(180))["lastTrackChangeElapsedSeconds"], "50.0")
         XCTAssertNil(timeline.silenceWarningDue(at: start.addingTimeInterval(249)))
         XCTAssertEqual(timeline.silenceWarningDue(at: start.addingTimeInterval(300))?.number, 1)
+    }
+
+    func testStaleAndTechnicalCandidatesDoNotResetUsableMetadataSilence() {
+        let start = Date(timeIntervalSince1970: 1_000)
+        var timeline = MetadataDiagnosticTimeline(startedAt: start, silenceWarningInterval: 120)
+        let marker = StreamTrackMetadataParser.evaluate(
+            title: "Asset Stop 00:00 2026-10-14T07:59:59.918Z",
+            artist: "Triple M"
+        )
+        let fields = timeline.record(marker, at: start.addingTimeInterval(125))
+
+        XCTAssertEqual(marker.outcome, .rejectedTitle)
+        XCTAssertEqual(fields["lastUsableMetadataReceiptState"], "none-this-session")
+        XCTAssertEqual(fields["lastUsableMetadataReceiptElapsedSeconds"], "125.0")
+        XCTAssertEqual(timeline.silenceWarningDue(at: start.addingTimeInterval(125))?.number, 1)
+    }
+
+    func testSameSongCanMergeRicherAlbumWithoutBecomingADifferentTrack() {
+        let embedded = StreamTrackMetadata(title: "Never Tear Us Apart", artist: "INXS", album: nil)
+        let companion = StreamTrackMetadata(title: "never tear us apart", artist: "inxs", album: "Kick")
+
+        XCTAssertTrue(embedded.hasSameSong(as: companion))
+        XCTAssertEqual(embedded.mergingAlbum(from: companion).album, "Kick")
     }
 
     func testMetadataFreshnessDetectsOldEmbeddedTimestampWithoutRejectingRecentMarker() {
@@ -245,25 +300,25 @@ final class StreamTrackMetadataTests: XCTestCase {
         XCTAssertEqual(validGap.providerDetails["payloadShape"], "mapiNow-null")
     }
 
-    func testAssetSpotIsTemporarilyDisplayedUnfiltered() {
+    func testAssetSpotIsRejectedAsAnExactTechnicalMarker() {
         let marker = "Asset Spot 15.6997349102773 2026-10-14T06:41:01.564Z"
         let evaluation = StreamTrackMetadataParser.evaluate(title: marker, artist: marker)
-        XCTAssertEqual(evaluation.outcome, .accepted)
-        XCTAssertEqual(evaluation.metadata?.title, marker)
+        XCTAssertEqual(evaluation.outcome, .rejectedTitle)
+        XCTAssertNil(evaluation.metadata)
         XCTAssertTrue(evaluation.classificationHints.contains("technical-marker"))
     }
 
-    func testAssetStopIsTemporarilyDisplayedUnfiltered() {
+    func testAssetStopIsRejectedAsAnExactTechnicalMarker() {
         let marker = "Asset Stop 00:00 2026-10-14T07:59:59.918Z"
-        XCTAssertEqual(StreamTrackMetadataParser.validated(title: marker, artist: marker)?.title, marker)
+        XCTAssertNil(StreamTrackMetadataParser.validated(title: marker, artist: marker))
     }
 
-    func testAssetLinkIsTemporarilyDisplayedUnfiltered() {
+    func testAssetLinkIsRejectedAsAnExactTechnicalMarker() {
         let marker = "Asset Link 31.8178868383695 2026-10-17T07:29:41.388Z"
         let evaluation = StreamTrackMetadataParser.evaluate(title: marker, artist: marker)
-        XCTAssertEqual(evaluation.outcome, .accepted)
+        XCTAssertEqual(evaluation.outcome, .rejectedTitle)
         XCTAssertTrue(evaluation.classificationHints.contains("technical-marker"))
-        XCTAssertEqual(evaluation.metadata?.title, marker)
+        XCTAssertNil(evaluation.metadata)
     }
 
     func testOtherAssetLabelsRemainVisibleButDiagnosable() {
@@ -302,13 +357,13 @@ final class StreamTrackMetadataTests: XCTestCase {
         }
     }
 
-    func testAssetEventsAreDisplayedUntilCarefulFilteringReturns() {
+    func testAssetEventsClearTheDisplayAndTheNextSongDisplaysNormally() {
         var displayed = StreamTrackMetadataParser.validated(title: "Weather With You", artist: "Crowded House")
         XCTAssertNotNil(displayed)
         displayed = StreamTrackMetadataParser.validated(title: "Asset Spot 15.6 2026-10-14T06:41:01.564Z", artist: "Station")
-        XCTAssertEqual(displayed?.artist, "Station")
+        XCTAssertNil(displayed)
         displayed = StreamTrackMetadataParser.validated(title: "Asset Stop 00:00 2026-10-14T07:59:59.918Z", artist: "Station")
-        XCTAssertEqual(displayed?.artist, "Station")
+        XCTAssertNil(displayed)
         displayed = StreamTrackMetadataParser.validated(title: "Never Tear Us Apart", artist: "INXS")
         XCTAssertEqual(displayed?.displayTitle, "Never Tear Us Apart · INXS")
     }
@@ -329,7 +384,7 @@ final class StreamTrackMetadataTests: XCTestCase {
         let marker = await StreamTrackMetadataParser.parse([
             item(.icyMetadataStreamTitle, "Asset Spot 15.699 2026-10-14T06:41:01.564Z - Asset Spot 15.699")
         ])
-        XCTAssertEqual(marker?.artist, "Asset Spot 15.699 2026-10-14T06:41:01.564Z")
+        XCTAssertNil(marker)
         let icyMusic = await StreamTrackMetadataParser.parse([
             item(.icyMetadataStreamTitle, "INXS - Never Tear Us Apart")
         ])

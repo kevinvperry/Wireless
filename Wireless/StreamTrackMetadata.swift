@@ -21,6 +21,51 @@ struct StreamTrackMetadata: Equatable, Sendable {
     let album: String?
 
     var displayTitle: String { "\(title) · \(artist)" }
+
+    func hasSameSong(as other: Self) -> Bool {
+        title.caseInsensitiveCompare(other.title) == .orderedSame
+            && artist.caseInsensitiveCompare(other.artist) == .orderedSame
+    }
+
+    func mergingAlbum(from other: Self) -> Self {
+        Self(title: title, artist: artist, album: other.album ?? album)
+    }
+}
+
+struct NowPlayingTextProjection: Equatable, Sendable {
+    let title: String
+    let artist: String
+    let album: String
+
+    static func make(
+        stationName: String,
+        network: String,
+        location: String,
+        frequency: String?,
+        track: StreamTrackMetadata?
+    ) -> Self {
+        if let track {
+            return Self(title: track.title, artist: track.artist, album: stationName)
+        }
+
+        let context = uniqueNonEmpty([location, frequency]).joined(separator: " · ")
+        return Self(
+            title: stationName,
+            artist: clean(network) ?? "Live radio",
+            album: context.isEmpty ? "Australia" : context
+        )
+    }
+
+    private static func uniqueNonEmpty(_ values: [String?]) -> [String] {
+        var seen = Set<String>()
+        return values.compactMap(clean).filter { seen.insert($0.lowercased()).inserted }
+    }
+
+    private static func clean(_ value: String?) -> String? {
+        guard let value else { return nil }
+        let cleaned = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return cleaned.isEmpty ? nil : cleaned
+    }
 }
 
 struct StreamTrackMetadataEvaluation: Equatable, Sendable {
@@ -144,7 +189,11 @@ struct MetadataDiagnosticTimeline: Sendable {
         lastHeartbeatAt = startedAt
     }
 
-    mutating func record(_ evaluation: StreamTrackMetadataEvaluation, at now: Date = Date()) -> [String: String] {
+    mutating func record(
+        _ evaluation: StreamTrackMetadataEvaluation,
+        at now: Date = Date(),
+        usableOverride: Bool? = nil
+    ) -> [String: String] {
         lastSuccessfulContactAt = now
         let candidateSignature = [
             evaluation.rawTitle ?? "<none>",
@@ -157,7 +206,12 @@ struct MetadataDiagnosticTimeline: Sendable {
             lastDistinctCandidateAt = now
             lastCandidateSignature = candidateSignature
         }
-        if let metadata = evaluation.metadata {
+        let isUsable = usableOverride ?? (
+            evaluation.metadata != nil
+                && evaluation.providerDetails["candidateTimestampStale"] != "true"
+                && evaluation.classificationHints == ["music-candidate"]
+        )
+        if isUsable, let metadata = evaluation.metadata {
             lastUsableMetadataReceiptAt = now
             lastSilenceWarningNumber = 0
             if metadata != lastAcceptedMetadata {
@@ -313,11 +367,11 @@ enum StreamTrackMetadataParser {
         return evaluate(title: title, artist: artist, album: album)
     }
 
-    static func validated(title: String?, artist: String?, album: String? = nil) -> StreamTrackMetadata? {
-        evaluate(title: title, artist: artist, album: album).metadata
+    static func validated(title: String?, artist: String?, album: String? = nil, blocksSCAAssetMarkers: Bool = true) -> StreamTrackMetadata? {
+        evaluate(title: title, artist: artist, album: album, blocksSCAAssetMarkers: blocksSCAAssetMarkers).metadata
     }
 
-    static func evaluate(title: String?, artist: String?, album: String? = nil) -> StreamTrackMetadataEvaluation {
+    static func evaluate(title: String?, artist: String?, album: String? = nil, blocksSCAAssetMarkers: Bool = true) -> StreamTrackMetadataEvaluation {
         let rawTitle = title
         let rawArtist = artist
         let rawAlbum = album
@@ -338,6 +392,12 @@ enum StreamTrackMetadataParser {
         }
         guard artist != nil else {
             return StreamTrackMetadataEvaluation(metadata: nil, rawTitle: rawTitle, rawArtist: rawArtist, rawAlbum: rawAlbum, title: title, artist: nil, album: album, outcome: .missingArtist, classificationHints: hints)
+        }
+        if blocksSCAAssetMarkers, isBlockedAssetPlayoutLabel(title) {
+            return StreamTrackMetadataEvaluation(metadata: nil, rawTitle: rawTitle, rawArtist: rawArtist, rawAlbum: rawAlbum, title: title, artist: artist, album: album, outcome: .rejectedTitle, classificationHints: hints)
+        }
+        if blocksSCAAssetMarkers, isBlockedAssetPlayoutLabel(artist) {
+            return StreamTrackMetadataEvaluation(metadata: nil, rawTitle: rawTitle, rawArtist: rawArtist, rawAlbum: rawAlbum, title: title, artist: artist, album: album, outcome: .rejectedArtist, classificationHints: hints)
         }
         guard let acceptedTitle = acceptable(title) else {
             return StreamTrackMetadataEvaluation(metadata: nil, rawTitle: rawTitle, rawArtist: rawArtist, rawAlbum: rawAlbum, title: title, artist: artist, album: album, outcome: .rejectedTitle, classificationHints: hints)
@@ -411,9 +471,17 @@ enum StreamTrackMetadataParser {
 
     private static func isAssetPlayoutLabel(_ value: String) -> Bool {
         guard let value = clean(value) else { return false }
-        // Classification only. Asset labels are deliberately not rejected while
-        // SCA's embedded metadata path is being verified.
         return value.range(of: #"(?i)^asset[\s_-]+[a-z]+\b"#, options: .regularExpression) != nil
+    }
+
+    private static func isBlockedAssetPlayoutLabel(_ value: String?) -> Bool {
+        guard let value = clean(value) else { return false }
+        // These are exact SCA playout event families, not broad substring
+        // filters. Titles such as "Asset Spotlight" remain valid songs.
+        return value.range(
+            of: #"(?i)^asset[\s_-]+(?:link|spot|stop)(?:\b|[\s_-])"#,
+            options: .regularExpression
+        ) != nil
     }
 
     private static func isStandaloneTimestamp(_ value: String) -> Bool {

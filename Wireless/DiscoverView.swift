@@ -389,10 +389,22 @@ private struct WirelessSettingsView: View {
                     settingsRow("Wireless Support", systemImage: "questionmark.circle")
                 }
                 .accessibilityIdentifier("wirelessSupport")
+
+                Link(destination: WirelessContact.generalURL) {
+                    HStack {
+                        settingsRow("Contact Wireless", systemImage: "envelope")
+                        Spacer()
+                        Image(systemName: "arrow.up.right")
+                            .font(.caption.bold())
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .accessibilityHint("Opens the Wireless contact form in your browser")
+                .accessibilityIdentifier("contactWireless")
             } header: {
                 Text("Support")
             } footer: {
-                Text("Learn how to discover stations, use TV Sync and improve playback reliability.")
+                Text("Read the guide or contact Wireless about a technical, directory, ownership or legal concern.")
             }
             .listRowBackground(cardBackground)
 

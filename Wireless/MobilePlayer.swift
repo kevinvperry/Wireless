@@ -156,6 +156,9 @@ final class MobilePlayer: ObservableObject {
     private var displayedMetadataHints: [String] = []
     private var displayedMetadataEmbeddedTimestamp: Date?
     private var expiredMetadataThisSession: StreamTrackMetadata?
+    private var lastStaleDiagnosticSignature: String?
+    private var lastStaleDiagnosticAt = Date.distantPast
+    private var suppressedStaleDiagnosticCount = 0
 
     private func diagnose(_ event: String, _ message: String, metadata: [String: String] = [:]) {
         StreamDiagnosticLogger.shared.record(event, message, metadata: metadata)
@@ -560,17 +563,22 @@ final class MobilePlayer: ObservableObject {
     }
     private func publishNowPlaying() {
         let metadata = syncEnabled ? nil : trackMetadata
-        let title = metadata?.title ?? displayTitle
-        let artist = metadata?.artist ?? station.name
+        let text = NowPlayingTextProjection.make(
+            stationName: station.name,
+            network: station.network,
+            location: station.location,
+            frequency: station.frequency,
+            track: metadata
+        )
         let audible = requested && status == "Playing"
         requestNowPlayingArtworkIfNeeded()
-        let key = "\(station.id)|\(title)|\(artist)|\(metadata?.album ?? "")|\(audible)|\(nowPlayingArtwork != nil)"
+        let key = "\(station.id)|\(text.title)|\(text.artist)|\(text.album)|\(audible)|\(nowPlayingArtwork != nil)"
         guard key != lastMetadata else { return }
         lastMetadata = key
         var information: [String: Any] = [
-            MPMediaItemPropertyTitle: title,
-            MPMediaItemPropertyArtist: artist,
-            MPMediaItemPropertyAlbumTitle: metadata?.album ?? station.name,
+            MPMediaItemPropertyTitle: text.title,
+            MPMediaItemPropertyArtist: text.artist,
+            MPMediaItemPropertyAlbumTitle: text.album,
             MPNowPlayingInfoPropertyIsLiveStream: true,
             MPNowPlayingInfoPropertyPlaybackRate: audible ? 1.0 : 0.0
         ]
@@ -671,7 +679,16 @@ final class MobilePlayer: ObservableObject {
         let action: String
         let reason: String
 
-        if let metadata = evaluation.metadata {
+        if let receivedMetadata = evaluation.metadata {
+            let metadata: StreamTrackMetadata
+            let sameSongAsDisplayed: Bool
+            if let displayed = trackMetadata, displayed.hasSameSong(as: receivedMetadata) {
+                metadata = displayed.mergingAlbum(from: receivedMetadata)
+                sameSongAsDisplayed = true
+            } else {
+                metadata = receivedMetadata
+                sameSongAsDisplayed = false
+            }
             let timestampDetails = metadataFreshnessPolicy.diagnosticDetails(for: evaluation, at: now)
             let timestampIsStale = timestampDetails["candidateTimestampStale"] == "true"
             let expiredAndUnchanged = expiredMetadataThisSession == metadata
@@ -695,12 +712,17 @@ final class MobilePlayer: ObservableObject {
             } else {
                 if expiredMetadataThisSession != nil { expiredMetadataThisSession = nil }
                 action = trackMetadata == metadata ? "retained-unchanged" : "displayed"
-                reason = source == preferredSource ? "preferred-source-accepted" : "fallback-source-accepted"
+                reason = sameSongAsDisplayed
+                    ? "same-song-metadata-merged"
+                    : (source == preferredSource ? "preferred-source-accepted" : "fallback-source-accepted")
                 if trackMetadata == metadata {
                     displayedMetadataLastSeenAt = now
                     displayedMetadataReceiptCount += 1
                 } else {
-                    applyTrackMetadata(metadata, source: source)
+                    applyTrackMetadata(
+                        metadata,
+                        source: sameSongAsDisplayed ? (trackMetadataSource ?? source) : source
+                    )
                     displayedMetadataFirstSeenAt = now
                     displayedMetadataLastSeenAt = now
                     displayedMetadataReceiptCount = 1
@@ -726,7 +748,7 @@ final class MobilePlayer: ObservableObject {
         var fields = evaluation.diagnosticFields
         fields.merge([
             "action": action,
-            "affectsDisplay": "\(action == "displayed" || action == "cleared")",
+            "affectsDisplay": "\(["displayed", "cleared", "cleared-stale"].contains(action))",
             "currentDisplaySourceBeforeDecision": previousSource,
             "preferredSource": preferredSource,
             "reason": reason,
@@ -809,7 +831,12 @@ final class MobilePlayer: ObservableObject {
         now: Date,
         onlyOnce: Bool
     ) {
-        if onlyOnce { return }
+        let signature = [station.id, source, reason, metadata.title, metadata.artist].joined(separator: "\u{1f}")
+        if onlyOnce || (signature == lastStaleDiagnosticSignature && now.timeIntervalSince(lastStaleDiagnosticAt) < 60) {
+            suppressedStaleDiagnosticCount += 1
+            return
+        }
+        if signature != lastStaleDiagnosticSignature { suppressedStaleDiagnosticCount = 0 }
         let formatter = ISO8601DateFormatter()
         var fields = metadataFreshnessPolicy.diagnosticDetails(for: evaluation, at: now)
         if let displayedMetadataEmbeddedTimestamp {
@@ -825,6 +852,7 @@ final class MobilePlayer: ObservableObject {
             "displayAgeSeconds": String(format: "%.1f", now.timeIntervalSince(displayedMetadataFirstSeenAt ?? now)),
             "firstSeenAt": displayedMetadataFirstSeenAt.map { formatter.string(from: $0) } ?? "not-displayed-this-session",
             "identicalReceiptCount": "\(max(0, displayedMetadataReceiptCount - 1))",
+            "suppressedRepeatedDecisionCount": "\(suppressedStaleDiagnosticCount)",
             "lastSeenAt": displayedMetadataLastSeenAt.map { formatter.string(from: $0) } ?? "not-displayed-this-session",
             "reason": reason,
             "source": source,
@@ -833,5 +861,8 @@ final class MobilePlayer: ObservableObject {
             "title": metadata.title
         ]) { _, new in new }
         diagnose("metadata.stale", "Stale metadata was prevented from remaining on display", metadata: fields)
+        lastStaleDiagnosticSignature = signature
+        lastStaleDiagnosticAt = now
+        suppressedStaleDiagnosticCount = 0
     }
 }

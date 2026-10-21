@@ -43,7 +43,7 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         PRODUCT_BUNDLE_IDENTIFIER: au.com.kevmarl.Wireless
         MARKETING_VERSION: "1.0"
-        CURRENT_PROJECT_VERSION: "10"
+        CURRENT_PROJECT_VERSION: "11"
         CODE_SIGN_STYLE: Automatic
         DEVELOPMENT_TEAM: QT3N6256FG
     # Declared here (not just in Xcode's Signing & Capabilities UI) so
@@ -81,6 +81,7 @@ targets:
       - path: WirelessTests
       - path: Shared/StationDirectory.swift
       - path: Shared/StationListOrganisation.swift
+      - path: Shared/WirelessContact.swift
       - path: Wireless/DelayCorrection.swift
       - path: Wireless/StreamTrackMetadata.swift
       - path: Wireless/CompanionMetadataProvider.swift

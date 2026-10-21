@@ -513,8 +513,32 @@ struct RadioPlayerView: View {
                         Label("Station website", systemImage: "safari")
                             .font(.system(size: metrics.primary, weight: .semibold))
                     }
-                    .padding(.bottom, 30)
+                    .padding(.bottom, 12)
                 }
+
+                Link(destination: WirelessContact.stationIssueURL(for: player.station)) {
+                    Label {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("Report an issue with this station")
+                                .font(.system(size: metrics.primary, weight: .semibold))
+                            Text("Playback, directory, artwork, ownership or legal concerns")
+                                .font(.system(size: metrics.secondary))
+                                .foregroundStyle(.secondary)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    } icon: {
+                        Image(systemName: "exclamationmark.bubble")
+                            .foregroundStyle(.purple)
+                    }
+                }
+                .buttonStyle(.plain)
+                .padding(14)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .glassEffect(in: RoundedRectangle(cornerRadius: 16))
+                .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.12), lineWidth: 0.5))
+                .accessibilityHint("Opens the Wireless contact form for reporting a concern about this station")
+                .accessibilityIdentifier("reportStationIssue")
+                .padding(.bottom, 30)
             }
             .padding(.horizontal, metrics.detailsGutter)
             .frame(maxWidth: 720, alignment: .leading)
