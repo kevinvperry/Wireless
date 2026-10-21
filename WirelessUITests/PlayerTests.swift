@@ -101,6 +101,32 @@ final class PlayerTests: XCTestCase {
     }
 
     @MainActor
+    func testSettingsOpensListeningStats() {
+        let app = XCUIApplication()
+        app.launch()
+        if app.buttons["Discover"].waitForExistence(timeout: 3) { app.buttons["Discover"].tap() }
+        XCTAssertTrue(app.buttons["settingsButton"].waitForExistence(timeout: 10))
+        app.buttons["settingsButton"].tap()
+        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
+
+        let listeningStats = app.buttons["listeningStats"]
+        XCTAssertTrue(listeningStats.waitForExistence(timeout: 3))
+        listeningStats.tap()
+
+        XCTAssertTrue(app.navigationBars["Listening Stats"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.descendants(matching: .any)["listeningStatsPage"].exists)
+        XCTAssertTrue(app.staticTexts["Time listened"].exists)
+        XCTAssertTrue(app.staticTexts["Top Stations"].exists)
+        XCTAssertTrue(app.staticTexts["Listening Heatmap"].exists)
+        XCTAssertTrue(app.staticTexts["Listening Clock"].exists)
+
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = "Listening Stats"
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+    }
+
+    @MainActor
     func testFavouritesSheetHasFullQueueStyleAndReorderMode() {
         let app = XCUIApplication()
         app.launch()

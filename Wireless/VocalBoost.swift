@@ -48,8 +48,10 @@ final class VocalBoostProcessor {
         try engine.start()
     }
 
-    func schedule(_ buffer: AVAudioPCMBuffer) {
-        player.scheduleBuffer(buffer)
+    func schedule(_ buffer: AVAudioPCMBuffer, completion: (@Sendable () -> Void)? = nil) {
+        player.scheduleBuffer(buffer, completionCallbackType: .dataRendered) { _ in
+            completion?()
+        }
     }
 
     func beginPlayback() throws {

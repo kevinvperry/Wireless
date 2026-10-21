@@ -27,6 +27,7 @@ private struct RadioPacket {
 // Mutable engine state is confined to work; the status callback is installed before prepare().
 final class RadioStreamEngine: NSObject, URLSessionDataDelegate, @unchecked Sendable {
     var onStatus: ((PlaybackStatus) -> Void)?
+    var onPlaybackInterval: ((TimeInterval, Date) -> Void)?
 
     private let work = DispatchQueue(label: "au.com.kevmarl.Wireless.stream")
     private var streamURL = URL(string: "http://13.54.221.214:8000/sen.mp3")!
@@ -49,6 +50,7 @@ final class RadioStreamEngine: NSObject, URLSessionDataDelegate, @unchecked Send
     private var audioFormat: AudioStreamBasicDescription?
     private var outputBuffers: [AudioQueueBufferRef] = []
     private var freeBuffers: [AudioQueueBufferRef] = []
+    private var queuedBufferDurations: [UInt: TimeInterval] = [:]
     private var packets: [RadioPacket] = []
     private var firstNumber: Int64 = 0
     private var nextNumber: Int64 = 0
@@ -307,6 +309,7 @@ final class RadioStreamEngine: NSObject, URLSessionDataDelegate, @unchecked Send
         audioQueue = nil
         outputBuffers.removeAll()
         freeBuffers.removeAll()
+        queuedBufferDurations.removeAll()
         outputStarted = false
         lastMeasuredDelay = nil
     }
@@ -482,6 +485,7 @@ final class RadioStreamEngine: NSObject, URLSessionDataDelegate, @unchecked Send
                 AudioQueueEnqueueBuffer(audioQueue, buffer, UInt32(desc.count), desc.baseAddress)
             }
             guard result == noErr else { fail("Could not queue audio."); return }
+            queuedBufferDurations[UInt(bitPattern: buffer)] = Double(descriptions.count) * packetDuration
             freeBuffers.removeLast()
             playNumber = number
         }
@@ -491,6 +495,10 @@ final class RadioStreamEngine: NSObject, URLSessionDataDelegate, @unchecked Send
         let returned = ReturnedAudioBuffer(queue: queue, buffer: buffer)
         work.async {
             guard self.wantsPlayback, self.audioQueue == returned.queue else { return }
+            if let seconds = self.queuedBufferDurations.removeValue(forKey: UInt(bitPattern: returned.buffer)),
+               seconds.isFinite, seconds > 0 {
+                self.onPlaybackInterval?(seconds, Date())
+            }
             self.freeBuffers.append(returned.buffer)
             self.fillAvailableBuffers()
         }

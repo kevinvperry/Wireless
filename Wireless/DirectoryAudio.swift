@@ -34,6 +34,7 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
 @MainActor final class DirectoryAudio {
     var onStatus: ((PlaybackStatus, Bool) -> Void)?
     var onTrackMetadata: ((StreamTrackMetadataEvaluation?) -> Void)?
+    var onPlaybackInterval: ((TimeInterval, Date) -> Void)?
     private let player = AVPlayer()
     private let metadataSidecarPlayer = AVPlayer()
     private let packetEngine = RadioStreamEngine()
@@ -56,6 +57,7 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
     private var stationID = "unknown"
     private var stationName = "Unknown station"
     private var companionMetadataPreferred = false
+    private var avPlayerAccountingSample: (position: TimeInterval, uptime: TimeInterval)?
 
     init(metadataHeartbeatInterval: TimeInterval = 60, metadataSilenceWarningInterval: TimeInterval = 120) {
         self.metadataHeartbeatInterval = metadataHeartbeatInterval
@@ -67,11 +69,23 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
                 self.onStatus?(PlaybackStatus(active: self.requested, buffering: update.buffering, progress: update.progress, title: update.title, detail: update.detail, measuredDelay: update.measuredDelay), true)
             }
         }
+        packetEngine.onPlaybackInterval = { [weak self] seconds, endedAt in
+            Task { @MainActor in
+                guard let self, self.requested, self.usesPacketBuffer else { return }
+                self.onPlaybackInterval?(seconds, endedAt)
+            }
+        }
         enhancedEngine.onStatus = { [weak self] update in
             Task { @MainActor in
                 guard let self, self.requested, self.usesEnhancedPlayback else { return }
                 if update.title == "Playing" { self.lastAdvance = Date() }
                 self.onStatus?(update, false)
+            }
+        }
+        enhancedEngine.onPlaybackInterval = { [weak self] seconds, endedAt in
+            Task { @MainActor in
+                guard let self, self.requested, self.usesEnhancedPlayback else { return }
+                self.onPlaybackInterval?(seconds, endedAt)
             }
         }
     }
@@ -134,6 +148,7 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
         stopMetadataSidecar()
         packetEngine.stop(); packetEngine.suspendPreparation()
         enhancedEngine.stop()
+        avPlayerAccountingSample = nil
     }
     func setSyncEnabled(_ enabled: Bool) {
         guard syncEnabled != enabled else { return }
@@ -176,6 +191,7 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
               let url = StreamRequestPolicy.playbackURL(for: streams[index]) else { return }
         onTrackMetadata?(nil)
         generation = UUID(); seeking = false; selectedStreamID = streams[index].id
+        avPlayerAccountingSample = nil
         packetEngine.stop(); packetEngine.suspendPreparation()
         enhancedEngine.stop()
         removeItemObservers()
@@ -311,6 +327,7 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
             Task { @MainActor in
                 guard let self, self.generation == token else { return }
                 self.seeking = false; self.lastAdvance = Date()
+                self.avPlayerAccountingSample = nil
                 if self.requested { self.player.play() }
             }
         }
@@ -344,6 +361,7 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
         }
         applyDelay()
         let playing = player.timeControlStatus == .playing && !seeking
+        recordAVPlayerInterval(position: time, playing: playing)
         let supported = seekRange != nil
         let preparingHLSBuffer = syncEnabled
             && streams[index].format == "hls"
@@ -357,6 +375,26 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
                     ? "Building an audio buffer for TV Sync. Delay controls will become available automatically."
                     : "Live playback. This stream does not provide a seekable delay buffer."
         publish(title: playing ? "Playing" : "Buffering…", detail: detail, buffering: !playing, supportsDelay: supported)
+    }
+
+    /// Counts advancing AVPlayer item time only while the player confirms it is
+    /// rendering. The monotonic-clock cap rejects playlist discontinuities while
+    /// still preserving delayed callbacks; explicit seeks and stream reloads
+    /// clear the baseline before accounting resumes.
+    private func recordAVPlayerInterval(position: TimeInterval, playing: Bool) {
+        guard !usesPacketBuffer, !usesEnhancedPlayback, position.isFinite else {
+            avPlayerAccountingSample = nil
+            return
+        }
+        let uptime = ProcessInfo.processInfo.systemUptime
+        defer { avPlayerAccountingSample = playing ? (position, uptime) : nil }
+        guard playing, let previous = avPlayerAccountingSample else { return }
+        let mediaDelta = position - previous.position
+        let wallDelta = uptime - previous.uptime
+        guard mediaDelta.isFinite, wallDelta.isFinite, mediaDelta > 0, wallDelta > 0 else { return }
+        let rendered = min(mediaDelta, wallDelta)
+        guard rendered > 0 else { return }
+        onPlaybackInterval?(rendered, Date())
     }
     private func checkMetadataDiagnostics(at now: Date = Date()) {
         guard !syncEnabled, metadataOutput != nil, var timeline = metadataTimeline else { return }
@@ -398,6 +436,7 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
         guard requested, streams.indices.contains(index) else { return }
         hlsPacketFallbackAttempted = true
         generation = UUID(); seeking = false
+        avPlayerAccountingSample = nil
         removeItemObservers()
         player.pause(); player.replaceCurrentItem(with: nil)
         usesPacketBuffer = true

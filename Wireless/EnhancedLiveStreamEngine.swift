@@ -6,6 +6,7 @@ import Foundation
 /// AVAudioEngine Vocal Boost graph. AVPlayer remains the ordinary live backend.
 final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @unchecked Sendable {
     var onStatus: (@Sendable (PlaybackStatus) -> Void)?
+    var onPlaybackInterval: (@Sendable (TimeInterval, Date) -> Void)?
 
     private let work = DispatchQueue(label: "au.com.kevmarl.Wireless.vocalBoost")
     private var session: URLSession?
@@ -171,8 +172,16 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
             fail("This stream could not be decoded for Vocal Boost.")
             return
         }
-        processor.schedule(pcm)
-        scheduledSeconds += Double(pcm.frameLength) / pcmFormat.sampleRate
+        let renderedSeconds = Double(pcm.frameLength) / pcmFormat.sampleRate
+        let token = generation
+        processor.schedule(pcm) { [weak self] in
+            guard let self else { return }
+            self.work.async {
+                guard self.requested, self.generation == token else { return }
+                self.onPlaybackInterval?(renderedSeconds, Date())
+            }
+        }
+        scheduledSeconds += renderedSeconds
         if !started, scheduledSeconds >= 2 {
             started = true
             do {

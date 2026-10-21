@@ -40,7 +40,7 @@ struct WirelessSupportSection: Identifiable {
 enum WirelessSupportGuide {
     static let sections: [WirelessSupportSection] = [
         gettingStarted, discover, player, favourites, sync, streams,
-        vocalBoost, sleepTimer, sleepSchedule, systemPlayback, carPlay, settings, contact, troubleshooting
+        vocalBoost, sleepTimer, sleepSchedule, systemPlayback, carPlay, listeningStats, settings, contact, troubleshooting
     ]
 
     private static let gettingStarted = WirelessSupportSection(
@@ -230,6 +230,26 @@ enum WirelessSupportGuide {
                 ["Share TestFlight link", "Opens the system share sheet with the Wireless TestFlight invitation."]
             ]),
             .paragraph("Settings also provides this guide and the installed app version. The About section links to Wireless’s public GitHub repository and MIT Licence. Wireless’s original code and documentation use the MIT Licence; Vocal Boost retains MPL-2.0, with details in Open Source Acknowledgements.")
+        ]
+    )
+
+    private static let listeningStats = WirelessSupportSection(
+        id: "listening-stats", icon: "chart.bar.xaxis", title: "Listening Stats",
+        summary: "Listening time, top stations and your radio habits",
+        blocks: [
+            .paragraph("Open **Settings > Listening Stats**. Wireless begins tracking when this version is installed; Favourites and Recently Played cannot be used to reconstruct earlier listening time."),
+            .paragraph("Choose **7 Days**, the displayed month, the displayed year or **Lifetime**. When an earlier completed period contains listening, use the **This / Last** control to compare it."),
+            .table([
+                ["Time listened", "Audio confirmed as rendered by the active playback engine. Connecting, buffering, delay insertion and reconnection time do not count."],
+                ["Top Stations", "Stations ranked by listening time, with session length, listening share and last-listened detail."],
+                ["Listening Heatmap", "Daily listening for the selected week or month."],
+                ["Listening Over Time", "Monthly listening for the selected year or Lifetime."],
+                ["Listening Clock", "The hours of day when you listen most."],
+                ["How You Listen", "Average and longest sessions, plus listening by Live, TV Sync, Vocal Boost and audio-route category."]
+            ]),
+            .paragraph("A listening session begins when a station first renders audio and ends when you pause or change station. A brief reconnection or alternate-stream failover for the same station remains one session, but the silent gap is excluded."),
+            .paragraph("Use the options button on Listening Stats to export an importable JSON backup or a CSV spreadsheet, or to import a previous JSON backup. Stats Health shows recorded days, the tracking start, the last local save and recovery state."),
+            .callout(.note, "Listening Stats are protected in Wireless’s local Application Support storage and are never sent to Wireless. They do not currently synchronise through iCloud.")
         ]
     )
 

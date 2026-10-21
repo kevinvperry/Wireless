@@ -71,6 +71,7 @@ final class MobilePlayer: ObservableObject {
         }
     } }
     let library: StationLibrary
+    let statsStore: WirelessListeningStatsStore
     let sleepTimer = SleepTimerService()
     let sleepSchedule = SleepScheduleService()
     let sleepScheduleSettings = SleepScheduleSettings()
@@ -164,7 +165,10 @@ final class MobilePlayer: ObservableObject {
         StreamDiagnosticLogger.shared.record(event, message, metadata: metadata)
     }
 
-    init(defaults: UserDefaults = .standard) {
+    init(
+        defaults: UserDefaults = .standard,
+        statsStore: WirelessListeningStatsStore = .shared
+    ) {
         let initialSyncEnabled: Bool
         if defaults.bool(forKey: Self.syncDefaultOffMigrationKey) {
             initialSyncEnabled = defaults.object(forKey: Self.syncEnabledDefaultsKey) as? Bool ?? false
@@ -178,6 +182,7 @@ final class MobilePlayer: ObservableObject {
         }
         _syncEnabled = Published(initialValue: initialSyncEnabled)
         self.defaults = defaults
+        self.statsStore = statsStore
         let library = StationLibrary(defaults: defaults)
         self.library = library
         let saved = defaults.data(forKey: "lastPlayedStation.v1").flatMap { try? JSONDecoder().decode(DirectoryStation.self, from: $0) }
@@ -209,6 +214,16 @@ final class MobilePlayer: ObservableObject {
                 return
             }
             self.applyMetadataEvaluation(evaluation, source: "embedded")
+        }
+        directoryAudio.onPlaybackInterval = { [weak self] seconds, endedAt in
+            guard let self else { return }
+            self.statsStore.recordRendered(
+                seconds: seconds,
+                station: self.station,
+                mode: self.listeningMode,
+                route: self.audioRouteCategory,
+                endedAt: endedAt
+            )
         }
         directoryAudio.setSyncEnabled(syncEnabled)
         directoryAudio.setVocalBoost(vocalBoost)
@@ -391,6 +406,8 @@ final class MobilePlayer: ObservableObject {
         endRecoveryGrace()
         resumeAfterInterruption = false
         directoryAudio.stop()
+        statsStore.endSession()
+        statsStore.checkpoint()
         buffering = false; status = "Paused"
         publishNowPlaying()
     }
@@ -489,12 +506,18 @@ final class MobilePlayer: ObservableObject {
             refreshRoute()
             refreshDetails()
             publishNowPlaying()
+        } else {
+            statsStore.checkpoint()
         }
     }
 
     private func recordPlaybackStatus(_ update: PlaybackStatus, supportsDelay: Bool) {
         let statusKey = "\(update.active)|\(update.buffering)|\(update.title)|\(supportsDelay)"
         if update.buffering, bufferingStartedAt == nil { bufferingStartedAt = Date() }
+        if !update.active {
+            statsStore.endSession()
+            statsStore.checkpoint()
+        }
         if !update.buffering, let started = bufferingStartedAt {
             diagnose("playback.bufferingEnded", "Buffering ended", metadata: [
                 "durationSeconds": String(format: "%.2f", Date().timeIntervalSince(started)),
@@ -544,6 +567,30 @@ final class MobilePlayer: ObservableObject {
     }
     private func refreshRoute() {
         route = AVAudioSession.sharedInstance().currentRoute.outputs.first?.portName ?? "This device"
+    }
+
+    private var listeningMode: WirelessListeningMode {
+        if syncEnabled { return .tvSync }
+        if vocalBoost != .off { return .vocalBoost }
+        return .live
+    }
+
+    private var audioRouteCategory: WirelessAudioRouteCategory {
+        guard let output = AVAudioSession.sharedInstance().currentRoute.outputs.first else { return .thisDevice }
+        switch output.portType {
+        case .builtInSpeaker, .builtInReceiver:
+            return .thisDevice
+        case .headphones, .headsetMic, .usbAudio:
+            return .headphones
+        case .bluetoothA2DP, .bluetoothHFP, .bluetoothLE:
+            return .bluetooth
+        case .airPlay:
+            return .airPlay
+        case .carAudio:
+            return .carPlay
+        default:
+            return .other
+        }
     }
     private func registerRemoteControls() {
         let centre = MPRemoteCommandCenter.shared()

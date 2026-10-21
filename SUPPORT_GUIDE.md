@@ -147,6 +147,27 @@ The CarPlay player shows the song title, artist and station name when current so
 
 Favourites changed in CarPlay also update on your iPhone. Auto Resume applies when Wireless starts from CarPlay.
 
+## Listening Stats
+
+Open **Settings > Listening Stats** to see how you use Wireless. Tracking begins when this version is installed. Wireless cannot reconstruct earlier listening time from Favourites or Recently Played because those records do not prove how long audio was heard.
+
+Choose **7 Days**, the displayed month, the displayed year or **Lifetime**. When an earlier completed period contains listening, a **This / Last** control compares the current and previous week, month or year.
+
+| Section | Meaning |
+|---|---|
+| Time listened | Audio confirmed as rendered by the active playback engine. Connecting, buffering, TV Sync delay insertion and reconnection time do not count. |
+| Top Stations | Stations ranked by listening time. Expand a station for average and longest session, listening share and last-listened detail. |
+| Listening Heatmap | Daily listening for the selected week or month. |
+| Listening Over Time | Monthly listening for the selected year or Lifetime. |
+| Listening Clock | The hours of day when you listen most. |
+| How You Listen | Average and longest sessions, plus listening by Live, TV Sync, Vocal Boost and audio-route category. |
+
+A listening session begins when a station first renders audio and ends when you pause or change station. A brief reconnection or alternate-stream failover for the same station remains one session, but the silent gap is excluded.
+
+Use the options button on Listening Stats to export an importable JSON backup or a CSV spreadsheet, or to import a previous JSON backup. **Stats Health** shows the number of recorded days, the tracking start, the last local save and recovery state.
+
+Listening Stats are protected in Wireless’s local Application Support storage and are never sent to Wireless. They do not currently synchronise through iCloud.
+
 ## Settings
 
 Open the gear button in the top-right corner of Discover to reach Settings.

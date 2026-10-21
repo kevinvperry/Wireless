@@ -87,6 +87,8 @@ targets:
       - path: Wireless/CompanionMetadataProvider.swift
       - path: Wireless/StreamDiagnosticLogger.swift
       - path: Wireless/SleepScheduleService.swift
+      - path: Wireless/WirelessListeningStats.swift
+      - path: Wireless/WirelessListeningStatsStore.swift
     settings:
       base:
         SWIFT_VERSION: 5.0

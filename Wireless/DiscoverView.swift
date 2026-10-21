@@ -367,6 +367,20 @@ private struct WirelessSettingsView: View {
     var body: some View {
         Form {
             Section {
+                NavigationLink {
+                    WirelessStatsView(store: .shared)
+                } label: {
+                    settingsRow("Listening Stats", systemImage: "chart.bar.xaxis")
+                }
+                .accessibilityIdentifier("listeningStats")
+            } header: {
+                Text("Listening")
+            } footer: {
+                Text("See your listening time, top stations, patterns and listening habits. Stats stay private on this device.")
+            }
+            .listRowBackground(cardBackground)
+
+            Section {
                 Toggle(isOn: $autoResume) {
                     settingsRow("Auto Resume", systemImage: "play.circle")
                 }
