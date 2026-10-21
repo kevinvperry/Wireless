@@ -476,7 +476,7 @@
 				CODE_SIGN_ENTITLEMENTS = Wireless/Wireless.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 11;
+				CURRENT_PROJECT_VERSION = 12;
 				DEVELOPMENT_TEAM = QT3N6256FG;
 				INFOPLIST_FILE = Wireless/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
@@ -594,7 +594,7 @@
 				CODE_SIGN_ENTITLEMENTS = Wireless/Wireless.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 11;
+				CURRENT_PROJECT_VERSION = 12;
 				DEVELOPMENT_TEAM = QT3N6256FG;
 				INFOPLIST_FILE = Wireless/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
