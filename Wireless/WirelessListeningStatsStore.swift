@@ -8,6 +8,7 @@ import UIKit
 @MainActor
 final class WirelessListeningStatsStore: ObservableObject {
     static let shared = WirelessListeningStatsStore()
+    static let detailedSessionLimit = 5_000
 
     enum LoadState: Equatable {
         case absent
@@ -113,8 +114,9 @@ final class WirelessListeningStatsStore: ObservableObject {
               station.id != DirectoryStation.unselected.id,
               seconds.isFinite, seconds > 0 else { return }
 
-        if activeSession?.stationID != station.id {
-            endSession()
+        let startsNewSession = activeSession?.stationID != station.id
+        if startsNewSession {
+            endSession(reason: .stationChanged)
             let start = endedAt.addingTimeInterval(-seconds)
             activeSession = ActiveSession(
                 id: UUID().uuidString,
@@ -157,6 +159,7 @@ final class WirelessListeningStatsStore: ObservableObject {
                 renderedSeconds: session.renderedSeconds
             )
             data.days[session.startDayKey] = startDay
+            if startsNewSession { pruneDetailedSessionsIfNeeded() }
         }
 
         storageRevision &+= 1
@@ -166,8 +169,46 @@ final class WirelessListeningStatsStore: ObservableObject {
         }
     }
 
-    func endSession() {
+    func endSession(reason: WirelessListeningSessionEndReason = .paused) {
+        if let activeSession,
+           var day = data.days[activeSession.startDayKey],
+           var session = day.sessions[activeSession.id] {
+            session.endReason = reason
+            day.sessions[activeSession.id] = session
+            data.days[activeSession.startDayKey] = day
+            storageRevision &+= 1
+            revision &+= 1
+        }
         activeSession = nil
+    }
+
+    var activeSessionID: String? { activeSession?.id }
+
+    func listeningHistory() -> WirelessListeningHistorySummary {
+        let snapshots = data.days.values.reduce(into: [String: WirelessStationStatsSnapshot]()) { result, day in
+            result.merge(day.stationSnapshots) { _, latest in latest }
+        }
+        let items = data.days.values
+            .flatMap { $0.sessions.values }
+            .filter(\.isHistoryEligible)
+            .sorted {
+                if $0.endedAt != $1.endedAt { return $0.endedAt > $1.endedAt }
+                return $0.startedAt > $1.startedAt
+            }
+            .map { session in
+                WirelessListeningHistoryItem(
+                    session: session,
+                    station: snapshots[session.stationID]
+                        ?? WirelessStationStatsSnapshot(
+                            id: session.stationID,
+                            name: "Unknown Station",
+                            network: "",
+                            location: "",
+                            artworkURL: ""
+                        )
+                )
+            }
+        return WirelessListeningHistorySummary(items: items)
     }
 
     func checkpoint() {
@@ -285,6 +326,7 @@ final class WirelessListeningStatsStore: ObservableObject {
             }
         }
         data.startedAt = min(data.startedAt, incoming.startedAt)
+        pruneDetailedSessionsIfNeeded()
         storageRevision &+= 1
         revision &+= 1
         save()
@@ -328,6 +370,7 @@ final class WirelessListeningStatsStore: ObservableObject {
         }
         do {
             data = try validatedData(at: fileURL)
+            pruneDetailedSessionsIfNeeded()
             loadState = .loaded
         } catch {
             quarantine(fileURL)
@@ -389,6 +432,21 @@ final class WirelessListeningStatsStore: ObservableObject {
         for (key, value) in rhs.modeSeconds { result.modeSeconds[key] = max(result.modeSeconds[key] ?? 0, value) }
         for (key, value) in rhs.routeSeconds { result.routeSeconds[key] = max(result.routeSeconds[key] ?? 0, value) }
         return result
+    }
+
+    private func pruneDetailedSessionsIfNeeded() {
+        let sessions = data.days.values.flatMap { day in
+            day.sessions.values.map { (day.dayKey, $0) }
+        }
+        guard sessions.count > Self.detailedSessionLimit else { return }
+        let excess = sessions.count - Self.detailedSessionLimit
+        let oldest = sessions.sorted {
+            if $0.1.endedAt != $1.1.endedAt { return $0.1.endedAt < $1.1.endedAt }
+            return $0.1.startedAt < $1.1.startedAt
+        }.prefix(excess)
+        for (dayKey, session) in oldest {
+            data.days[dayKey]?.sessions.removeValue(forKey: session.id)
+        }
     }
 
     private struct Segment { let dayKey: String; let hour: Int; let seconds: TimeInterval }

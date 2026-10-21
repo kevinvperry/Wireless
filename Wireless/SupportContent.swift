@@ -40,7 +40,7 @@ struct WirelessSupportSection: Identifiable {
 enum WirelessSupportGuide {
     static let sections: [WirelessSupportSection] = [
         gettingStarted, discover, player, favourites, sync, streams,
-        vocalBoost, sleepTimer, sleepSchedule, systemPlayback, carPlay, listeningStats, settings, contact, troubleshooting
+        vocalBoost, sleepTimer, sleepSchedule, systemPlayback, carPlay, listeningStats, listeningHistory, settings, contact, troubleshooting
     ]
 
     private static let gettingStarted = WirelessSupportSection(
@@ -250,6 +250,18 @@ enum WirelessSupportGuide {
             .paragraph("A listening session begins when a station first renders audio and ends when you pause or change station. A brief reconnection or alternate-stream failover for the same station remains one session, but the silent gap is excluded."),
             .paragraph("Use the options button on Listening Stats to export an importable JSON backup or a CSV spreadsheet, or to import a previous JSON backup. Stats Health shows recorded days, the tracking start, the last local save and recovery state."),
             .callout(.note, "Listening Stats are protected in Wireless’s local Application Support storage and are never sent to Wireless. They do not currently synchronise through iCloud.")
+        ]
+    )
+
+    private static let listeningHistory = WirelessSupportSection(
+        id: "listening-history", icon: "clock.arrow.circlepath", title: "Listening History",
+        summary: "Search and revisit individual station-listening sessions",
+        blocks: [
+            .paragraph("Open **Settings > Listening History** to see individual live-radio sessions, newest first. A session appears after Wireless confirms at least one minute of rendered audio."),
+            .paragraph("Sessions are grouped under **Today**, **Yesterday** or their calendar date. Search by station, network or location. Each row shows the listening duration and start and finish times; the active session is highlighted as **Playing**."),
+            .paragraph("Tap a current directory station or swipe from the leading edge to play it. Swipe from the trailing edge to add or remove it from Favourites. If a retained station is no longer available in the directory, its history remains readable but playback and favourite actions are unavailable."),
+            .paragraph("Pausing and later resuming the same station creates a new row. Buffering and reconnection gaps do not create another row and do not add listening time. A session crossing midnight remains one history row, while Listening Stats still assigns rendered audio to the correct day and hour."),
+            .callout(.note, "Listening History uses the same protected local data as Listening Stats and is included in its JSON backup. Wireless retains the newest 5,000 detailed sessions without reducing the longer-term daily totals used by Listening Stats.")
         ]
     )
 

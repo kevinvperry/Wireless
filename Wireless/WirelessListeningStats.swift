@@ -42,12 +42,42 @@ struct WirelessStationStatsSnapshot: Codable, Equatable, Sendable {
     var artworkURL: String
 }
 
+enum WirelessListeningSessionEndReason: String, Codable, Sendable {
+    case paused
+    case stationChanged
+    case playbackEnded
+}
+
 struct WirelessListeningSession: Codable, Equatable, Sendable {
+    static let historyMinimumSeconds: TimeInterval = 60
+
     let id: String
     let stationID: String
     let startedAt: Date
     var endedAt: Date
     var renderedSeconds: TimeInterval
+    var endReason: WirelessListeningSessionEndReason? = nil
+
+    var isHistoryEligible: Bool {
+        renderedSeconds >= Self.historyMinimumSeconds
+    }
+}
+
+struct WirelessListeningHistoryItem: Identifiable, Equatable, Sendable {
+    let session: WirelessListeningSession
+    let station: WirelessStationStatsSnapshot
+
+    var id: String { session.id }
+}
+
+struct WirelessListeningHistorySummary: Equatable, Sendable {
+    var items: [WirelessListeningHistoryItem]
+
+    var listeningSeconds: TimeInterval {
+        items.reduce(0) { $0 + $1.session.renderedSeconds }
+    }
+
+    var sessionCount: Int { items.count }
 }
 
 struct WirelessDayStats: Codable, Equatable, Sendable {

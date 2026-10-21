@@ -406,7 +406,7 @@ final class MobilePlayer: ObservableObject {
         endRecoveryGrace()
         resumeAfterInterruption = false
         directoryAudio.stop()
-        statsStore.endSession()
+        statsStore.endSession(reason: .paused)
         statsStore.checkpoint()
         buffering = false; status = "Paused"
         publishNowPlaying()
@@ -515,7 +515,7 @@ final class MobilePlayer: ObservableObject {
         let statusKey = "\(update.active)|\(update.buffering)|\(update.title)|\(supportsDelay)"
         if update.buffering, bufferingStartedAt == nil { bufferingStartedAt = Date() }
         if !update.active {
-            statsStore.endSession()
+            statsStore.endSession(reason: .playbackEnded)
             statsStore.checkpoint()
         }
         if !update.buffering, let started = bufferingStartedAt {

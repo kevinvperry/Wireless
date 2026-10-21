@@ -64,6 +64,99 @@ final class WirelessListeningStatsTests: XCTestCase {
         XCTAssertEqual(summary.stationCount, 2)
     }
 
+    func testListeningHistoryUsesOneMinuteEligibilityForRowsAndCards() throws {
+        let store = makeStore()
+        let short = makeStation(id: "short", name: "Short Listen")
+        let eligible = makeStation(id: "eligible", name: "History Station")
+        let time = try date("2026-10-21T12:00:00+11:00")
+
+        store.recordRendered(seconds: 59, station: short, mode: .live, route: .thisDevice, endedAt: time)
+        store.endSession()
+        store.recordRendered(seconds: 60, station: eligible, mode: .live, route: .thisDevice, endedAt: time.addingTimeInterval(120))
+
+        let history = store.listeningHistory()
+        XCTAssertEqual(history.sessionCount, 1)
+        XCTAssertEqual(history.listeningSeconds, 60, accuracy: 0.001)
+        XCTAssertEqual(history.items.first?.station.name, "History Station")
+        XCTAssertEqual(history.items.first?.session.stationID, eligible.id)
+    }
+
+    func testOlderSessionJSONDecodesWithoutAnEndReason() throws {
+        let json = """
+        {
+          "id": "legacy-session",
+          "stationID": "station-a",
+          "startedAt": "2026-10-21T00:00:00Z",
+          "endedAt": "2026-10-21T00:01:00Z",
+          "renderedSeconds": 60
+        }
+        """
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+
+        let session = try decoder.decode(WirelessListeningSession.self, from: Data(json.utf8))
+
+        XCTAssertNil(session.endReason)
+        XCTAssertTrue(session.isHistoryEligible)
+    }
+
+    func testListeningHistoryCreatesANewRowAfterPauseAndResume() throws {
+        let store = makeStore()
+        let station = makeStation(id: "station-a", name: "Station A")
+        let time = try date("2026-10-21T12:00:00+11:00")
+
+        store.recordRendered(seconds: 60, station: station, mode: .live, route: .thisDevice, endedAt: time)
+        let firstSessionID = try XCTUnwrap(store.activeSessionID)
+        store.endSession(reason: .paused)
+        store.recordRendered(seconds: 60, station: station, mode: .live, route: .thisDevice, endedAt: time.addingTimeInterval(120))
+
+        let history = store.listeningHistory()
+        XCTAssertEqual(history.sessionCount, 2)
+        XCTAssertNotEqual(store.activeSessionID, firstSessionID)
+        XCTAssertEqual(history.items.last?.session.endReason, .paused)
+        XCTAssertNil(history.items.first?.session.endReason)
+    }
+
+    func testListeningHistoryOrdersCrossMidnightSessionByLatestHeardTime() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = try XCTUnwrap(TimeZone(identifier: "Australia/Melbourne"))
+        let store = makeStore(calendar: calendar)
+        let station = makeStation(id: "overnight", name: "Overnight Radio")
+        let endedAt = try date("2026-10-22T00:00:30+11:00")
+
+        store.recordRendered(seconds: 90, station: station, mode: .live, route: .thisDevice, endedAt: endedAt)
+
+        let item = try XCTUnwrap(store.listeningHistory().items.first)
+        XCTAssertEqual(item.session.startedAt, endedAt.addingTimeInterval(-90))
+        XCTAssertEqual(item.session.endedAt, endedAt)
+        XCTAssertEqual(item.session.renderedSeconds, 90, accuracy: 0.001)
+    }
+
+    func testDetailedHistoryPruningKeepsAggregateListeningTotals() throws {
+        let store = makeStore()
+        let station = makeStation(id: "long-term", name: "Long-term Station")
+        let start = try date("2020-01-01T00:00:00Z")
+        let sessionCount = WirelessListeningStatsStore.detailedSessionLimit + 1
+
+        for index in 0..<sessionCount {
+            store.recordRendered(
+                seconds: 60,
+                station: station,
+                mode: .live,
+                route: .thisDevice,
+                endedAt: start.addingTimeInterval(Double(index * 120))
+            )
+            store.endSession()
+        }
+
+        XCTAssertEqual(store.listeningHistory().sessionCount, WirelessListeningStatsStore.detailedSessionLimit)
+        XCTAssertEqual(
+            store.summary(for: .lifetime).listeningSeconds,
+            Double(sessionCount * 60),
+            accuracy: 0.001
+        )
+    }
+
     func testPrimaryCorruptionRecoversLastKnownGoodBackup() throws {
         let file = temporaryFile()
         let station = makeStation(id: "station-a", name: "Station A")

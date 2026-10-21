@@ -112,7 +112,7 @@ struct DiscoverView: View {
             if showsSettingsButton {
                 ToolbarItem(placement: .topBarTrailing) {
                     NavigationLink {
-                        WirelessSettingsView()
+                        WirelessSettingsView(player: .shared)
                     } label: {
                         Image(systemName: "gearshape")
                     }
@@ -353,6 +353,7 @@ private struct DiscoverInterestTile: View {
 }
 
 private struct WirelessSettingsView: View {
+    @ObservedObject var player: MobilePlayer
     @AppStorage("keepScreenAwakeDuringPlayback") private var keepScreenAwake = false
     @AppStorage(MobilePlayer.autoResumeKey) private var autoResume = false
     @State private var developerTapCount = 0
@@ -373,10 +374,17 @@ private struct WirelessSettingsView: View {
                     settingsRow("Listening Stats", systemImage: "chart.bar.xaxis")
                 }
                 .accessibilityIdentifier("listeningStats")
+
+                NavigationLink {
+                    WirelessListeningHistoryView(store: player.statsStore, player: player)
+                } label: {
+                    settingsRow("Listening History", systemImage: "clock.arrow.circlepath")
+                }
+                .accessibilityIdentifier("listeningHistory")
             } header: {
                 Text("Listening")
             } footer: {
-                Text("See your listening time, top stations, patterns and listening habits. Stats stay private on this device.")
+                Text("See your listening time, top stations, patterns and individual listening sessions. Stats and history stay private on this device.")
             }
             .listRowBackground(cardBackground)
 

@@ -168,6 +168,18 @@ Use the options button on Listening Stats to export an importable JSON backup or
 
 Listening Stats are protected in Wireless’s local Application Support storage and are never sent to Wireless. They do not currently synchronise through iCloud.
 
+## Listening History
+
+Open **Settings > Listening History** to see individual live-radio sessions, newest first. A session appears after Wireless confirms at least one minute of rendered audio.
+
+Sessions are grouped under **Today**, **Yesterday** or their calendar date. Search by station, network or location. Each row shows the listening duration and start and finish times; the active session is highlighted as **Playing**.
+
+Tap a current directory station or swipe from the leading edge to play it. Swipe from the trailing edge to add or remove it from Favourites. If a retained station is no longer available in the directory, its history remains readable but playback and favourite actions are unavailable.
+
+Pausing and later resuming the same station creates a new row. Buffering and reconnection gaps do not create another row and do not add listening time. A session crossing midnight remains one history row, while Listening Stats still assigns rendered audio to the correct day and hour.
+
+Listening History uses the same protected local data as Listening Stats and is included in its JSON backup. Wireless retains the newest 5,000 detailed sessions without reducing the longer-term daily totals used by Listening Stats.
+
 ## Settings
 
 Open the gear button in the top-right corner of Discover to reach Settings.
