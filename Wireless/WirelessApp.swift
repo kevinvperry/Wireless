@@ -19,7 +19,10 @@ struct WirelessApp: App {
             DirectoryStation(id: id, name: name, network: "Preview Network", country: "Australia",
                 state: "VIC", cities: ["Melbourne"], tags: [], description: "Layout preview",
                 website_url: "", logo_url: "", preferred_stream_id: DirectoryStation.sen.preferred_stream_id,
-                streams: DirectoryStation.sen.streams)
+                streams: ProcessInfo.processInfo.environment["WIRELESS_TEST_HLS_URL"].flatMap { URL(string: $0) }.map {
+                    [StationStream(id: "sen-hls", url: $0.absoluteString, label: "HLS test", format: "hls",
+                                   codec: "aac", bitrate_kbps: nil, request_headers: [:])]
+                } ?? DirectoryStation.sen.streams)
         }
         let current = station("layout-current", "Wireless Radio Melbourne")
         let favourites = [station("layout-favourite", "The Commute with Marty Sheargold"),

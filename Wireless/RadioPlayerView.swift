@@ -39,6 +39,7 @@ private struct AudioControlsSheet: View {
                     Text("Vocal Boost")
                 } footer: {
                     Text(vocalBoostHelp)
+                        .accessibilityIdentifier("vocalBoostStatus")
                 }
                 Section {
                     Text("Choose an alternative stream if reception is unreliable.")
@@ -60,8 +61,7 @@ private struct AudioControlsSheet: View {
     }
 
     private var vocalBoostHelp: String {
-        if player.syncEnabled { return "Vocal Boost is disabled while TV Sync is on." }
-        return "Light, Standard and Strong use enhanced AVAudioEngine playback for compatible direct MP3 and AAC streams. Other streams and Off use AVPlayer."
+        player.vocalBoostState.message + " Light reduces rumble; Standard and Strong also compress speech and limit peaks. HLS processing requires iOS 27 or later."
     }
 }
 

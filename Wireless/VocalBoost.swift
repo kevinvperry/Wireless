@@ -44,7 +44,7 @@ final class VocalBoostProcessor {
             engine.connect(dynamics, to: limiter, format: format)
             engine.connect(limiter, to: engine.mainMixerNode, format: format)
         }
-        configure(level)
+        try configure(level)
         try engine.start()
     }
 
@@ -72,63 +72,26 @@ final class VocalBoostProcessor {
         engine.stop()
     }
 
-    private func configure(_ level: VocalBoostLevel) {
-        switch level {
-        case .off:
-            highPass.bypass = true
-            dynamics.bypass = true
-            limiter.bypass = true
-        case .light:
-            configureHighPass()
-            highPass.bypass = false
-            dynamics.bypass = true
-            configureLimiter(preGain: 4)
-            limiter.bypass = false
-        case .standard:
-            configureHighPass()
-            highPass.bypass = false
-            configureDynamics()
-            dynamics.bypass = false
-            configureLimiter(preGain: 8)
-            limiter.bypass = false
-        case .strong:
-            configureHighPass()
-            highPass.bypass = false
-            configureDynamics()
-            dynamics.bypass = false
-            configureLimiter(preGain: 11)
-            limiter.bypass = false
-        }
-    }
+    /// As in Autohop, keep the graph connected and update parameters in place.
+    func setLevel(_ level: VocalBoostLevel) throws { try configure(level) }
 
-    private func configureHighPass() {
-        set(highPass, kHipassParam_CutoffFrequency, 180)
-        set(highPass, kHipassParam_Resonance, 0)
-    }
-
-    private func configureDynamics() {
-        set(dynamics, kDynamicsProcessorParam_Threshold, -41)
-        set(dynamics, kDynamicsProcessorParam_HeadRoom, 40)
-        set(dynamics, kDynamicsProcessorParam_ExpansionRatio, 1)
-        set(dynamics, kDynamicsProcessorParam_ExpansionThreshold, -100)
-        set(dynamics, kDynamicsProcessorParam_AttackTime, 0.05)
-        set(dynamics, kDynamicsProcessorParam_ReleaseTime, 0.2)
-        set(dynamics, kDynamicsProcessorParam_OverallGain, 0)
-    }
-
-    private func configureLimiter(preGain: Float) {
-        set(limiter, kLimiterParam_AttackTime, 0.002)
-        set(limiter, kLimiterParam_DecayTime, 0.005)
-        set(limiter, kLimiterParam_PreGain, preGain)
-    }
-
-    private func set(_ unit: AVAudioUnitEffect, _ parameter: AudioUnitParameterID, _ value: Float) {
-        if #available(iOS 27.0, *) {
-            _ = unit.withAudioUnit { audioUnit in
-                AudioUnitSetParameter(audioUnit, parameter, kAudioUnitScope_Global, 0, value, 0)
+    private func configure(_ level: VocalBoostLevel) throws {
+        for (unit, subtype) in [(highPass, kAudioUnitSubType_HighPassFilter),
+                                (dynamics, kAudioUnitSubType_DynamicsProcessor),
+                                (limiter, kAudioUnitSubType_PeakLimiter)] {
+            let parameters = VocalBoostConfiguration.parameters(for: subtype, level: level)
+            unit.bypass = parameters.isEmpty
+            for (parameter, value) in parameters {
+                let status: OSStatus
+                if #available(iOS 27.0, *) {
+                    status = unit.withAudioUnit {
+                        AudioUnitSetParameter($0, parameter, kAudioUnitScope_Global, 0, value, 0)
+                    }
+                } else {
+                    status = AudioUnitSetParameter(unit.audioUnit, parameter, kAudioUnitScope_Global, 0, value, 0)
+                }
+                guard status == noErr else { throw NSError(domain: NSOSStatusErrorDomain, code: Int(status)) }
             }
-        } else {
-            AudioUnitSetParameter(unit.audioUnit, parameter, kAudioUnitScope_Global, 0, value, 0)
         }
     }
 
@@ -141,5 +104,58 @@ final class VocalBoostProcessor {
             componentFlagsMask: 0
         )
         return AVAudioUnitEffect(audioComponentDescription: description)
+    }
+}
+
+/// Shared by the direct-stream graph and the HLS tap. Adapted from Autohop's
+/// configureVocalBoostChain; keep the processing identical across transports.
+enum VocalBoostConfiguration {
+    static let subtypes: [OSType] = [kAudioUnitSubType_HighPassFilter,
+                                    kAudioUnitSubType_DynamicsProcessor,
+                                    kAudioUnitSubType_PeakLimiter]
+
+    static func parameters(for subtype: OSType, level: VocalBoostLevel) -> [(AudioUnitParameterID, Float)] {
+        guard level != .off else { return [] }
+        switch subtype {
+        case kAudioUnitSubType_HighPassFilter:
+            return [(kHipassParam_CutoffFrequency, 180), (kHipassParam_Resonance, 0)]
+        case kAudioUnitSubType_DynamicsProcessor:
+            guard level != .light else { return [] }
+            return [(kDynamicsProcessorParam_Threshold, -41), (kDynamicsProcessorParam_HeadRoom, 40),
+                    (kDynamicsProcessorParam_ExpansionRatio, 1), (kDynamicsProcessorParam_ExpansionThreshold, -100),
+                    (kDynamicsProcessorParam_AttackTime, 0.05), (kDynamicsProcessorParam_ReleaseTime, 0.2),
+                    (kDynamicsProcessorParam_OverallGain, 0)]
+        case kAudioUnitSubType_PeakLimiter:
+            return [(kLimiterParam_AttackTime, 0.002), (kLimiterParam_DecayTime, 0.005),
+                    (kLimiterParam_PreGain, level == .light ? 4 : level == .standard ? 8 : 11)]
+        default:
+            return []
+        }
+    }
+}
+
+enum VocalBoostState: Equatable, Sendable {
+    case off, suspendedForSync, ready, preparing, active
+    case unavailable(String)
+
+    var isActive: Bool { self == .active }
+    var message: String {
+        switch self {
+        case .off: return "Off · Original broadcast audio."
+        case .suspendedForSync: return "Unavailable while TV Sync is on."
+        case .ready: return "Ready · Press Play to use Vocal Boost."
+        case .preparing: return "Waiting for processed audio…"
+        case .active: return "Active · Speech processing is running."
+        case .unavailable(let reason): return "Unavailable · " + reason + " Playback continues without Vocal Boost."
+        }
+    }
+
+    static func unsupportedReason(format: String?, supportsHLSTap: Bool) -> String? {
+        guard let format else { return "Choose a station first." }
+        if ["mp3", "aac"].contains(format) { return nil }
+        if format == "hls" {
+            return supportsHLSTap ? nil : "HLS Vocal Boost requires iOS 27 or later. Try a direct MP3 or AAC stream."
+        }
+        return "This stream format does not support Vocal Boost. Try a direct MP3 or AAC stream."
     }
 }

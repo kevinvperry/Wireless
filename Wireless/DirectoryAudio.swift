@@ -33,6 +33,11 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
 /// All AVPlayer state and item replacement are confined to the main actor.
 @MainActor final class DirectoryAudio {
     var onStatus: ((PlaybackStatus, Bool) -> Void)?
+    var onVocalBoostState: ((VocalBoostState) -> Void)?
+    private(set) var vocalBoostState: VocalBoostState = .off
+    private var hlsVocalBoostTap: HLSVocalBoostTap?
+    private var lastProcessedFrames: Int64 = 0
+    private var lastProcessedAt = Date.distantPast
     var onTrackMetadata: ((StreamTrackMetadataEvaluation?) -> Void)?
     var onPlaybackInterval: ((TimeInterval, Date) -> Void)?
     private let player = AVPlayer()
@@ -45,6 +50,8 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
     private var usesPacketBuffer = false
     private var usesEnhancedPlayback = false
     private var hlsPacketFallbackAttempted = false
+    private var hlsBoostFallbackAttempted = false
+    private var hlsBoostFailure: String?
     private var itemObservers: [NSObjectProtocol] = []
     private var itemStatusObservation: NSKeyValueObservation?
     private var lastMetadataEvaluation: StreamTrackMetadataEvaluation?
@@ -75,9 +82,18 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
                 self.onPlaybackInterval?(seconds, endedAt)
             }
         }
+        enhancedEngine.onUnsupportedHLS = { [weak self] reason in
+            Task { @MainActor in
+                guard let self, self.requested, self.usesEnhancedPlayback,
+                      self.streams.indices.contains(self.index), self.streams[self.index].format == "hls" else { return }
+                self.hlsBoostFailure = reason
+                self.load(preservingVocalBoostFallback: true)
+            }
+        }
         enhancedEngine.onStatus = { [weak self] update in
             Task { @MainActor in
                 guard let self, self.requested, self.usesEnhancedPlayback else { return }
+                if update.buffering { self.setVocalBoostState(.preparing) }
                 if update.title == "Playing" { self.lastAdvance = Date(); self.recovery.recordPlayback(at: Date()) }
                 self.onStatus?(PlaybackStatus(active: self.requested, buffering: update.buffering, progress: update.progress, title: update.title, detail: update.detail, measuredDelay: update.measuredDelay), false)
             }
@@ -87,6 +103,7 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
                 guard let self, self.requested, self.usesEnhancedPlayback else { return }
                 self.lastAdvance = Date()
                 self.recovery.recordPlayback(at: Date())
+                self.setVocalBoostState(.active)
                 self.onPlaybackInterval?(seconds, endedAt)
             }
         }
@@ -110,6 +127,52 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
     private var seeking = false
     private var failure = ""
     private(set) var selectedStreamID: String?
+
+    private func setVocalBoostState(_ state: VocalBoostState) {
+        guard vocalBoostState != state else { return }
+        vocalBoostState = state
+        onVocalBoostState?(state)
+        diagnose("vocalBoost.state", state.message, metadata: [
+            "streamID": selectedStreamID ?? "unknown",
+            "tapPrepareCount": "\(hlsVocalBoostTap?.state.prepareCount.load(ordering: .relaxed) ?? 0)",
+            "tapFrames": "\(hlsVocalBoostTap?.state.processedFrames.load(ordering: .relaxed) ?? 0)"
+        ])
+    }
+
+    private func updateVocalBoostState() {
+        if syncEnabled { setVocalBoostState(.suspendedForSync); return }
+        if vocalBoost == .off { setVocalBoostState(.off); return }
+        let supportsHLSTap: Bool
+        if #available(iOS 27.0, *) { supportsHLSTap = true } else { supportsHLSTap = false }
+        let format = streams.indices.contains(index) ? streams[index].format : nil
+        if let reason = VocalBoostState.unsupportedReason(format: format, supportsHLSTap: supportsHLSTap) {
+            setVocalBoostState(.unavailable(reason)); return
+        }
+        guard requested else { setVocalBoostState(.ready); return }
+        if usesEnhancedPlayback {
+            if Date().timeIntervalSince(lastAdvance) > 2 || !vocalBoostState.isActive { setVocalBoostState(.preparing) }
+            return
+        }
+        if let hlsBoostFailure { setVocalBoostState(.unavailable(hlsBoostFailure)); return }
+        guard let tap = hlsVocalBoostTap else {
+            setVocalBoostState(.unavailable("The HLS audio processor could not start.")); return
+        }
+        let failure = tap.state.failure.load(ordering: .relaxed)
+        if failure != noErr {
+            setVocalBoostState(.unavailable("Audio processing failed for this stream (\(failure)).")); return
+        }
+        let frames = tap.state.processedFrames.load(ordering: .relaxed)
+        if frames == 0 { lastProcessedAt = .distantPast }
+        if frames > 0, frames != lastProcessedFrames {
+            lastProcessedFrames = frames
+            lastProcessedAt = Date()
+        }
+        if player.timeControlStatus == .playing, Date().timeIntervalSince(lastProcessedAt) < 2 {
+            setVocalBoostState(.active)
+        } else if player.timeControlStatus == .playing, Date().timeIntervalSince(started) > 10 {
+            setVocalBoostState(.unavailable("This stream or audio route does not allow speech processing."))
+        } else { setVocalBoostState(.preparing) }
+    }
 
     private func diagnose(_ event: String, _ message: String, metadata: [String: String] = [:]) {
         StreamDiagnosticLogger.shared.record(event, message, metadata: metadata)
@@ -184,6 +247,9 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
         timer?.invalidate(); timer = nil
         removeItemObservers()
         player.pause(); player.replaceCurrentItem(with: nil)
+        hlsVocalBoostTap = nil
+        lastProcessedFrames = 0; lastProcessedAt = .distantPast
+        updateVocalBoostState()
         stopMetadataSidecar()
         packetEngine.stop(); packetEngine.suspendPreparation()
         enhancedEngine.stop()
@@ -204,12 +270,18 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
         // The playback backend is a mode decision: ordinary listening always
         // returns to AVPlayer, while Sync may need Wireless's retained packets.
         if requested || preparing { load() }
+        else { updateVocalBoostState() }
     }
     func setVocalBoost(_ level: VocalBoostLevel) {
         guard vocalBoost != level else { return }
         vocalBoost = level
+        if !syncEnabled, usesEnhancedPlayback, level != .off, requested || preparing {
+            enhancedEngine.setLevel(level)
+            return
+        }
         onTrackMetadata?(nil)
         if requested || preparing { load() }
+        else { updateVocalBoostState() }
     }
     func setDelay(_ value: Double) {
         let materiallyChanged = abs(delay - value) >= 0.49
@@ -225,9 +297,10 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
     func setCompanionMetadataPreferred(_ preferred: Bool) {
         companionMetadataPreferred = preferred
     }
-    private func load() {
+    private func load(preservingVocalBoostFallback: Bool = false) {
         guard requested || preparing, streams.indices.contains(index),
               let url = StreamRequestPolicy.playbackURL(for: streams[index]) else { return }
+        if !preservingVocalBoostFallback { hlsBoostFallbackAttempted = false; hlsBoostFailure = nil }
         onTrackMetadata?(nil)
         generation = UUID(); seeking = false; prerollStarted = false; selectedStreamID = streams[index].id
         avPlayerAccountingSample = nil
@@ -235,12 +308,16 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
         enhancedEngine.stop()
         removeItemObservers()
         player.pause(); player.replaceCurrentItem(with: nil)
+        hlsVocalBoostTap = nil
+        lastProcessedFrames = 0; lastProcessedAt = .distantPast
+        setVocalBoostState(vocalBoost == .off ? .off : syncEnabled ? .suspendedForSync : .preparing)
         stopMetadataSidecar()
         let stream = streams[index]
         usesPacketBuffer = syncEnabled && stream.format != "hls" && stream.supportsPacketBuffer
         usesEnhancedPlayback = !syncEnabled && vocalBoost != .off && ["mp3", "aac"].contains(stream.format)
         hlsPacketFallbackAttempted = false
         started = Date(); lastAdvance = started; lastTime = -1; pendingDelay = true
+        if usesEnhancedPlayback { updateVocalBoostState() }
         let backend = usesPacketBuffer ? "packet-buffer" : (usesEnhancedPlayback ? "audio-engine" : "avplayer")
         diagnose("stream.load", "Loading stream", metadata: [
             "streamID": stream.id,
@@ -270,6 +347,17 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
         var options: [String: Any] = [:]
         if let agent = streams[index].request_headers.first(where: { $0.key.lowercased() == "user-agent" })?.value { options[AVURLAssetHTTPUserAgentKey] = agent }
         let item = AVPlayerItem(asset: AVURLAsset(url: url, options: options))
+        if !syncEnabled, vocalBoost != .off, stream.format == "hls", hlsBoostFailure == nil {
+            if #available(iOS 27.0, *) {
+                do {
+                    let tap = try HLSVocalBoostTap(level: vocalBoost)
+                    hlsVocalBoostTap = tap
+                } catch {
+                    setVocalBoostState(.unavailable("The HLS audio processor could not start."))
+                    diagnose("vocalBoost.failed", "Could not create HLS processing tap", metadata: ["error": "\(error)"])
+                }
+            }
+        }
         if !syncEnabled {
             configureMetadataReceiver(token: generation, transport: "avplayer-timed-metadata")
             let output = AVPlayerItemMetadataOutput(identifiers: nil)
@@ -281,6 +369,10 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
         item.canUseNetworkResourcesForLiveStreamingWhilePaused = true
         player.automaticallyWaitsToMinimizeStalling = true
         player.replaceCurrentItem(with: item)
+        if #available(iOS 27.0, *), let hlsVocalBoostTap, let current = player.currentItem {
+            hlsVocalBoostTap.attach(to: current)
+        }
+        updateVocalBoostState()
         installItemObservers(item, token: generation)
         started = Date(); lastAdvance = started; lastTime = -1; pendingDelay = true
         if requested { player.play() }
@@ -401,6 +493,15 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
             if Date() >= retryAt { self.retryAt = nil; load() }
             return
         }
+        updateVocalBoostState()
+        if #available(iOS 27.0, *), !syncEnabled, vocalBoost != .off, !usesEnhancedPlayback,
+           streams.indices.contains(index), streams[index].format == "hls",
+           !hlsBoostFallbackAttempted,
+           !vocalBoostState.isActive, player.timeControlStatus == .playing,
+           Date().timeIntervalSince(started) > 10 {
+            switchHLSIntoVocalBoostFallback()
+            return
+        }
         checkMetadataDiagnostics()
         if usesPacketBuffer || usesEnhancedPlayback {
             if Date().timeIntervalSince(lastAdvance) > max(20, syncEnabled ? delay + 15 : 20) { nextStream() }
@@ -501,6 +602,9 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
         generation = UUID(); seeking = false
         removeItemObservers()
         player.pause(); player.replaceCurrentItem(with: nil)
+        hlsVocalBoostTap = nil
+        lastProcessedFrames = 0; lastProcessedAt = .distantPast
+        updateVocalBoostState()
         stopMetadataSidecar()
         packetEngine.stop(); packetEngine.suspendPreparation()
         enhancedEngine.stop()
@@ -512,6 +616,24 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
         ])
         publish(title: "Reconnecting…", detail: "Retry cycle \(attempt.cycle). Waiting for reception to return.", buffering: true, supportsDelay: false)
     }
+    private func switchHLSIntoVocalBoostFallback() {
+        hlsBoostFallbackAttempted = true
+        usesEnhancedPlayback = true
+        removeItemObservers()
+        player.pause(); player.replaceCurrentItem(with: nil)
+        hlsVocalBoostTap = nil
+        avPlayerAccountingSample = nil
+        started = Date(); lastAdvance = started
+        setVocalBoostState(.preparing)
+        diagnose("vocalBoost.hlsFallback", "Native tap did not process audio; trying unencrypted packed AAC", metadata: ["streamID": streams[index].id])
+        enhancedEngine.configure(stream: streams[index], level: vocalBoost)
+        enhancedEngine.start()
+        if let url = StreamRequestPolicy.playbackURL(for: streams[index]) {
+            startMetadataSidecar(url: url, stream: streams[index], token: generation)
+        }
+        publish(title: "Connecting…", detail: "Preparing HLS Vocal Boost", buffering: true, supportsDelay: false)
+    }
+
     private func switchHLSIntoPacketFallback() {
         guard requested, streams.indices.contains(index) else { return }
         hlsPacketFallbackAttempted = true
@@ -519,6 +641,9 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
         avPlayerAccountingSample = nil
         removeItemObservers()
         player.pause(); player.replaceCurrentItem(with: nil)
+        hlsVocalBoostTap = nil
+        lastProcessedFrames = 0; lastProcessedAt = .distantPast
+        updateVocalBoostState()
         usesPacketBuffer = true
         diagnose("sync.hlsFallback", "HLS has no seekable window; switching to retained packet buffer", metadata: ["streamID": streams[index].id, "url": streams[index].url])
         started = Date(); lastAdvance = started; lastTime = -1

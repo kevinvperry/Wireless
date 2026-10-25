@@ -82,6 +82,9 @@ targets:
       - path: Shared/StationDirectory.swift
       - path: Shared/StationListOrganisation.swift
       - path: Shared/WirelessContact.swift
+      - path: Wireless/VocalBoost.swift
+      - path: Wireless/HLSVocalBoostTap.swift
+      - path: Wireless/PackedAudioHLS.swift
       - path: Wireless/StreamRecoveryPolicy.swift
       - path: Wireless/ProgrammeGuide.swift
       - path: Wireless/DelayCorrection.swift

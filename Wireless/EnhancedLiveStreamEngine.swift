@@ -5,12 +5,19 @@ import Foundation
 /// Decodes direct MP3/AAC radio packets to PCM and plays them through the
 /// AVAudioEngine Vocal Boost graph. AVPlayer remains the ordinary live backend.
 final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @unchecked Sendable {
+    var onUnsupportedHLS: (@Sendable (String) -> Void)?
     var onStatus: (@Sendable (PlaybackStatus) -> Void)?
     var onPlaybackInterval: (@Sendable (TimeInterval, Date) -> Void)?
 
     private let work = DispatchQueue(label: "au.com.kevmarl.Wireless.vocalBoost")
     private var session: URLSession?
     private var task: URLSessionDataTask?
+    private var playlistURL: URL?
+    private var playlistTask: URLSessionDataTask?
+    private var segmentTask: URLSessionDataTask?
+    private var hlsNextSequence: Int?
+    private var hlsSegments: [(sequence: Int, url: URL)] = []
+    private var fetchingSegment = false
     private var parser: AudioFileStreamID?
     private var converter: AVAudioConverter?
     private var compressedFormat: AVAudioFormat?
@@ -63,6 +70,18 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
         }
     }
 
+    func setLevel(_ level: VocalBoostLevel) {
+        work.async {
+            self.level = level
+            do {
+                try self.processor?.setLevel(level)
+                if self.started, self.requested {
+                    self.emit(title: "Playing", detail: "Vocal Boost · " + level.title, buffering: false, progress: 1)
+                }
+            } catch { self.fail("Speech processing could not change level.") }
+        }
+    }
+
     func setVolume(_ value: Float) {
         work.async {
             self.outputVolume = min(1, max(0, value))
@@ -73,10 +92,16 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
     private func connect() {
         guard requested || preparing, let stream, let url = stream.playableURL else { return }
         close(keepRequest: true)
-        let hint: AudioFileTypeID = stream.format == "aac" ? kAudioFileAAC_ADTSType : kAudioFileMP3Type
+        let hint: AudioFileTypeID = stream.format != "mp3" ? kAudioFileAAC_ADTSType : kAudioFileMP3Type
         guard AudioFileStreamOpen(Unmanaged.passUnretained(self).toOpaque(), enhancedPropertyCallback,
                                   enhancedPacketsCallback, hint, &parser) == noErr else {
             fail("Could not prepare Vocal Boost playback.")
+            return
+        }
+        if stream.format == "hls" {
+            playlistURL = url
+            refreshHLS()
+            emit(title: "Connecting…", detail: "Preparing HLS Vocal Boost", buffering: true, progress: 0)
             return
         }
         var request = URLRequest(url: url)
@@ -95,6 +120,9 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
 
     private func close(keepRequest: Bool = false) {
         generation += 1
+        playlistTask?.cancel(); playlistTask = nil
+        segmentTask?.cancel(); segmentTask = nil
+        playlistURL = nil; hlsNextSequence = nil; hlsSegments.removeAll(); fetchingSegment = false
         task?.cancel(); task = nil
         session?.invalidateAndCancel(); session = nil
         if let parser { AudioFileStreamClose(parser) }
@@ -221,6 +249,11 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
     }
 
     private func fail(_ message: String) {
+        if stream?.format == "hls" {
+            close()
+            onUnsupportedHLS?(message)
+            return
+        }
         let token = generation
         emit(title: "Reconnecting…", detail: message, buffering: true, progress: 0)
         close(keepRequest: true)
@@ -234,6 +267,76 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
     private func emit(title: String, detail: String, buffering: Bool, progress: Double) {
         onStatus?(PlaybackStatus(active: requested, buffering: buffering, progress: progress,
                                  title: title, detail: detail, measuredDelay: nil))
+    }
+
+    private func hlsRequest(_ url: URL) -> URLRequest {
+        var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 15)
+        for (key, value) in stream?.request_headers ?? [:] { request.setValue(value, forHTTPHeaderField: key) }
+        return request
+    }
+
+    /// Adapted from RadioStreamEngine's retained-HLS downloader. Network and
+    /// parser work stays on this engine's serial queue, outside the audio thread.
+    private func refreshHLS(depth: Int = 0) {
+        guard requested || preparing, let url = playlistURL else { return }
+        let token = generation
+        playlistTask = URLSession.shared.dataTask(with: hlsRequest(url)) { [weak self] data, response, error in
+            guard let self else { return }
+            self.work.async {
+                guard self.generation == token else { return }
+                guard error == nil, (response as? HTTPURLResponse)?.statusCode == 200,
+                      let data, let text = String(data: data, encoding: .utf8) else {
+                    self.fail("The HLS playlist could not be loaded for speech processing."); return
+                }
+                let base = response?.url ?? url
+                if let variant = PackedAudioHLS.variant(in: text, base: base), depth < 3 {
+                    self.playlistURL = variant; self.refreshHLS(depth: depth + 1); return
+                }
+                guard let segments = PackedAudioHLS.segments(in: text, base: base) else {
+                    self.fail("This HLS container or encryption does not support the speech-processing fallback."); return
+                }
+                if self.hlsNextSequence == nil { self.hlsNextSequence = segments.last?.sequence }
+                if let next = self.hlsNextSequence, let first = segments.first?.sequence, next < first {
+                    self.fail("The HLS audio window moved beyond speech processing."); return
+                }
+                self.hlsSegments = segments.filter { $0.sequence >= (self.hlsNextSequence ?? Int.max) }
+                self.fetchHLSSegment()
+                self.work.asyncAfter(deadline: .now() + 1) { [self] in
+                    guard self.generation == token else { return }
+                    self.refreshHLS()
+                }
+            }
+        }
+        playlistTask?.resume()
+    }
+
+    private func fetchHLSSegment() {
+        guard !fetchingSegment, let next = hlsNextSequence,
+              let segment = hlsSegments.first(where: { $0.sequence == next }) else { return }
+        fetchingSegment = true
+        let token = generation
+        segmentTask = URLSession.shared.dataTask(with: hlsRequest(segment.url)) { [weak self] data, response, error in
+            guard let self else { return }
+            self.work.async {
+                guard self.generation == token else { return }
+                self.fetchingSegment = false
+                guard error == nil, (response as? HTTPURLResponse)?.statusCode == 200,
+                      let data, let audio = PackedAudioHLS.audio(in: data), let parser = self.parser else {
+                    self.fail("This HLS stream does not supply compatible unencrypted AAC segments."); return
+                }
+                let result = audio.withUnsafeBytes { bytes -> OSStatus in
+                    guard let base = bytes.baseAddress else { return kAudio_ParamError }
+                    return AudioFileStreamParseBytes(parser, UInt32(bytes.count), base, [])
+                }
+                guard result == noErr, self.generation == token, next < Int.max else {
+                    if self.generation == token { self.fail("The HLS audio could not be decoded for speech processing.") }
+                    return
+                }
+                self.hlsNextSequence = next + 1
+                self.fetchHLSSegment()
+            }
+        }
+        segmentTask?.resume()
     }
 
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {

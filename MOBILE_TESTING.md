@@ -68,3 +68,13 @@ Keep [SUPPORT_GUIDE.md](SUPPORT_GUIDE.md) and `Wireless/SupportContent.swift` al
 ## 25 October 2026 — approved Autohop player layout adapted to Wireless
 
 The populated player fixture covers a long audio-output label and two long favourite names. iPhone 14 Pro Max portrait and iPad Pro 13-inch portrait/landscape UI checks run on iOS 27.0. The regression suite passed 65 unit tests with one optional live-directory test skipped. Forty-five geometry combinations cover narrow phone/window widths through large displays, including taller controls without artwork shrinkage. See `Docs/ADAPTIVE_PLAYER_LAYOUT_2026-10-25.md` for scope and limitations. Exact iOS 27.0.1, physical audio routing and interactive Mac resizing remain unverified.
+
+## HLS Vocal Boost — 25 October 2026
+
+Implementation and current evidence: `Docs/HLS_VOCAL_BOOST_2026-10-25.md`.
+
+- Automated signal tests pass for rumble reduction, compression at matched loudness, peak limiting, PCM format conversion and failed-processing bypass. iOS 26.5/iOS 27 iPhone and iOS 27 iPad availability checks pass.
+- Live packed-AAC HLS reaches confirmed Active through the enhanced-engine fallback on the iOS 27 iPhone simulator. The native HLS tap did not receive callbacks there; it remains unverified on hardware.
+- On hardware, compare Off/Light/Standard/Strong at matched perceived loudness on speech, music and already heavily compressed broadcasts. Listen for distortion, pumping, lost consonants and excessive bass loss. Check a direct MP3, direct AAC, packed-AAC HLS and another HLS container.
+- Confirm the status follows actual processing, Off returns to original playback, TV Sync suspends the effect, and automatic stream changes/reconnection do not leave a stale Active label. Check level changes during active playback, Pause/Play and station changes.
+- Check locked-screen/background playback, interruptions, Bluetooth, AirPlay and compatible Mac use. A source/route that cannot supply processable audio must explain that the effect is unavailable while ordinary playback continues. FairPlay audio must remain unprocessed.

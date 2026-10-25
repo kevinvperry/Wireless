@@ -104,7 +104,13 @@ Vocal Boost can make speech easier to hear. Open **Audio Controls** and choose:
 - **Standard** — stronger voice levelling and clarity.
 - **Strong** — the most pronounced speech treatment.
 
-Vocal Boost is available for compatible direct MP3 and AAC streams. Enabling it switches playback to Wireless's enhanced audio engine. TV Sync and Vocal Boost cannot operate together; Vocal Boost is disabled while TV Sync is on.
+Vocal Boost works with compatible direct MP3 and AAC streams. On iOS 27 or later, it also processes compatible HLS streams while retaining Apple’s live-stream playback. If native HLS processing is unavailable, Wireless can use an unencrypted AAC-segment fallback. Switching to that fallback may briefly reconnect playback. Other containers or protected streams continue without the effect. FairPlay-protected HLS cannot be processed. On iOS 26, choose a direct MP3 or AAC stream to use Vocal Boost.
+
+Audio Controls shows whether Vocal Boost is ready, waiting for audio, active or unavailable. **Active** means audio has passed through speech processing; selecting a level alone does not mean the effect is running. If unavailable, the broadcast continues without the effect; try another stream. Listening Stats counts Vocal Boost only while processing is active.
+
+Start with **Light** for broadcasts that are already heavily compressed. Standard and Strong can make speech more consistent, but may sound less natural on music or heavily processed broadcasts. Vocal Boost cannot restore detail lost in a low-bitrate source.
+
+TV Sync and Vocal Boost cannot operate together; Vocal Boost is disabled while TV Sync is on.
 
 ## Sleep Timer
 

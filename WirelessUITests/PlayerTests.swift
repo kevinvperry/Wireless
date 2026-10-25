@@ -2,6 +2,64 @@ import XCTest
 
 final class PlayerTests: XCTestCase {
     @MainActor
+    func testLiveHLSVocalBoostBecomesActive() {
+        guard #available(iOS 27.0, *) else { return }
+        let app = XCUIApplication()
+        app.launchEnvironment["WIRELESS_PLAYER_PREVIEW"] = "1"
+        app.launchEnvironment["WIRELESS_TEST_HLS_URL"] = ProcessInfo.processInfo.environment["WIRELESS_TEST_HLS_URL"]
+        app.launchArguments = ["-streamDiagnosticLoggingEnabled", "YES"]
+        app.launch()
+        XCTAssertTrue(app.buttons["Audio Controls"].waitForExistence(timeout: 15))
+        app.buttons["Audio Controls"].tap()
+        app.segmentedControls["vocalBoostPicker"].buttons["Standard"].tap()
+        app.buttons["Close"].tap()
+        app.buttons["Play"].tap()
+        let playing = NSPredicate(format: "label == %@", "Playing")
+        expectation(for: playing, evaluatedWith: app.staticTexts["playbackStatus"])
+        waitForExpectations(timeout: 35)
+        app.buttons["Audio Controls"].tap()
+        let status = app.staticTexts["vocalBoostStatus"]
+        let active = NSPredicate(format: "label CONTAINS %@", "Active ·")
+        expectation(for: active, evaluatedWith: status)
+        waitForExpectations(timeout: 25)
+        app.segmentedControls["vocalBoostPicker"].buttons["Strong"].tap()
+        XCTAssertTrue(status.label.contains("Active ·"), "Changing an active boost level should preserve processed playback")
+        let shot = XCTAttachment(screenshot: app.screenshot())
+        shot.name = "Live HLS Vocal Boost"; shot.lifetime = .keepAlways; add(shot)
+        app.segmentedControls["vocalBoostPicker"].buttons["Off"].tap()
+        XCTAssertTrue(status.label.contains("Original broadcast audio"))
+        app.buttons["Close"].tap()
+        expectation(for: playing, evaluatedWith: app.staticTexts["playbackStatus"])
+        waitForExpectations(timeout: 20)
+        app.buttons["Pause"].tap()
+    }
+
+    @MainActor
+    func testVocalBoostExplainsActualAvailability() {
+        let app = XCUIApplication()
+        app.launchEnvironment["WIRELESS_PLAYER_PREVIEW"] = "1"
+        app.launch()
+        XCTAssertTrue(app.buttons["Audio Controls"].waitForExistence(timeout: 15))
+        app.buttons["Audio Controls"].tap()
+        let picker = app.segmentedControls["vocalBoostPicker"]
+        XCTAssertTrue(picker.waitForExistence(timeout: 5))
+        picker.buttons["Standard"].tap()
+        let status = app.staticTexts["vocalBoostStatus"]
+        XCTAssertTrue(status.waitForExistence(timeout: 5))
+        if #available(iOS 27.0, *) {
+            XCTAssertTrue(status.label.contains("Ready"), status.label)
+        } else {
+            XCTAssertTrue(status.label.contains("requires iOS 27"), status.label)
+            XCTAssertTrue(status.label.contains("Unavailable"), status.label)
+        }
+        XCTAssertFalse(status.label.contains("Active ·"))
+        let shot = XCTAttachment(screenshot: app.screenshot())
+        shot.name = "Vocal Boost availability"; shot.lifetime = .keepAlways; add(shot)
+        picker.buttons["Off"].tap()
+        XCTAssertTrue(status.label.contains("Original broadcast audio"))
+    }
+
+    @MainActor
     func testPopulatedAdaptivePlayerLayout() {
         let app = XCUIApplication()
         app.launchEnvironment["WIRELESS_PLAYER_PREVIEW"] = "1"

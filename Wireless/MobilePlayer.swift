@@ -37,11 +37,9 @@ final class MobilePlayer: ObservableObject {
             diagnose("settings.sync", syncEnabled ? "TV Sync enabled" : "TV Sync disabled", metadata: ["delaySeconds": String(format: "%.1f", delay)])
         }
     }
-    @Published var vocalBoost = VocalBoostLevel(
-        rawValue: UserDefaults.standard.string(forKey: "vocalBoostLevel") ?? "off"
-    ) ?? .off {
+    @Published var vocalBoost: VocalBoostLevel {
         didSet {
-            UserDefaults.standard.set(vocalBoost.rawValue, forKey: "vocalBoostLevel")
+            defaults.set(vocalBoost.rawValue, forKey: "vocalBoostLevel")
             directoryAudio.setVocalBoost(vocalBoost)
             applyTrackMetadata(nil, source: "settings.vocal-boost")
             startCompanionMetadataIfNeeded()
@@ -58,6 +56,7 @@ final class MobilePlayer: ObservableObject {
     }
     @Published private(set) var station: DirectoryStation
     @Published private(set) var trackMetadata: StreamTrackMetadata?
+    @Published private(set) var vocalBoostState: VocalBoostState = .off
     @Published private(set) var supportsDelay = false
     @Published var selectedStreamID = "" { didSet {
         guard oldValue != selectedStreamID else { return }
@@ -185,6 +184,9 @@ final class MobilePlayer: ObservableObject {
             defaults.set(true, forKey: Self.syncDefaultOffMigrationKey)
         }
         _syncEnabled = Published(initialValue: initialSyncEnabled)
+        _vocalBoost = Published(initialValue: VocalBoostLevel(
+            rawValue: defaults.string(forKey: "vocalBoostLevel") ?? "off"
+        ) ?? .off)
         self.defaults = defaults
         self.statsStore = statsStore
         let library = StationLibrary(defaults: defaults)
@@ -218,6 +220,9 @@ final class MobilePlayer: ObservableObject {
                 return
             }
             self.applyMetadataEvaluation(evaluation, source: "embedded")
+        }
+        directoryAudio.onVocalBoostState = { [weak self] state in
+            self?.vocalBoostState = state
         }
         directoryAudio.onPlaybackInterval = { [weak self] seconds, endedAt in
             guard let self else { return }
@@ -583,7 +588,7 @@ final class MobilePlayer: ObservableObject {
 
     private var listeningMode: WirelessListeningMode {
         if syncEnabled { return .tvSync }
-        if vocalBoost != .off { return .vocalBoost }
+        if vocalBoostState.isActive { return .vocalBoost }
         return .live
     }
 

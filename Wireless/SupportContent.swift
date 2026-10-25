@@ -145,7 +145,7 @@ enum WirelessSupportGuide {
 
     private static let vocalBoost = WirelessSupportSection(
         id: "vocal-boost", icon: "slider.horizontal.3", title: "Vocal Boost",
-        summary: "Improve speech clarity on compatible direct streams",
+        summary: "Improve speech clarity on compatible streams",
         blocks: [
             .table([
                 ["Off", "Original stream without speech processing."],
@@ -153,7 +153,9 @@ enum WirelessSupportGuide {
                 ["Standard", "Stronger voice levelling and clarity."],
                 ["Strong", "The most pronounced speech treatment."]
             ]),
-            .paragraph("Vocal Boost works with compatible direct MP3 and AAC streams and switches playback to Wireless's enhanced audio engine."),
+            .paragraph("Vocal Boost works with compatible direct MP3 and AAC streams. On iOS 27 or later, it also processes compatible HLS streams while retaining Apple’s live-stream playback. If native HLS processing is unavailable, Wireless can use an unencrypted AAC-segment fallback. Other containers or protected streams continue without the effect. FairPlay-protected HLS cannot be processed."),
+            .paragraph("Audio Controls shows whether Vocal Boost is ready, waiting for audio, active or unavailable. Active means audio has passed through speech processing; selecting a level alone does not mean the effect is running. If unavailable, try another stream. Listening Stats counts Vocal Boost only while processing is active."),
+            .paragraph("Start with Light for broadcasts that are already heavily compressed. Standard and Strong can make speech more consistent, but may sound less natural on music or heavily processed broadcasts. Vocal Boost cannot restore detail lost in a low-bitrate source."),
             .callout(.note, "TV Sync and Vocal Boost cannot operate together. Vocal Boost is disabled while TV Sync is on.")
         ]
     )

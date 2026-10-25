@@ -52,13 +52,18 @@
 		9E9A282431B79EC5423B2A0A /* DelayCorrection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25D222B4D6107093651B654D /* DelayCorrection.swift */; };
 		A22D696E51B5C4358CC15B98 /* SleepScheduleServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91FFC7D91231CDB151A40688 /* SleepScheduleServiceTests.swift */; };
 		A7781DD1F617CE35AD240EDD /* MobilePlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 570A0F3D564007C7DEDEFA92 /* MobilePlayer.swift */; };
+		A7B4F7A8D3177BF992434FF6 /* VocalBoost.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E4068851564EEABF96B4AAD /* VocalBoost.swift */; };
+		A913DE396DD4F3C2C7C7D061 /* HLSVocalBoostTap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D2ECB518B3459B678D37A00 /* HLSVocalBoostTap.swift */; };
 		AFA8D78BF4471B2C01D353CD /* SleepScheduleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D51112AD6E39CF8C6BB5DA5E /* SleepScheduleView.swift */; };
 		B2974319EDD6D7321D088AAC /* StreamTrackMetadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE1362AA3B04385625EA8C94 /* StreamTrackMetadata.swift */; };
 		B5E7DAD5A8EBF39FF51D1A61 /* StreamDiagnosticLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88790567F035940004B0EBAA /* StreamDiagnosticLogger.swift */; };
 		B9B9F6008DA6F9E44BD47CE0 /* DiscoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C493F3E1378AB649558A420 /* DiscoverView.swift */; };
+		BA72BF78F64584EAE7CFF968 /* PackedAudioHLS.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2ACAC459114DA6CC09A62240 /* PackedAudioHLS.swift */; };
+		BF7F85E69DFC81D5E973DFD1 /* VocalBoostTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F54BA784B105471D8B05AE25 /* VocalBoostTests.swift */; };
 		C89F04449FBB07EC59415E59 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BA72FAA2C094B89B91EDDB0A /* SwiftUI.framework */; };
 		C8E710ADFE49E904E1AEDDB7 /* StreamDiagnosticLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88790567F035940004B0EBAA /* StreamDiagnosticLogger.swift */; };
 		CA7BF2C861CB4E04B35CF97F /* StationDirectory.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9002A99CCA693E52ACD1413 /* StationDirectory.swift */; };
+		CF0E6C004B84FD3ED8FDDBD2 /* HLSVocalBoostTap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D2ECB518B3459B678D37A00 /* HLSVocalBoostTap.swift */; };
 		D46C9703D6C56A9551DB03E7 /* StreamRecoveryPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D3048423531FE7F443A0CBE /* StreamRecoveryPolicy.swift */; };
 		D565155980B3FA013496C850 /* StreamRecoveryPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D3048423531FE7F443A0CBE /* StreamRecoveryPolicy.swift */; };
 		DE659AB256BFE3DCA18317DD /* DirectoryAudio.swift in Sources */ = {isa = PBXBuildFile; fileRef = 356B5F063701F0E28EDEFEA3 /* DirectoryAudio.swift */; };
@@ -69,7 +74,9 @@
 		E8875F45240769037878240A /* WirelessListeningHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 509C5AC7230E3614C5D34982 /* WirelessListeningHistoryView.swift */; };
 		E9D7118009B5E543896324EB /* StationListOrganisation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 099593907025706B72796BE6 /* StationListOrganisation.swift */; };
 		EDF8494D2E64C5631BAEA82A /* CarPlay.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 45AF71D0E042FF2350372216 /* CarPlay.framework */; };
+		F0964775B74D5464DB6068E6 /* PackedAudioHLSTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 371505EBCA27460B2E88F9E7 /* PackedAudioHLSTests.swift */; };
 		FA8EF1F9D94D77C3276678A5 /* WirelessListeningStats.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8543212D37AF30202BD33BBC /* WirelessListeningStats.swift */; };
+		FC8F2BEDAB3CA8A742CA7A26 /* PackedAudioHLS.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2ACAC459114DA6CC09A62240 /* PackedAudioHLS.swift */; };
 		FD74FF32174FAD10B063DC71 /* EnhancedLiveStreamEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F70847912CBE75BB5C5C2D6 /* EnhancedLiveStreamEngine.swift */; };
 /* End PBXBuildFile section */
 
@@ -92,11 +99,14 @@
 		1DB035AE0DBE09DD1962C935 /* WirelessListeningStatsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WirelessListeningStatsStore.swift; sourceTree = "<group>"; };
 		25D222B4D6107093651B654D /* DelayCorrection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DelayCorrection.swift; sourceTree = "<group>"; };
 		29D4ED78062FDB9798BCDE64 /* StreamDiagnosticView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamDiagnosticView.swift; sourceTree = "<group>"; };
+		2ACAC459114DA6CC09A62240 /* PackedAudioHLS.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PackedAudioHLS.swift; sourceTree = "<group>"; };
 		2C2D848CD9841149DDB80F8A /* WirelessUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = WirelessUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		2C493F3E1378AB649558A420 /* DiscoverView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoverView.swift; sourceTree = "<group>"; };
+		2D2ECB518B3459B678D37A00 /* HLSVocalBoostTap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HLSVocalBoostTap.swift; sourceTree = "<group>"; };
 		2DD436D04A71FF86FB8E7354 /* WirelessListeningStatsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WirelessListeningStatsTests.swift; sourceTree = "<group>"; };
 		34B1977BE352BBA9A863FDE9 /* DelayCorrectionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DelayCorrectionTests.swift; sourceTree = "<group>"; };
 		356B5F063701F0E28EDEFEA3 /* DirectoryAudio.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectoryAudio.swift; sourceTree = "<group>"; };
+		371505EBCA27460B2E88F9E7 /* PackedAudioHLSTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PackedAudioHLSTests.swift; sourceTree = "<group>"; };
 		3717973812D13753B64AA286 /* WirelessContact.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WirelessContact.swift; sourceTree = "<group>"; };
 		3884AC1AE2B969BCC399EC85 /* WirelessStatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WirelessStatsView.swift; sourceTree = "<group>"; };
 		3C8DF2AC33887409191F2781 /* WirelessApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WirelessApp.swift; sourceTree = "<group>"; };
@@ -140,6 +150,7 @@
 		F137CB8302F4CCFFB5D3A867 /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
 		F24F4BD9ABA74A114F3157D6 /* FavouritesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FavouritesView.swift; sourceTree = "<group>"; };
 		F2CED56748D25A16D042A988 /* DiscoverRegions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoverRegions.swift; sourceTree = "<group>"; };
+		F54BA784B105471D8B05AE25 /* VocalBoostTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VocalBoostTests.swift; sourceTree = "<group>"; };
 		FC86E444D35081690AAF4613 /* CarPlaySceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarPlaySceneDelegate.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -225,9 +236,11 @@
 				2C493F3E1378AB649558A420 /* DiscoverView.swift */,
 				7F70847912CBE75BB5C5C2D6 /* EnhancedLiveStreamEngine.swift */,
 				F24F4BD9ABA74A114F3157D6 /* FavouritesView.swift */,
+				2D2ECB518B3459B678D37A00 /* HLSVocalBoostTap.swift */,
 				6BFD4212FFDC5CC34E34973C /* Info.plist */,
 				570A0F3D564007C7DEDEFA92 /* MobilePlayer.swift */,
 				F137CB8302F4CCFFB5D3A867 /* NotificationService.swift */,
+				2ACAC459114DA6CC09A62240 /* PackedAudioHLS.swift */,
 				556152EC26B1D066815D33FA /* PlayerMetadataText.swift */,
 				AA29A1EC84D04AB7DC690374 /* ProgrammeGuide.swift */,
 				6630D03B5125433D04BF5126 /* RadioPlayerView.swift */,
@@ -272,10 +285,12 @@
 			children = (
 				B66A150E5FB7C840D3E237B6 /* ABCProgrammeTests.swift */,
 				34B1977BE352BBA9A863FDE9 /* DelayCorrectionTests.swift */,
+				371505EBCA27460B2E88F9E7 /* PackedAudioHLSTests.swift */,
 				91FFC7D91231CDB151A40688 /* SleepScheduleServiceTests.swift */,
 				76EECFE6B7E52C2FE1E8A08B /* StationDirectoryTests.swift */,
 				5345DD72CF65E9CFDB358002 /* StreamRecoveryPolicyTests.swift */,
 				81ED0C6EA381C06DF5A478BD /* StreamTrackMetadataTests.swift */,
+				F54BA784B105471D8B05AE25 /* VocalBoostTests.swift */,
 				15C674C8AE307BA75136D01F /* WirelessContactTests.swift */,
 				2DD436D04A71FF86FB8E7354 /* WirelessListeningStatsTests.swift */,
 			);
@@ -409,8 +424,10 @@
 				B9B9F6008DA6F9E44BD47CE0 /* DiscoverView.swift in Sources */,
 				FD74FF32174FAD10B063DC71 /* EnhancedLiveStreamEngine.swift in Sources */,
 				E51D3E997F900F74F15CC0ED /* FavouritesView.swift in Sources */,
+				CF0E6C004B84FD3ED8FDDBD2 /* HLSVocalBoostTap.swift in Sources */,
 				A7781DD1F617CE35AD240EDD /* MobilePlayer.swift in Sources */,
 				4588990CBB470EAB42A2D669 /* NotificationService.swift in Sources */,
+				FC8F2BEDAB3CA8A742CA7A26 /* PackedAudioHLS.swift in Sources */,
 				96A4BF33FDE022CC08ED3BAC /* PlayerMetadataText.swift in Sources */,
 				0D7808193B88750064978753 /* ProgrammeGuide.swift in Sources */,
 				1274C83EFCDCD8DB757457B0 /* RadioPlayerView.swift in Sources */,
@@ -446,6 +463,9 @@
 				95740333BD9D9B2F2C99148B /* CompanionMetadataProvider.swift in Sources */,
 				9E9A282431B79EC5423B2A0A /* DelayCorrection.swift in Sources */,
 				1FC47233BE7FFDEA69C06427 /* DelayCorrectionTests.swift in Sources */,
+				A913DE396DD4F3C2C7C7D061 /* HLSVocalBoostTap.swift in Sources */,
+				BA72BF78F64584EAE7CFF968 /* PackedAudioHLS.swift in Sources */,
+				F0964775B74D5464DB6068E6 /* PackedAudioHLSTests.swift in Sources */,
 				21CC75C02ADBE6B253B2C5AC /* ProgrammeGuide.swift in Sources */,
 				3D8FF267AA6E72161211EC8A /* SleepScheduleService.swift in Sources */,
 				A22D696E51B5C4358CC15B98 /* SleepScheduleServiceTests.swift in Sources */,
@@ -457,6 +477,8 @@
 				1F07BD3BF33F2F59C35FFC53 /* StreamRecoveryPolicyTests.swift in Sources */,
 				B2974319EDD6D7321D088AAC /* StreamTrackMetadata.swift in Sources */,
 				0D78887AA33D15E59DD98787 /* StreamTrackMetadataTests.swift in Sources */,
+				A7B4F7A8D3177BF992434FF6 /* VocalBoost.swift in Sources */,
+				BF7F85E69DFC81D5E973DFD1 /* VocalBoostTests.swift in Sources */,
 				E1AF39BD2B6BFE81EDAA2C26 /* WirelessContact.swift in Sources */,
 				412F25FAC85D50C1022B90C2 /* WirelessContactTests.swift in Sources */,
 				FA8EF1F9D94D77C3276678A5 /* WirelessListeningStats.swift in Sources */,
