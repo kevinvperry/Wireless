@@ -2,6 +2,50 @@ import XCTest
 
 final class PlayerTests: XCTestCase {
     @MainActor
+    private func reveal(_ element: XCUIElement, in app: XCUIApplication) {
+        for _ in 0..<5 {
+            let visible = app.frame.insetBy(dx: 12, dy: 110)
+            if element.isHittable, visible.contains(element.frame) { return }
+            if element.frame.minY < app.frame.midY { app.swipeDown() }
+            else { app.swipeUp() }
+        }
+    }
+
+    @MainActor
+    func testAudioControlsCardLayout() {
+        XCUIDevice.shared.orientation = .portrait
+        let app = XCUIApplication()
+        app.launchEnvironment["WIRELESS_PLAYER_PREVIEW"] = "1"
+        app.launchArguments = ProcessInfo.processInfo.environment["WIRELESS_TEST_LARGE_TEXT"] == "1"
+            ? ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"] : []
+        app.launch()
+        XCTAssertTrue(app.buttons["Audio Controls"].waitForExistence(timeout: 15))
+        app.buttons["Audio Controls"].tap()
+        let bass = app.descendants(matching: .any)["bassBoostPicker"].firstMatch
+        XCTAssertTrue(bass.waitForExistence(timeout: 5))
+        reveal(bass, in: app)
+        XCTAssertTrue(bass.isHittable)
+        var shot = XCTAttachment(screenshot: app.screenshot())
+        shot.name = "Audio Controls music"; shot.lifetime = .keepAlways; add(shot)
+        let vocal = app.descendants(matching: .any)["vocalBoostPicker"].firstMatch
+        reveal(vocal, in: app)
+        XCTAssertTrue(vocal.isHittable)
+        shot = XCTAttachment(screenshot: app.screenshot())
+        shot.name = "Audio Controls voices"; shot.lifetime = .keepAlways; add(shot)
+        let stream = app.descendants(matching: .any)["streamPicker"].firstMatch
+        reveal(stream, in: app)
+        XCTAssertTrue(stream.isHittable)
+        if app.frame.width > 600 {
+            XCUIDevice.shared.orientation = .landscapeLeft
+            reveal(stream, in: app)
+            XCTAssertTrue(stream.isHittable)
+            shot = XCTAttachment(screenshot: app.screenshot())
+            shot.name = "Audio Controls landscape"; shot.lifetime = .keepAlways; add(shot)
+            XCUIDevice.shared.orientation = .portrait
+        }
+    }
+
+    @MainActor
     func testRepeatedSoundChangesKeepLivePlaybackRunning() {
         let app = XCUIApplication()
         app.launchEnvironment["WIRELESS_PLAYER_PREVIEW"] = "1"
@@ -12,6 +56,7 @@ final class PlayerTests: XCTestCase {
         XCTAssertTrue(app.buttons["Audio Controls"].waitForExistence(timeout: 15))
         app.buttons["Audio Controls"].tap()
         let vocal = app.segmentedControls["vocalBoostPicker"]
+        reveal(vocal, in: app)
         vocal.buttons["Standard"].tap()
         app.buttons["Close"].tap()
         app.buttons["Play"].tap()
@@ -21,20 +66,24 @@ final class PlayerTests: XCTestCase {
         app.buttons["Audio Controls"].tap()
         let vocalState = app.staticTexts["vocalBoostStatus"]
         let bassState = app.staticTexts["deepBassStatus"]
-        let bass = app.switches["deepBassToggle"]
+        let bass = app.segmentedControls["bassBoostPicker"]
         expectation(for: NSPredicate(format: "label CONTAINS %@", "Active ·"), evaluatedWith: vocalState)
         waitForExpectations(timeout: 30)
         for _ in 0..<3 {
+            reveal(vocal, in: app)
             for level in ["Light", "Strong", "Standard", "Off"] { vocal.buttons[level].tap() }
-            bass.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap()
-            bass.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap()
-            XCTAssertTrue(bassState.label.hasPrefix("Off."))
-            // Turning effects off must not reconnect or stop the current stream.
+            reveal(bass, in: app)
+            for level in ["Mid Bass", "Deep Bass", "Mid Bass", "Off"] { bass.buttons[level].tap() }
+            XCTAssertTrue(bassState.label.hasPrefix("Off ·"))
             app.buttons["Close"].tap()
             XCTAssertEqual(app.staticTexts["playbackStatus"].label, "Playing")
             app.buttons["Audio Controls"].tap()
         }
+        reveal(vocal, in: app)
         vocal.buttons["Strong"].tap()
+        XCTAssertTrue(vocal.buttons["Strong"].isSelected, "Final speech preset must actually be selected")
+        let selectedShot = XCTAttachment(screenshot: app.screenshot())
+        selectedShot.name = "Final Strong selection"; selectedShot.lifetime = .keepAlways; add(selectedShot)
         // Give a stopped render graph enough time to lose its Active state.
         Thread.sleep(forTimeInterval: 4)
         XCTAssertTrue(vocalState.label.contains("Active ·"), vocalState.label)
@@ -54,11 +103,13 @@ final class PlayerTests: XCTestCase {
         XCTAssertTrue(app.buttons["Audio Controls"].waitForExistence(timeout: 15))
         app.buttons["Audio Controls"].tap()
         let vocal = app.segmentedControls["vocalBoostPicker"]
+        reveal(vocal, in: app)
         vocal.buttons["Strong"].tap()
-        let bass = app.switches["deepBassToggle"]
-        if !bass.isHittable { app.swipeUp() }
+        let bass = app.segmentedControls["bassBoostPicker"]
+        reveal(bass, in: app)
         XCTAssertTrue(bass.waitForExistence(timeout: 5))
-        bass.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap()
+        reveal(bass, in: app)
+        bass.buttons["Deep Bass"].tap()
         let status = app.staticTexts["deepBassStatus"]
         XCTAssertTrue(status.waitForExistence(timeout: 5))
         if #available(iOS 27.0, *) {
@@ -74,13 +125,18 @@ final class PlayerTests: XCTestCase {
         app.launchEnvironment["WIRELESS_PRESERVE_PREVIEW_DEFAULTS"] = "1"
         app.launch()
         app.buttons["Audio Controls"].tap()
-        XCTAssertEqual(bass.value as? String, "1", "Deep Bass should survive an app restart")
+        XCTAssertTrue(bass.buttons["Deep Bass"].isSelected, "Deep Bass should survive an app restart")
+        bass.buttons["Mid Bass"].tap()
+        app.buttons["Close"].tap()
+        app.terminate(); app.launch()
+        app.buttons["Audio Controls"].tap()
+        XCTAssertTrue(bass.buttons["Mid Bass"].isSelected, "Mid Bass should survive an app restart")
         // Selecting speech restores the mutually exclusive preset in both directions.
-        if !vocal.buttons["Light"].isHittable { app.swipeDown() }
+        reveal(vocal, in: app)
         vocal.buttons["Light"].tap()
-        XCTAssertEqual(bass.value as? String, "0")
-        if !bass.isHittable { app.swipeUp() }
-        bass.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap()
+        XCTAssertTrue(bass.buttons["Off"].isSelected)
+        reveal(bass, in: app)
+        bass.buttons["Deep Bass"].tap()
         app.buttons["Close"].tap()
         app.buttons["Sync"].tap()
         let sync = app.switches["syncEnabled"]
@@ -106,9 +162,9 @@ final class PlayerTests: XCTestCase {
         app.launch()
         XCTAssertTrue(app.buttons["Audio Controls"].waitForExistence(timeout: 15))
         app.buttons["Audio Controls"].tap()
-        let bass = app.switches["deepBassToggle"]
-        if !bass.isHittable { app.swipeUp() }
-        bass.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap()
+        let bass = app.segmentedControls["bassBoostPicker"]
+        reveal(bass, in: app)
+        bass.buttons["Deep Bass"].tap()
         app.buttons["Close"].tap()
         app.buttons["Play"].tap()
         let playing = NSPredicate(format: "label == %@", "Playing")
@@ -121,8 +177,9 @@ final class PlayerTests: XCTestCase {
         waitForExpectations(timeout: 25)
         let shot = XCTAttachment(screenshot: app.screenshot())
         shot.name = "Live HLS Deep Bass"; shot.lifetime = .keepAlways; add(shot)
-        bass.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap()
-        XCTAssertTrue(status.label.hasPrefix("Off."))
+        reveal(bass, in: app)
+        bass.buttons["Off"].tap()
+        XCTAssertTrue(status.label.hasPrefix("Off ·"))
         app.buttons["Close"].tap()
         expectation(for: playing, evaluatedWith: app.staticTexts["playbackStatus"])
         waitForExpectations(timeout: 20)
@@ -139,6 +196,7 @@ final class PlayerTests: XCTestCase {
         app.launch()
         XCTAssertTrue(app.buttons["Audio Controls"].waitForExistence(timeout: 15))
         app.buttons["Audio Controls"].tap()
+        reveal(app.segmentedControls["vocalBoostPicker"], in: app)
         app.segmentedControls["vocalBoostPicker"].buttons["Standard"].tap()
         app.buttons["Close"].tap()
         app.buttons["Play"].tap()
@@ -171,6 +229,7 @@ final class PlayerTests: XCTestCase {
         app.buttons["Audio Controls"].tap()
         let picker = app.segmentedControls["vocalBoostPicker"]
         XCTAssertTrue(picker.waitForExistence(timeout: 5))
+        reveal(picker, in: app)
         picker.buttons["Standard"].tap()
         let status = app.staticTexts["vocalBoostStatus"]
         XCTAssertTrue(status.waitForExistence(timeout: 5))
@@ -1136,6 +1195,7 @@ final class PlayerTests: XCTestCase {
         XCTAssertTrue(sen.waitForExistence(timeout: 30)); sen.tap()
         if app.buttons["Pause"].waitForExistence(timeout: 3) { app.buttons["Pause"].tap() }
         app.buttons["Audio Controls"].tap()
+        reveal(app.buttons["streamPicker"], in: app)
         app.buttons["streamPicker"].tap()
         let mp3 = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "MP3")).firstMatch
         XCTAssertTrue(mp3.waitForExistence(timeout: 3)); mp3.tap()

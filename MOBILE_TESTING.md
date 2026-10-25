@@ -91,3 +91,7 @@ Implementation and evidence: `Docs/DEEP_BASS_2026-10-25.md`.
 ## Sound mode switching regression
 
 `PlayerTests.testRepeatedSoundChangesKeepLivePlaybackRunning` cycles Vocal Boost, Off and Deep Bass, checks Playing and Active, then checks app survival after Pause. Set `TEST_RUNNER_WIRELESS_TEST_HLS_URL` to select a stream and `TEST_RUNNER_WIRELESS_TEST_STREAM_FORMAT` for direct AAC/MP3. The preview uses isolated listening statistics. Run native HLS on a physical iOS 27 device; simulator fallback does not verify the native tap. See `Docs/SOUND_MODE_SWITCHING_2026-10-25.md` for recorded results.
+
+## Mid Bass and Audio Controls
+
+`testAudioControlsCardLayout` captures the music and speech cards and checks the stream selector remains reachable. It also checks iPad portrait/landscape; set `TEST_RUNNER_WIRELESS_TEST_LARGE_TEXT=1` for the largest accessibility text. `testDeepBassAvailabilityAndExclusiveSelection` verifies both bass levels survive restarts, remain mutually exclusive with speech and suspend for TV Sync. The repeated live switching test now cycles Mid Bass, Deep Bass and Off as well as speech levels. See `Docs/MID_BASS_AUDIO_CONTROLS_2026-10-25.md` for measured gain and validation limits.

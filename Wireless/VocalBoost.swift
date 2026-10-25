@@ -14,6 +14,16 @@ enum VocalBoostLevel: String, CaseIterable, Codable, Sendable, Identifiable {
     var title: String { rawValue.capitalized }
 }
 
+/// Persisted music preset. Mid Bass is half Deep Bass's shelf gain in dB.
+enum BassBoostLevel: String, CaseIterable, Codable, Sendable, Identifiable {
+    case off, mid, deep
+    var id: String { rawValue }
+    var title: String {
+        switch self { case .off: "Off"; case .mid: "Mid Bass"; case .deep: "Deep Bass" }
+    }
+    var gain: Float { self == .deep ? 5 : self == .mid ? 2.5 : 0 }
+}
+
 /// Autohop's Vocal Boost DSP graph, adapted for Wireless's decoded live PCM.
 /// The signal-chain values originate from Pocket Casts and remain MPL-2.0 code.
 final class VocalBoostProcessor {
@@ -25,7 +35,7 @@ final class VocalBoostProcessor {
     private let dynamics: AVAudioUnitEffect
     private let limiter: AVAudioUnitEffect
 
-    init(format: AVAudioFormat, level: VocalBoostLevel, deepBass: Bool = false) throws {
+    init(format: AVAudioFormat, level: VocalBoostLevel, bassBoost: BassBoostLevel = .off) throws {
         lowShelf = Self.makeAudioUnit(subType: kAudioUnitSubType_LowShelfFilter)
         highPass = Self.makeAudioUnit(subType: kAudioUnitSubType_HighPassFilter)
         dynamics = Self.makeAudioUnit(subType: kAudioUnitSubType_DynamicsProcessor)
@@ -49,7 +59,7 @@ final class VocalBoostProcessor {
             engine.connect(dynamics, to: limiter, format: format)
             engine.connect(limiter, to: engine.mainMixerNode, format: format)
         }
-        try configure(level, deepBass: deepBass)
+        try configure(level, bassBoost: bassBoost)
         try engine.start()
     }
 
@@ -78,16 +88,16 @@ final class VocalBoostProcessor {
     }
 
     /// As in Autohop, keep the graph connected and update parameters in place.
-    func setLevel(_ level: VocalBoostLevel, deepBass: Bool = false) throws { try configure(level, deepBass: deepBass) }
+    func setLevel(_ level: VocalBoostLevel, bassBoost: BassBoostLevel = .off) throws { try configure(level, bassBoost: bassBoost) }
 
-    private func configure(_ level: VocalBoostLevel, deepBass: Bool) throws {
-        let stages: [(AVAudioUnitEffect, OSType)] = deepBass
+    private func configure(_ level: VocalBoostLevel, bassBoost: BassBoostLevel) throws {
+        let stages: [(AVAudioUnitEffect, OSType)] = bassBoost != .off
             ? [(limiter, kAudioUnitSubType_PeakLimiter), (lowShelf, kAudioUnitSubType_LowShelfFilter),
                (highPass, kAudioUnitSubType_HighPassFilter), (dynamics, kAudioUnitSubType_DynamicsProcessor)]
             : [(lowShelf, kAudioUnitSubType_LowShelfFilter), (highPass, kAudioUnitSubType_HighPassFilter),
                (dynamics, kAudioUnitSubType_DynamicsProcessor), (limiter, kAudioUnitSubType_PeakLimiter)]
         for (unit, subtype) in stages {
-            let parameters = VocalBoostConfiguration.parameters(for: subtype, level: level, deepBass: deepBass)
+            let parameters = VocalBoostConfiguration.parameters(for: subtype, level: level, bassBoost: bassBoost)
             unit.bypass = parameters.isEmpty
             for (parameter, value) in parameters {
                 let status: OSStatus
@@ -122,17 +132,17 @@ enum VocalBoostConfiguration {
                                     kAudioUnitSubType_DynamicsProcessor,
                                     kAudioUnitSubType_PeakLimiter]
 
-    static func parameters(for subtype: OSType, level: VocalBoostLevel, deepBass: Bool = false) -> [(AudioUnitParameterID, Float)] {
-        if deepBass {
+    static func parameters(for subtype: OSType, level: VocalBoostLevel, bassBoost: BassBoostLevel = .off) -> [(AudioUnitParameterID, Float)] {
+        if bassBoost != .off {
             // A broad bass shelf adds weight to kick drums and bass guitar.
-            // Matched attenuation before the limiter reserves the shelf's full
-            // headroom; no speech high-pass or dynamic compression is applied.
+            // Keep unity gain outside the bass range; the peak limiter controls
+            // boosted peaks instead of making the whole programme quieter.
             switch subtype {
             case kAudioUnitSubType_LowShelfFilter:
-                return [(kAULowShelfParam_CutoffFrequency, 110), (kAULowShelfParam_Gain, 5)]
+                return [(kAULowShelfParam_CutoffFrequency, 110), (kAULowShelfParam_Gain, bassBoost.gain)]
             case kAudioUnitSubType_PeakLimiter:
                 return [(kLimiterParam_AttackTime, 0.002), (kLimiterParam_DecayTime, 0.05),
-                        (kLimiterParam_PreGain, -5)]
+                        (kLimiterParam_PreGain, 0)]
             default: return []
             }
         }
@@ -168,7 +178,7 @@ enum VocalBoostState: Equatable, Sendable {
         case .suspendedForSync: return "Unavailable while TV Sync is on."
         case .ready: return "Ready · Press Play to use \(effect)."
         case .preparing: return "Waiting for processed audio…"
-        case .active: return effect == "Deep Bass" ? "Active · Bass enhancement is running." : "Active · Speech processing is running."
+        case .active: return effect == "Deep Bass" || effect == "Mid Bass" ? "Active · Bass enhancement is running." : "Active · Speech processing is running."
         case .unavailable(let reason): return "Unavailable · " + reason + " Playback continues without \(effect)."
         }
     }

@@ -89,7 +89,7 @@ Wireless begins preparing the selected station’s audio as soon as it opens in 
 
 While playback is requested, Wireless keeps trying after a lost connection. It tries the station’s published stream alternatives and repeats in cycles, with waits increasing from one second to a maximum of 15 seconds between cycles. Press Pause to stop reconnection attempts. If iOS suspends the app during a prolonged background outage, reopen Wireless to let recovery continue.
 
-With TV Sync, Vocal Boost and Deep Bass off, Wireless plays the original broadcast audio. It allows a short reliability buffer to build where appropriate and does not make TV-delay corrections. Turning a sound preset Off bypasses processing on the current connection, without reconnecting the stream.
+With TV Sync, Vocal Boost and bass off, Wireless plays the original broadcast audio. It allows a short reliability buffer to build where appropriate and does not make TV-delay corrections. Turning a sound preset Off bypasses processing on the current connection, without reconnecting the stream.
 
 Open **Audio Controls** to choose another stream offered by the station. Wireless remembers the selected stream variation for that station and restores it the next time the station is opened. Format and bitrate information appear in the Details pane when supplied by the directory.
 
@@ -112,15 +112,15 @@ Start with **Light** for broadcasts that are already heavily compressed. Standar
 
 TV Sync and Vocal Boost cannot operate together; Vocal Boost is disabled while TV Sync is on.
 
-## Deep Bass
+## Mid Bass and Deep Bass
 
-Open **Audio Controls** and turn on **Deep Bass** under **Music** to add weight to kick drums and bass guitar, particularly on rock stations. The preset uses a broad bass shelf with headroom and peak protection. It is off by default; your choice is saved across stations and app launches.
+Open **Audio Controls** and choose **Mid Bass** or **Deep Bass** under **Music**. Mid Bass adds a gentle lift to drums and bass guitar; Deep Bass gives a fuller, stronger bass sound. Choose **Off** for the station’s original sound. Bass is off by default; your choice is saved across stations and app launches.
 
-Deep Bass and Vocal Boost are alternative sound presets. Enabling Deep Bass turns Vocal Boost off; selecting a Vocal Boost level turns Deep Bass off. Both are suspended while TV Sync is on; your saved choice resumes when TV Sync is turned off.
+Bass and Vocal Boost are alternative sound presets. Choosing Mid Bass or Deep Bass turns Vocal Boost off; selecting a Vocal Boost level turns bass off. Both are suspended while TV Sync is on; your saved choice resumes when TV Sync is turned off.
 
-Compatible direct MP3/AAC streams are supported. Compatible HLS requires iOS 27 or later and uses the same native processing and unencrypted AAC-segment fallback as Vocal Boost. Audio Controls shows **Ready**, **Waiting**, **Active** or **Unavailable**. Unsupported streams continue without the effect. Listening Stats records Deep Bass only while processing is confirmed active.
+Compatible direct MP3/AAC streams are supported. Compatible HLS requires iOS 27 or later and uses the same native processing and unencrypted AAC-segment fallback as Vocal Boost. Audio Controls shows **Ready**, **Waiting**, **Active** or **Unavailable**. Unsupported streams continue without the effect. Listening Stats records Mid Bass or Deep Bass only while processing is confirmed active.
 
-Headroom can make the overall sound quieter; adjust the listening volume to taste. The result depends on the broadcaster and your speakers or headphones. Deep Bass cannot restore missing low frequencies or undo a broadcaster’s compression.
+Both bass levels preserve the normal level outside the bass range, with peak limiting to control boosted peaks. Perceived loudness still depends on the station and your speakers or headphones. Use your device’s volume buttons to adjust loudness. Bass enhancement cannot restore missing low frequencies or undo a broadcaster’s compression.
 
 ## Sleep Timer
 
@@ -184,7 +184,7 @@ Choose **7 Days**, the displayed month, the displayed year or **Lifetime**. The 
 | Listening Heatmap | Daily listening for the selected week or month. |
 | Listening Over Time | Monthly listening for the selected year or Lifetime. |
 | Listening Clock | The hours of day when you listen most. |
-| How You Listen | Average and longest sessions, plus listening by Live, TV Sync, Vocal Boost, Deep Bass and audio-route category. |
+| How You Listen | Average and longest sessions, plus listening by Live, TV Sync, Vocal Boost, Mid Bass, Deep Bass and audio-route category. |
 
 A listening session begins when a station first renders audio and ends when you pause or change station. A brief reconnection or alternate-stream failover for the same station remains one session, but the silent gap is excluded.
 
@@ -243,7 +243,7 @@ Broadcasters and rights holders can use the same station-report action to reques
 - Turn TV Sync off to return to normal live playback.
 - Try a direct MP3 or AAC stream if the station offers one.
 - Select a lower-bitrate stream when reception is weak.
-- Turn Vocal Boost and Deep Bass off to return compatible streams to standard playback.
+- Turn Vocal Boost and bass off to return compatible streams to standard playback.
 
 ### TV Sync is unavailable or unstable
 

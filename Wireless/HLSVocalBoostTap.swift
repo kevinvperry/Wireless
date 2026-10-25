@@ -15,8 +15,8 @@ final class HLSVocalBoostTap {
     private let tap: MTAudioProcessingTap
 
     @available(iOS 27.0, *)
-    init(level: VocalBoostLevel, deepBass: Bool = false) throws {
-        state = VocalBoostTapState(level: level, deepBass: deepBass)
+    init(level: VocalBoostLevel, bassBoost: BassBoostLevel = .off) throws {
+        state = VocalBoostTapState(level: level, bassBoost: bassBoost)
         let retained = Unmanaged.passRetained(state).toOpaque()
         var callbacks = MTAudioProcessingTapCallbacks(
             version: kMTAudioProcessingTapCallbacksVersion_0, clientInfo: retained,
@@ -52,8 +52,8 @@ final class HLSVocalBoostTap {
         tap = created
     }
 
-    func setLevel(_ level: VocalBoostLevel, deepBass: Bool) {
-        state.setPreset(level, deepBass: deepBass)
+    func setLevel(_ level: VocalBoostLevel, bassBoost: BassBoostLevel) {
+        state.setPreset(level, bassBoost: bassBoost)
     }
 
     @MainActor
@@ -101,21 +101,21 @@ final class VocalBoostTapState {
     private var bytesPerFrame: UInt32 = 0
     private var sampleTime: Float64 = 0
 
-    init(level: VocalBoostLevel, deepBass: Bool = false) {
-        requestedPreset = Atomic(Self.presetIndex(level, deepBass: deepBass))
-        presets = (0...4).map { index in
+    init(level: VocalBoostLevel, bassBoost: BassBoostLevel = .off) {
+        requestedPreset = Atomic(Self.presetIndex(level, bassBoost: bassBoost))
+        presets = (0...5).map { index in
             VocalBoostConfiguration.subtypes.map {
-                VocalBoostConfiguration.parameters(for: $0, level: VocalBoostLevel.allCases[min(index, 3)], deepBass: index == 4)
+                VocalBoostConfiguration.parameters(for: $0, level: VocalBoostLevel.allCases[min(index, 3)], bassBoost: index == 4 ? .mid : index == 5 ? .deep : .off)
             }
         }
     }
 
-    private static func presetIndex(_ level: VocalBoostLevel, deepBass: Bool) -> Int {
-        deepBass ? 4 : VocalBoostLevel.allCases.firstIndex(of: level)!
+    private static func presetIndex(_ level: VocalBoostLevel, bassBoost: BassBoostLevel) -> Int {
+        bassBoost == .deep ? 5 : bassBoost == .mid ? 4 : VocalBoostLevel.allCases.firstIndex(of: level)!
     }
 
-    func setPreset(_ level: VocalBoostLevel, deepBass: Bool) {
-        requestedPreset.store(Self.presetIndex(level, deepBass: deepBass), ordering: .releasing)
+    func setPreset(_ level: VocalBoostLevel, bassBoost: BassBoostLevel) {
+        requestedPreset.store(Self.presetIndex(level, bassBoost: bassBoost), ordering: .releasing)
     }
     deinit { unprepare() }
 
@@ -165,7 +165,7 @@ final class VocalBoostTapState {
                 // Connect every stage once. Preset changes bypass/configure units
                 // on the render thread, never rebuild or dispose a live graph.
                 let parameters = VocalBoostConfiguration.parameters(for: subtype, level: .standard,
-                    deepBass: subtype == kAudioUnitSubType_LowShelfFilter)
+                    bassBoost: subtype == kAudioUnitSubType_LowShelfFilter ? .deep : .off)
                 var description = AudioComponentDescription(componentType: kAudioUnitType_Effect,
                     componentSubType: subtype, componentManufacturer: kAudioUnitManufacturer_Apple,
                     componentFlags: 0, componentFlagsMask: 0)
@@ -244,9 +244,9 @@ final class VocalBoostTapState {
         let preset = requestedPreset.load(ordering: .acquiring)
         guard preset != configuredPreset else { return }
         guard units.count == VocalBoostConfiguration.subtypes.count else { throw TapError.status(kAudio_ParamError) }
-        // Reserve headroom first when switching to bass; restore speech gain
+        // Restore unity limiter gain first when switching to bass; restore speech gain
         // after disabling its conflicting shelf when switching back.
-        let first = preset == 4 ? units.count - 1 : 0
+        let first = preset >= 4 ? units.count - 1 : 0
         for offset in 0..<units.count {
             let index = (first + offset) % units.count
             let parameters = presets[preset][index]

@@ -13,51 +13,56 @@ private extension View {
 
 private struct AudioControlsSheet: View {
     @ObservedObject var player: MobilePlayer
+    @Environment(\.dynamicTypeSize) private var typeSize
     let close: () -> Void
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section("Audio stream") {
-                    Picker("Stream", selection: $player.selectedStreamID) {
-                        ForEach(player.station.playableStreams) { stream in
-                            Text(stream.title).tag(stream.id)
-                        }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 26) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Make it sound right for you").font(.title2.bold())
+                        Text("Choose clearer voices or fuller music. Your choice is saved, so you can set it once and keep listening.")
+                            .foregroundStyle(.secondary)
                     }
-                    .accessibilityIdentifier("streamPicker")
-                }
-                Section {
-                    Picker("Vocal Boost", selection: $player.vocalBoost) {
-                        ForEach(VocalBoostLevel.allCases) { level in
-                            Text(level.title).tag(level)
-                        }
+                    if player.syncEnabled {
+                        Label("Sound presets are paused while TV Sync is on. Turn TV Sync off in the Sync pane to use them.", systemImage: "tv")
+                            .font(.subheadline).foregroundStyle(.secondary)
                     }
-                    .pickerStyle(.segmented)
-                    .disabled(player.syncEnabled)
-                    .accessibilityIdentifier("vocalBoostPicker")
-                } header: {
-                    Text("Vocal Boost")
-                } footer: {
-                    Text(vocalBoostHelp)
-                        .accessibilityIdentifier("vocalBoostStatus")
+                    VStack(alignment: .leading, spacing: 16) {
+                        cardTitle("Music", symbol: "waveform", subtitle: "Give drums and bass guitar more weight.")
+                        bassPicker
+                        Text("Off keeps the station’s original sound. Mid Bass adds a gentle lift. Deep Bass gives a fuller, stronger bass sound.")
+                            .font(.subheadline).foregroundStyle(.secondary)
+                        Text(player.syncEnabled ? "Unavailable while TV Sync is on." : player.bassBoostState.message(for: player.bassBoost.title))
+                            .font(.footnote).foregroundStyle(.secondary)
+                            .accessibilityIdentifier("deepBassStatus")
+                    }.audioSettingsCard()
+                    VStack(alignment: .leading, spacing: 16) {
+                        cardTitle("Vocal Boost", symbol: "person.wave.2", subtitle: "Make speech and commentary easier to hear.")
+                        vocalPicker
+                        Text("Start with Light for clearer voices. Try Standard or Strong if quiet speech is still hard to hear. Choose Off for the original sound.")
+                            .font(.subheadline).foregroundStyle(.secondary)
+                        Text(player.bassBoost != .off ? "Off · \(player.bassBoost.title) is selected." : player.vocalBoostState.message)
+                            .font(.footnote).foregroundStyle(.secondary)
+                            .accessibilityIdentifier("vocalBoostStatus")
+                    }.audioSettingsCard()
+                    Text("Use one sound preset at a time. Choosing bass turns Vocal Boost off, and choosing Vocal Boost turns bass off. These settings change the sound; use your device’s volume buttons to adjust loudness.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 16) {
+                        cardTitle("Audio stream", symbol: "antenna.radiowaves.left.and.right", subtitle: "Leave this as it is unless the station keeps stopping.")
+                        Picker("Stream", selection: $player.selectedStreamID) {
+                            ForEach(player.station.playableStreams) { stream in Text(stream.title).tag(stream.id) }
+                        }
+                        .pickerStyle(.menu)
+                        .accessibilityIdentifier("streamPicker")
+                        Text("If playback is unreliable, try another stream here. To match commentary to your television, use the Sync pane.")
+                            .font(.subheadline).foregroundStyle(.secondary)
+                    }.audioSettingsCard()
                 }
-                Section {
-                    Toggle("Deep Bass", isOn: $player.deepBass)
-                        .disabled(player.syncEnabled)
-                        .accessibilityIdentifier("deepBassToggle")
-                } header: {
-                    Text("Music")
-                } footer: {
-                    Text(deepBassHelp)
-                        .accessibilityIdentifier("deepBassStatus")
-                }
-                Section {
-                    Text("Choose an alternative stream if reception is unreliable.")
-                    Text("Delay controls are available when the broadcaster provides a seekable live buffer.")
-                    Text("Use the Sync pane to match commentary to your television.")
-                }
+                .padding(22).frame(maxWidth: 720).frame(maxWidth: .infinity)
             }
-            .scrollContentBackground(.hidden)
+            .tint(.purple)
             .navigationTitle("Audio Controls")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -70,14 +75,38 @@ private struct AudioControlsSheet: View {
         .presentationDetents([.large])
     }
 
-    private var deepBassHelp: String {
-        let status = player.syncEnabled ? "Unavailable while TV Sync is on."
-            : player.deepBass ? player.deepBassState.message(for: "Deep Bass") : "Off."
-        return status + " Adds weight to kick drums and bass guitar. Selecting Deep Bass turns Vocal Boost off. The overall level may be quieter to protect peaks."
+    @ViewBuilder private var bassPicker: some View {
+        let picker = Picker("Bass", selection: $player.bassBoost) {
+            ForEach(BassBoostLevel.allCases) { Text($0.title).tag($0) }
+        }.disabled(player.syncEnabled).accessibilityIdentifier("bassBoostPicker")
+        if typeSize.isAccessibilitySize { picker.pickerStyle(.menu) }
+        else { picker.pickerStyle(.segmented) }
     }
 
-    private var vocalBoostHelp: String {
-        (player.deepBass ? "Off · Deep Bass is selected." : player.vocalBoostState.message) + " Light reduces rumble; Standard and Strong also compress speech and limit peaks. HLS processing requires iOS 27 or later."
+    @ViewBuilder private var vocalPicker: some View {
+        let picker = Picker("Vocal Boost", selection: $player.vocalBoost) {
+            ForEach(VocalBoostLevel.allCases) { Text($0.title).tag($0) }
+        }.disabled(player.syncEnabled).accessibilityIdentifier("vocalBoostPicker")
+        if typeSize.isAccessibilitySize { picker.pickerStyle(.menu) }
+        else { picker.pickerStyle(.segmented) }
+    }
+
+    private func cardTitle(_ title: String, symbol: String, subtitle: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: symbol).foregroundStyle(.purple).font(.title3).accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 6) {
+                Text(title).font(.headline)
+                Text(subtitle).font(.subheadline).foregroundStyle(.secondary)
+            }
+        }
+    }
+}
+
+private extension View {
+    // Same surface, inset and corner radius as the TV Sync pane.
+    func audioSettingsCard() -> some View {
+        self.frame(maxWidth: .infinity, alignment: .leading).padding(22)
+            .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 20))
     }
 }
 

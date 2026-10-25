@@ -43,8 +43,8 @@ final class VocalBoostTests: XCTestCase {
         pcm.frameLength = 1_024
         let initialPreparations = state.prepareCount.load(ordering: .relaxed)
         for _ in 0..<20 {
-            for (level, bass) in [(VocalBoostLevel.light, false), (.strong, false), (.off, true), (.off, false)] {
-                state.setPreset(level, deepBass: bass)
+            for (level, bass) in [(VocalBoostLevel.light, BassBoostLevel.off), (.strong, .off), (.off, .mid), (.off, .deep), (.off, .off)] {
+                state.setPreset(level, bassBoost: bass)
                 XCTAssertFalse(state.hasAppliedPreset)
                 for channel in 0..<2 {
                     for frame in 0..<1_024 { pcm.floatChannelData![channel][frame] = 0.125 }
@@ -53,7 +53,7 @@ final class VocalBoostTests: XCTestCase {
                 XCTAssertTrue(state.hasAppliedPreset)
                 XCTAssertEqual(state.failure.load(ordering: .relaxed), 0)
                 XCTAssertEqual(state.prepareCount.load(ordering: .relaxed), initialPreparations)
-                if level == .off, !bass {
+                if level == .off, bass == .off {
                     for channel in 0..<2 {
                         XCTAssertTrue((0..<1_024).allSatisfy { pcm.floatChannelData![channel][$0] == 0.125 }, "Off must bypass the existing graph without altering the original PCM")
                     }
@@ -119,10 +119,10 @@ final class VocalBoostTests: XCTestCase {
 
     private func render(level: VocalBoostLevel, frequency: Double, amplitude: Double,
                         sampleRate: Double = 48_000, channels: AVAudioChannelCount = 2,
-                        interleaved: Bool = false, deepBass: Bool = false) throws -> (rms: Double, peak: Double) {
+                        interleaved: Bool = false, bassBoost: BassBoostLevel = .off) throws -> (rms: Double, peak: Double) {
         let format = try XCTUnwrap(AVAudioFormat(commonFormat: .pcmFormatFloat32,
             sampleRate: sampleRate, channels: channels, interleaved: interleaved))
-        let state = VocalBoostTapState(level: level, deepBass: deepBass)
+        let state = VocalBoostTapState(level: level, bassBoost: bassBoost)
         state.prepare(format: format.streamDescription.pointee, maximumFrames: 1_024)
         XCTAssertEqual(state.failure.load(ordering: .relaxed), 0)
         let buffer = try XCTUnwrap(AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 1_024))
@@ -157,15 +157,33 @@ final class VocalBoostTests: XCTestCase {
 
     func testDeepBassLiftsLowFrequenciesWithoutSpeechFiltering() throws {
         for rate in [44_100.0, 48_000.0] {
-            let bass = try render(level: .off, frequency: 40, amplitude: 0.1, sampleRate: rate, deepBass: true)
-            let mid = try render(level: .off, frequency: 1_000, amplitude: 0.1, sampleRate: rate, deepBass: true)
+            let bass = try render(level: .off, frequency: 40, amplitude: 0.1, sampleRate: rate, bassBoost: .deep)
+            let mid = try render(level: .off, frequency: 1_000, amplitude: 0.1, sampleRate: rate, bassBoost: .deep)
             let lift = 20 * log10(bass.rms / mid.rms)
             XCTAssertGreaterThan(lift, 3)
             XCTAssertLessThan(lift, 6)
             // Deep Bass takes precedence defensively, even if a caller passes a
             // speech level: the 180 Hz speech high-pass must never cancel it.
-            let conflicting = try render(level: .strong, frequency: 40, amplitude: 0.1, sampleRate: rate, deepBass: true)
+            let conflicting = try render(level: .strong, frequency: 40, amplitude: 0.1, sampleRate: rate, bassBoost: .deep)
             XCTAssertEqual(conflicting.rms, bass.rms, accuracy: 0.001)
+        }
+    }
+
+    func testBassLevelsKeepMidrangeVolumeAndMidBassIsHalfway() throws {
+        for rate in [44_100.0, 48_000.0] {
+            let off = try render(level: .off, frequency: 1_000, amplitude: 0.1, sampleRate: rate)
+            for preset in [BassBoostLevel.mid, .deep] {
+                let midrange = try render(level: .off, frequency: 1_000, amplitude: 0.1, sampleRate: rate, bassBoost: preset)
+                XCTAssertEqual(20 * log10(midrange.rms / off.rms), 0, accuracy: 0.3,
+                               "Bass must not impose a fixed whole-programme volume reduction")
+            }
+            let base = try render(level: .off, frequency: 40, amplitude: 0.1, sampleRate: rate)
+            let mid = try render(level: .off, frequency: 40, amplitude: 0.1, sampleRate: rate, bassBoost: .mid)
+            let deep = try render(level: .off, frequency: 40, amplitude: 0.1, sampleRate: rate, bassBoost: .deep)
+            let midLift = 20 * log10(mid.rms / base.rms)
+            let deepLift = 20 * log10(deep.rms / base.rms)
+            XCTAssertEqual(midLift, deepLift / 2, accuracy: 0.3)
+            XCTAssertGreaterThan(midLift, 1.5)
         }
     }
 
@@ -173,7 +191,7 @@ final class VocalBoostTests: XCTestCase {
         for channels: AVAudioChannelCount in [1, 2] {
             for interleaved in [false, true] {
                 let result = try render(level: .off, frequency: 60, amplitude: 0.99,
-                                        channels: channels, interleaved: interleaved, deepBass: true)
+                                        channels: channels, interleaved: interleaved, bassBoost: .deep)
                 XCTAssertLessThanOrEqual(result.peak, 1.01)
                 XCTAssertGreaterThan(result.rms, 0.3)
             }
