@@ -16,7 +16,7 @@ struct AcknowledgementsView: View {
                     licence: "MIT",
                     licenceURL: URL(string: "https://github.com/kevinvperry/Wireless/blob/main/LICENSE"),
                     repoURL: URL(string: "https://github.com/kevinvperry/Wireless"),
-                    description: "Wireless's original code and documentation are available under the MIT Licence. The shared Vocal Boost and Deep Bass processing code retains the MPL-2.0 licence described below. Broadcaster names, artwork and audio retain their owners' rights."
+                    description: "Wireless's original code and documentation are available under the MIT Licence. The shared Vocal Boost and music processing code retains the MPL-2.0 licence described below. Broadcaster names, artwork and audio retain their owners' rights."
                 )
             } header: {
                 Text("Project Licence")
@@ -30,7 +30,7 @@ struct AcknowledgementsView: View {
                     licence: "MPL-2.0",
                     licenceURL: URL(string: "https://mozilla.org/MPL/2.0/"),
                     repoURL: URL(string: "https://github.com/Automattic/pocket-casts-ios"),
-                    description: "The Vocal Boost signal chain used in Wireless's audio engine (high-pass filter, dynamics processing and limiter values) is adapted from Autohop's playback engine, which is based on Pocket Casts' EffectsPlayer.swift. Deep Bass uses the same covered processing file with a Wireless-specific bass preset."
+                    description: "The Vocal Boost signal chain used in Wireless's audio engine (high-pass filter, dynamics processing and limiter values) is adapted from Autohop's playback engine, which is based on Pocket Casts' EffectsPlayer.swift. Mid Bass, Deep Bass and Pop & R&B use the same covered processing file with Wireless-specific music presets."
                 )
             } header: {
                 Text("Open Source Components")

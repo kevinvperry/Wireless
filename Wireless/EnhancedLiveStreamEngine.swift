@@ -25,9 +25,9 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
     private var processor: VocalBoostProcessor?
     private var stream: StationStream?
     private var level: VocalBoostLevel = .off
-    private var bassBoost: BassBoostLevel = .off
-    private var effectName: String { bassBoost != .off ? bassBoost.title : "Vocal Boost" }
-    private var effectDescription: String { bassBoost != .off ? bassBoost.title : level == .off ? "Original broadcast audio" : "Vocal Boost · " + level.title }
+    private var musicPreset: MusicPreset = .off
+    private var effectName: String { musicPreset != .off ? musicPreset.title : "Vocal Boost" }
+    private var effectDescription: String { musicPreset != .off ? musicPreset.title : level == .off ? "Original broadcast audio" : "Vocal Boost · " + level.title }
     private var playbackID = UUID()
     private var pendingFailure = false
     private var generation = 0
@@ -39,13 +39,13 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
     private var outputVolume: Float = 1
     private var packetBacklog: [(Data, AudioStreamPacketDescription)] = []
 
-    func configure(stream: StationStream, level: VocalBoostLevel, bassBoost: BassBoostLevel = .off, playbackID: UUID) {
+    func configure(stream: StationStream, level: VocalBoostLevel, musicPreset: MusicPreset = .off, playbackID: UUID) {
         work.async {
             self.close()
             self.playbackID = playbackID
             self.stream = stream
             self.level = level
-            self.bassBoost = bassBoost
+            self.musicPreset = musicPreset
         }
     }
 
@@ -77,12 +77,12 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
         }
     }
 
-    func setLevel(_ level: VocalBoostLevel, bassBoost: BassBoostLevel = .off) {
+    func setLevel(_ level: VocalBoostLevel, musicPreset: MusicPreset = .off) {
         work.async {
             self.level = level
-            self.bassBoost = bassBoost
+            self.musicPreset = musicPreset
             do {
-                try self.processor?.setLevel(level, bassBoost: bassBoost)
+                try self.processor?.setLevel(level, musicPreset: musicPreset)
                 if self.started, self.requested {
                     self.emit(title: "Playing", detail: self.effectDescription, buffering: false, progress: 1)
                 }
@@ -168,7 +168,7 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
             return
         }
         do {
-            let processor = try VocalBoostProcessor(format: output, level: level, bassBoost: bassBoost)
+            let processor = try VocalBoostProcessor(format: output, level: level, musicPreset: musicPreset)
             processor.setVolume(outputVolume)
             self.compressedFormat = source
             self.pcmFormat = output

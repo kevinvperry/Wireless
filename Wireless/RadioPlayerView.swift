@@ -30,11 +30,11 @@ private struct AudioControlsSheet: View {
                             .font(.subheadline).foregroundStyle(.secondary)
                     }
                     VStack(alignment: .leading, spacing: 16) {
-                        cardTitle("Music", symbol: "waveform", subtitle: "Give drums and bass guitar more weight.")
+                        cardTitle("Music", symbol: "waveform", subtitle: "Choose the sound that suits your station.")
                         bassPicker
-                        Text("Off keeps the station’s original sound. Mid Bass adds a gentle lift. Deep Bass gives a fuller, stronger bass sound.")
+                        Text("Try Mid Bass or Deep Bass for rock. Choose Pop & R&B for modern pop, R&B and beat-driven music. You can change your choice while listening.")
                             .font(.subheadline).foregroundStyle(.secondary)
-                        Text(player.syncEnabled ? "Unavailable while TV Sync is on." : player.bassBoostState.message(for: player.bassBoost.title))
+                        Text(player.syncEnabled ? "Unavailable while TV Sync is on." : player.musicPresetState.message(for: player.musicPreset.title))
                             .font(.footnote).foregroundStyle(.secondary)
                             .accessibilityIdentifier("deepBassStatus")
                     }.audioSettingsCard()
@@ -43,11 +43,11 @@ private struct AudioControlsSheet: View {
                         vocalPicker
                         Text("Start with Light for clearer voices. Try Standard or Strong if quiet speech is still hard to hear. Choose Off for the original sound.")
                             .font(.subheadline).foregroundStyle(.secondary)
-                        Text(player.bassBoost != .off ? "Off · \(player.bassBoost.title) is selected." : player.vocalBoostState.message)
+                        Text(player.musicPreset != .off ? "Off · \(player.musicPreset.title) is selected." : player.vocalBoostState.message)
                             .font(.footnote).foregroundStyle(.secondary)
                             .accessibilityIdentifier("vocalBoostStatus")
                     }.audioSettingsCard()
-                    Text("Use one sound preset at a time. Choosing bass turns Vocal Boost off, and choosing Vocal Boost turns bass off. These settings change the sound; use your device’s volume buttons to adjust loudness.")
+                    Text("Use one sound preset at a time. Choosing a music preset turns Vocal Boost off, and choosing Vocal Boost turns music tuning off. These settings change the sound; use your device’s volume buttons to adjust loudness.")
                         .font(.footnote).foregroundStyle(.secondary)
                     VStack(alignment: .leading, spacing: 16) {
                         cardTitle("Audio stream", symbol: "antenna.radiowaves.left.and.right", subtitle: "Leave this as it is unless the station keeps stopping.")
@@ -75,12 +75,31 @@ private struct AudioControlsSheet: View {
         .presentationDetents([.large])
     }
 
-    @ViewBuilder private var bassPicker: some View {
-        let picker = Picker("Bass", selection: $player.bassBoost) {
-            ForEach(BassBoostLevel.allCases) { Text($0.title).tag($0) }
-        }.disabled(player.syncEnabled).accessibilityIdentifier("bassBoostPicker")
-        if typeSize.isAccessibilitySize { picker.pickerStyle(.menu) }
-        else { picker.pickerStyle(.segmented) }
+    private var bassPicker: some View {
+        VStack(spacing: 0) {
+            ForEach(MusicPreset.allCases) { preset in
+                if preset != .off { Divider().padding(.vertical, 10) }
+                Button { player.musicPreset = preset } label: {
+                    HStack(alignment: .center, spacing: 12) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(preset.title).font(.subheadline.bold()).foregroundStyle(.primary)
+                            Text(preset.summary).font(.footnote).foregroundStyle(.secondary)
+                        }
+                        Spacer(minLength: 8)
+                        Image(systemName: player.musicPreset == preset ? "checkmark.circle.fill" : "circle")
+                            .foregroundStyle(player.musicPreset == preset ? Color.purple : Color.secondary)
+                            .accessibilityHidden(true)
+                    }.frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(preset.title)
+                .accessibilityValue(preset.summary)
+                .accessibilityAddTraits(player.musicPreset == preset ? .isSelected : [])
+                .disabled(player.syncEnabled)
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("musicPresetPicker")
     }
 
     @ViewBuilder private var vocalPicker: some View {

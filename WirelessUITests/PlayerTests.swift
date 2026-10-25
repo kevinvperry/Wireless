@@ -21,7 +21,7 @@ final class PlayerTests: XCTestCase {
         app.launch()
         XCTAssertTrue(app.buttons["Audio Controls"].waitForExistence(timeout: 15))
         app.buttons["Audio Controls"].tap()
-        let bass = app.descendants(matching: .any)["bassBoostPicker"].firstMatch
+        let bass = app.buttons["Pop & R&B"]
         XCTAssertTrue(bass.waitForExistence(timeout: 5))
         reveal(bass, in: app)
         XCTAssertTrue(bass.isHittable)
@@ -66,14 +66,24 @@ final class PlayerTests: XCTestCase {
         app.buttons["Audio Controls"].tap()
         let vocalState = app.staticTexts["vocalBoostStatus"]
         let bassState = app.staticTexts["deepBassStatus"]
-        let bass = app.segmentedControls["bassBoostPicker"]
+        let bass = app.otherElements["musicPresetPicker"]
         expectation(for: NSPredicate(format: "label CONTAINS %@", "Active ·"), evaluatedWith: vocalState)
         waitForExpectations(timeout: 30)
         for _ in 0..<3 {
             reveal(vocal, in: app)
             for level in ["Light", "Strong", "Standard", "Off"] { vocal.buttons[level].tap() }
             reveal(bass, in: app)
-            for level in ["Mid Bass", "Deep Bass", "Mid Bass", "Off"] { bass.buttons[level].tap() }
+            for level in ["Mid Bass", "Deep Bass", "Pop & R&B", "Off"] {
+                reveal(bass.buttons[level], in: app)
+                bass.buttons[level].tap()
+                XCTAssertTrue(bass.buttons[level].isSelected)
+                if level == "Pop & R&B" {
+                    expectation(for: NSPredicate(format: "label CONTAINS %@", "Active · Pop & R&B"), evaluatedWith: bassState)
+                    waitForExpectations(timeout: 10)
+                    let shot = XCTAttachment(screenshot: app.screenshot())
+                    shot.name = "Active Pop and RnB"; shot.lifetime = .keepAlways; add(shot)
+                }
+            }
             XCTAssertTrue(bassState.label.hasPrefix("Off ·"))
             app.buttons["Close"].tap()
             XCTAssertEqual(app.staticTexts["playbackStatus"].label, "Playing")
@@ -105,7 +115,7 @@ final class PlayerTests: XCTestCase {
         let vocal = app.segmentedControls["vocalBoostPicker"]
         reveal(vocal, in: app)
         vocal.buttons["Strong"].tap()
-        let bass = app.segmentedControls["bassBoostPicker"]
+        let bass = app.otherElements["musicPresetPicker"]
         reveal(bass, in: app)
         XCTAssertTrue(bass.waitForExistence(timeout: 5))
         reveal(bass, in: app)
@@ -126,11 +136,12 @@ final class PlayerTests: XCTestCase {
         app.launch()
         app.buttons["Audio Controls"].tap()
         XCTAssertTrue(bass.buttons["Deep Bass"].isSelected, "Deep Bass should survive an app restart")
-        bass.buttons["Mid Bass"].tap()
+        reveal(bass.buttons["Pop & R&B"], in: app)
+        bass.buttons["Pop & R&B"].tap()
         app.buttons["Close"].tap()
         app.terminate(); app.launch()
         app.buttons["Audio Controls"].tap()
-        XCTAssertTrue(bass.buttons["Mid Bass"].isSelected, "Mid Bass should survive an app restart")
+        XCTAssertTrue(bass.buttons["Pop & R&B"].isSelected, "Pop & R&B should survive an app restart")
         // Selecting speech restores the mutually exclusive preset in both directions.
         reveal(vocal, in: app)
         vocal.buttons["Light"].tap()
@@ -140,15 +151,20 @@ final class PlayerTests: XCTestCase {
         app.buttons["Close"].tap()
         app.buttons["Sync"].tap()
         let sync = app.switches["syncEnabled"]
-        sync.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap()
-        XCTAssertEqual(sync.value as? String, "1")
+        expectation(for: NSPredicate { _, _ in
+            sync.isHittable && sync.frame.minX >= 0 && sync.frame.maxX <= app.frame.maxX
+        }, evaluatedWith: app)
+        waitForExpectations(timeout: 5)
+        sync.tap()
+        expectation(for: NSPredicate(format: "value == %@", "1"), evaluatedWith: sync)
+        waitForExpectations(timeout: 5)
         app.buttons["Playing"].tap()
         let audio = app.buttons["Audio Controls"]
         expectation(for: NSPredicate { _, _ in audio.isHittable && audio.frame.minX >= 0 }, evaluatedWith: app)
         waitForExpectations(timeout: 5)
         audio.tap()
         XCTAssertTrue(bass.waitForExistence(timeout: 5))
-        XCTAssertFalse(bass.isEnabled)
+        XCTAssertFalse(bass.buttons["Pop & R&B"].isEnabled)
         XCTAssertTrue(status.waitForExistence(timeout: 5))
         XCTAssertTrue(status.label.contains("Unavailable while TV Sync is on"))
     }
@@ -162,7 +178,7 @@ final class PlayerTests: XCTestCase {
         app.launch()
         XCTAssertTrue(app.buttons["Audio Controls"].waitForExistence(timeout: 15))
         app.buttons["Audio Controls"].tap()
-        let bass = app.segmentedControls["bassBoostPicker"]
+        let bass = app.otherElements["musicPresetPicker"]
         reveal(bass, in: app)
         bass.buttons["Deep Bass"].tap()
         app.buttons["Close"].tap()

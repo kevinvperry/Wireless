@@ -14,14 +14,22 @@ enum VocalBoostLevel: String, CaseIterable, Codable, Sendable, Identifiable {
     var title: String { rawValue.capitalized }
 }
 
-/// Persisted music preset. Mid Bass is half Deep Bass's shelf gain in dB.
-enum BassBoostLevel: String, CaseIterable, Codable, Sendable, Identifiable {
-    case off, mid, deep
+/// Mutually exclusive music voicings; speech processing is a separate choice.
+enum MusicPreset: String, CaseIterable, Codable, Sendable, Identifiable {
+    case off, mid, deep, popRnB
     var id: String { rawValue }
     var title: String {
-        switch self { case .off: "Off"; case .mid: "Mid Bass"; case .deep: "Deep Bass" }
+        switch self { case .off: "Off"; case .mid: "Mid Bass"; case .deep: "Deep Bass"; case .popRnB: "Pop & R&B" }
     }
-    var gain: Float { self == .deep ? 5 : self == .mid ? 2.5 : 0 }
+    var gain: Float { self == .deep ? 5 : self == .mid ? 2.5 : self == .popRnB ? 3 : 0 }
+    var summary: String {
+        switch self {
+        case .off: "The station’s original sound."
+        case .mid: "A gentle lift for drums and bass guitar."
+        case .deep: "Fuller, stronger bass for rock and guitar music."
+        case .popRnB: "Deep beats, clear vocals and a little extra sparkle."
+        }
+    }
 }
 
 /// Autohop's Vocal Boost DSP graph, adapted for Wireless's decoded live PCM.
@@ -31,35 +39,45 @@ final class VocalBoostProcessor {
     let player = AVAudioPlayerNode()
 
     private let lowShelf: AVAudioUnitEffect
+    private let presence: AVAudioUnitEffect
+    private let highShelf: AVAudioUnitEffect
     private let highPass: AVAudioUnitEffect
     private let dynamics: AVAudioUnitEffect
     private let limiter: AVAudioUnitEffect
 
-    init(format: AVAudioFormat, level: VocalBoostLevel, bassBoost: BassBoostLevel = .off) throws {
+    init(format: AVAudioFormat, level: VocalBoostLevel, musicPreset: MusicPreset = .off) throws {
         lowShelf = Self.makeAudioUnit(subType: kAudioUnitSubType_LowShelfFilter)
+        presence = Self.makeAudioUnit(subType: kAudioUnitSubType_ParametricEQ)
+        highShelf = Self.makeAudioUnit(subType: kAudioUnitSubType_HighShelfFilter)
         highPass = Self.makeAudioUnit(subType: kAudioUnitSubType_HighPassFilter)
         dynamics = Self.makeAudioUnit(subType: kAudioUnitSubType_DynamicsProcessor)
         limiter = Self.makeAudioUnit(subType: kAudioUnitSubType_PeakLimiter)
 
         engine.attach(player)
         engine.attach(lowShelf)
+        engine.attach(presence)
+        engine.attach(highShelf)
         engine.attach(highPass)
         engine.attach(dynamics)
         engine.attach(limiter)
         if #available(iOS 27.0, *) {
             try engine.connectNode(player, to: lowShelf, format: format)
-            try engine.connectNode(lowShelf, to: highPass, format: format)
+            try engine.connectNode(lowShelf, to: presence, format: format)
+            try engine.connectNode(presence, to: highShelf, format: format)
+            try engine.connectNode(highShelf, to: highPass, format: format)
             try engine.connectNode(highPass, to: dynamics, format: format)
             try engine.connectNode(dynamics, to: limiter, format: format)
             try engine.connectNode(limiter, to: engine.mainMixerNode, format: format)
         } else {
             engine.connect(player, to: lowShelf, format: format)
-            engine.connect(lowShelf, to: highPass, format: format)
+            engine.connect(lowShelf, to: presence, format: format)
+            engine.connect(presence, to: highShelf, format: format)
+            engine.connect(highShelf, to: highPass, format: format)
             engine.connect(highPass, to: dynamics, format: format)
             engine.connect(dynamics, to: limiter, format: format)
             engine.connect(limiter, to: engine.mainMixerNode, format: format)
         }
-        try configure(level, bassBoost: bassBoost)
+        try configure(level, musicPreset: musicPreset)
         try engine.start()
     }
 
@@ -88,16 +106,19 @@ final class VocalBoostProcessor {
     }
 
     /// As in Autohop, keep the graph connected and update parameters in place.
-    func setLevel(_ level: VocalBoostLevel, bassBoost: BassBoostLevel = .off) throws { try configure(level, bassBoost: bassBoost) }
+    func setLevel(_ level: VocalBoostLevel, musicPreset: MusicPreset = .off) throws { try configure(level, musicPreset: musicPreset) }
 
-    private func configure(_ level: VocalBoostLevel, bassBoost: BassBoostLevel) throws {
-        let stages: [(AVAudioUnitEffect, OSType)] = bassBoost != .off
+    private func configure(_ level: VocalBoostLevel, musicPreset: MusicPreset) throws {
+        let stages: [(AVAudioUnitEffect, OSType)] = musicPreset != .off
             ? [(limiter, kAudioUnitSubType_PeakLimiter), (lowShelf, kAudioUnitSubType_LowShelfFilter),
                (highPass, kAudioUnitSubType_HighPassFilter), (dynamics, kAudioUnitSubType_DynamicsProcessor)]
             : [(lowShelf, kAudioUnitSubType_LowShelfFilter), (highPass, kAudioUnitSubType_HighPassFilter),
                (dynamics, kAudioUnitSubType_DynamicsProcessor), (limiter, kAudioUnitSubType_PeakLimiter)]
-        for (unit, subtype) in stages {
-            let parameters = VocalBoostConfiguration.parameters(for: subtype, level: level, bassBoost: bassBoost)
+        let orderedStages = stages.prefix(musicPreset != .off ? 2 : 1)
+            + [(presence, kAudioUnitSubType_ParametricEQ), (highShelf, kAudioUnitSubType_HighShelfFilter)]
+            + stages.dropFirst(musicPreset != .off ? 2 : 1)
+        for (unit, subtype) in orderedStages {
+            let parameters = VocalBoostConfiguration.parameters(for: subtype, level: level, musicPreset: musicPreset)
             unit.bypass = parameters.isEmpty
             for (parameter, value) in parameters {
                 let status: OSStatus
@@ -128,18 +149,24 @@ final class VocalBoostProcessor {
 /// Shared by the direct-stream graph and the HLS tap. Adapted from Autohop's
 /// configureVocalBoostChain; keep the processing identical across transports.
 enum VocalBoostConfiguration {
-    static let subtypes: [OSType] = [kAudioUnitSubType_LowShelfFilter, kAudioUnitSubType_HighPassFilter,
+    static let subtypes: [OSType] = [kAudioUnitSubType_LowShelfFilter, kAudioUnitSubType_ParametricEQ,
+                                    kAudioUnitSubType_HighShelfFilter, kAudioUnitSubType_HighPassFilter,
                                     kAudioUnitSubType_DynamicsProcessor,
                                     kAudioUnitSubType_PeakLimiter]
 
-    static func parameters(for subtype: OSType, level: VocalBoostLevel, bassBoost: BassBoostLevel = .off) -> [(AudioUnitParameterID, Float)] {
-        if bassBoost != .off {
+    static func parameters(for subtype: OSType, level: VocalBoostLevel, musicPreset: MusicPreset = .off) -> [(AudioUnitParameterID, Float)] {
+        if musicPreset != .off {
             // A broad bass shelf adds weight to kick drums and bass guitar.
             // Keep unity gain outside the bass range; the peak limiter controls
             // boosted peaks instead of making the whole programme quieter.
             switch subtype {
             case kAudioUnitSubType_LowShelfFilter:
-                return [(kAULowShelfParam_CutoffFrequency, 110), (kAULowShelfParam_Gain, bassBoost.gain)]
+                return [(kAULowShelfParam_CutoffFrequency, musicPreset == .popRnB ? 75 : 110), (kAULowShelfParam_Gain, musicPreset.gain)]
+            case kAudioUnitSubType_ParametricEQ where musicPreset == .popRnB:
+                return [(kParametricEQParam_CenterFreq, 2_500), (kParametricEQParam_Q, 0.7),
+                        (kParametricEQParam_Gain, 1)]
+            case kAudioUnitSubType_HighShelfFilter where musicPreset == .popRnB:
+                return [(kHighShelfParam_CutOffFrequency, 10_000), (kHighShelfParam_Gain, 1.5)]
             case kAudioUnitSubType_PeakLimiter:
                 return [(kLimiterParam_AttackTime, 0.002), (kLimiterParam_DecayTime, 0.05),
                         (kLimiterParam_PreGain, 0)]
@@ -178,7 +205,7 @@ enum VocalBoostState: Equatable, Sendable {
         case .suspendedForSync: return "Unavailable while TV Sync is on."
         case .ready: return "Ready · Press Play to use \(effect)."
         case .preparing: return "Waiting for processed audio…"
-        case .active: return effect == "Deep Bass" || effect == "Mid Bass" ? "Active · Bass enhancement is running." : "Active · Speech processing is running."
+        case .active: return effect == "Pop & R&B" ? "Active · Pop & R&B tuning is running." : effect == "Deep Bass" || effect == "Mid Bass" ? "Active · Bass enhancement is running." : "Active · Speech processing is running."
         case .unavailable(let reason): return "Unavailable · " + reason + " Playback continues without \(effect)."
         }
     }

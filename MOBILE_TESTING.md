@@ -95,3 +95,7 @@ Implementation and evidence: `Docs/DEEP_BASS_2026-10-25.md`.
 ## Mid Bass and Audio Controls
 
 `testAudioControlsCardLayout` captures the music and speech cards and checks the stream selector remains reachable. It also checks iPad portrait/landscape; set `TEST_RUNNER_WIRELESS_TEST_LARGE_TEXT=1` for the largest accessibility text. `testDeepBassAvailabilityAndExclusiveSelection` verifies both bass levels survive restarts, remain mutually exclusive with speech and suspend for TV Sync. The repeated live switching test now cycles Mid Bass, Deep Bass and Off as well as speech levels. See `Docs/MID_BASS_AUDIO_CONTROLS_2026-10-25.md` for measured gain and validation limits.
+
+## Pop & R&B
+
+The live switching test now cycles all four music choices and waits for Pop & R&B processing to become Active. Signal tests measure its distinct bass, presence and treble response, near-full-scale peak limiting, PCM layouts and in-place switching back to original-signal bypass. The settings test verifies Pop & R&B persistence, speech exclusivity and TV Sync suspension. Music choices are labelled buttons in `musicPresetPicker`. See `Docs/POP_RNB_PRESET_2026-10-25.md` for scope and evidence.

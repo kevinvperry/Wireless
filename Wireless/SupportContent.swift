@@ -133,7 +133,7 @@ enum WirelessSupportGuide {
         blocks: [
             .paragraph("Wireless begins preparing the selected station’s audio as soon as it opens in the player, including the last station restored at launch. This uses internet data before you press Play but produces no sound. Pressing Play reuses the prepared connection and buffer where available. Preparation stops after one minute without playback, when the app enters the background without playing, or when you press Pause. Startup speed still depends on reception and the broadcaster."),
             .paragraph("While playback is requested, Wireless keeps trying after a lost connection. It tries the station’s published stream alternatives and repeats in cycles, with waits increasing from one second to a maximum of 15 seconds between cycles. Press Pause to stop reconnection attempts. If iOS suspends the app during a prolonged background outage, reopen Wireless to let recovery continue."),
-            .paragraph("With TV Sync, Vocal Boost and bass off, Wireless plays the original broadcast audio. It allows a short reliability buffer where appropriate and does not make TV-delay corrections. Turning a sound preset Off bypasses processing on the current connection, without reconnecting the stream."),
+            .paragraph("With TV Sync, Vocal Boost and music presets off, Wireless plays the original broadcast audio. It allows a short reliability buffer where appropriate and does not make TV-delay corrections. Turning a sound preset Off bypasses processing on the current connection, without reconnecting the stream."),
             .paragraph("Open **Audio Controls** to select another published stream. Wireless remembers the choice for that station. Format and bitrate appear in Details when the directory supplies them."),
             .bullets([
                 "A higher bitrate can improve quality but may require a stronger connection.",
@@ -156,18 +156,18 @@ enum WirelessSupportGuide {
             .paragraph("Vocal Boost works with compatible direct MP3 and AAC streams. On iOS 27 or later, it also processes compatible HLS streams while retaining Apple’s live-stream playback. If native HLS processing is unavailable, Wireless can use an unencrypted AAC-segment fallback. Other containers or protected streams continue without the effect. FairPlay-protected HLS cannot be processed."),
             .paragraph("Audio Controls shows whether Vocal Boost is ready, waiting for audio, active or unavailable. Active means audio has passed through speech processing; selecting a level alone does not mean the effect is running. If unavailable, try another stream. Listening Stats counts Vocal Boost only while processing is active."),
             .paragraph("Start with Light for broadcasts that are already heavily compressed. Standard and Strong can make speech more consistent, but may sound less natural on music or heavily processed broadcasts. Vocal Boost cannot restore detail lost in a low-bitrate source."),
-            .callout(.note, "TV Sync and Vocal Boost cannot operate together. Vocal Boost is disabled while TV Sync is on. Choosing a Vocal Boost level turns bass off.")
+            .callout(.note, "TV Sync and Vocal Boost cannot operate together. Vocal Boost is disabled while TV Sync is on. Choosing a Vocal Boost level turns music tuning off.")
         ]
     )
 
     private static let deepBass = WirelessSupportSection(
-        id: "deep-bass", icon: "speaker.wave.3", title: "Mid Bass and Deep Bass",
-        summary: "Add bass weight to music stations",
+        id: "deep-bass", icon: "speaker.wave.3", title: "Music presets",
+        summary: "Tune rock, pop and R&B stations",
         blocks: [
-            .paragraph("Open **Audio Controls** and choose **Mid Bass** or **Deep Bass** under **Music**. Mid Bass adds a gentle lift to drums and bass guitar; Deep Bass gives a fuller, stronger bass sound. Choose **Off** for the station’s original sound. Bass is off by default and your choice is saved across stations and launches."),
-            .paragraph("Bass and Vocal Boost are alternative sound presets. Choosing Mid Bass or Deep Bass turns Vocal Boost off; choosing a Vocal Boost level turns bass off. Both are suspended while TV Sync is on and your saved choice resumes when TV Sync is turned off."),
-            .paragraph("Both bass levels support compatible direct MP3/AAC streams and compatible HLS on iOS 27 or later, using the same processing and AAC-segment fallback as Vocal Boost. Audio Controls shows Ready, Waiting, Active or Unavailable. Unsupported streams continue without the effect. Listening Stats records Mid Bass or Deep Bass only while processing is confirmed active."),
-            .paragraph("Both bass levels preserve the normal level outside the bass range, with peak limiting to control boosted peaks. Perceived loudness still depends on the station and your speakers or headphones. Use your device’s volume buttons to adjust loudness. Bass enhancement cannot restore missing low frequencies or undo a broadcaster’s compression.")
+            .paragraph("Open **Audio Controls** and choose a preset under **Music**. **Mid Bass** adds a gentle lift to drums and bass guitar; **Deep Bass** gives a fuller, stronger bass sound for rock and guitar music. **Pop & R&B** adds deeper beat weight, a small vocal lift and a little treble sparkle for modern pop and R&B. Choose **Off** for the station’s original sound. Music tuning is off by default and your choice is saved across stations and launches."),
+            .paragraph("Music presets and Vocal Boost are alternatives. Choosing a music preset turns Vocal Boost off; choosing a Vocal Boost level turns music tuning off. Both are suspended while TV Sync is on and your saved choice resumes when TV Sync is turned off."),
+            .paragraph("All music presets support compatible direct MP3/AAC streams and compatible HLS on iOS 27 or later, using the same processing and AAC-segment fallback as Vocal Boost. Audio Controls shows Ready, Waiting, Active or Unavailable. Unsupported streams continue without the effect. Listening Stats records the selected music preset only while processing is confirmed active."),
+            .paragraph("Music presets use peak limiting to control boosted peaks without a fixed reduction of the whole programme. Pop & R&B uses gentle bass, vocal and treble shaping without extra speech compression. Start with a familiar song and compare it with Off at a comfortable volume. The best choice depends on the station and your speakers or headphones; no preset can recover dynamics or detail removed by the broadcaster. Use your device’s volume buttons to adjust loudness.")
         ]
     )
 
@@ -246,7 +246,7 @@ enum WirelessSupportGuide {
                 ["Keep Screen Awake", "Stops dimming while audio plays on the full-screen player. Off by default."],
                 ["Share TestFlight link", "Opens the system share sheet with the Wireless TestFlight invitation."]
             ]),
-            .paragraph("Settings also provides this guide and the installed app version. The About section links to Wireless’s public GitHub repository and MIT Licence. Wireless’s original code and documentation use the MIT Licence; the shared Vocal Boost and Deep Bass processing code retains MPL-2.0, with details in Open Source Acknowledgements.")
+            .paragraph("Settings also provides this guide and the installed app version. The About section links to Wireless’s public GitHub repository and MIT Licence. Wireless’s original code and documentation use the MIT Licence; the shared Vocal Boost and music processing code retains MPL-2.0, with details in Open Source Acknowledgements.")
         ]
     )
 
@@ -262,7 +262,7 @@ enum WirelessSupportGuide {
                 ["Listening Heatmap", "Daily listening for the selected week or month."],
                 ["Listening Over Time", "Monthly listening for the selected year or Lifetime."],
                 ["Listening Clock", "The hours of day when you listen most."],
-                ["How You Listen", "Average and longest sessions, plus listening by Live, TV Sync, Vocal Boost, Mid Bass, Deep Bass and audio-route category."]
+                ["How You Listen", "Average and longest sessions, plus listening by Live, TV Sync, Vocal Boost, Mid Bass, Deep Bass, Pop & R&B and audio-route category."]
             ]),
             .paragraph("A listening session begins when a station first renders audio and ends when you pause or change station. A brief reconnection or alternate-stream failover for the same station remains one session, but the silent gap is excluded."),
             .paragraph("Use the options button on Listening Stats to export an importable JSON backup or a CSV spreadsheet, or to import a previous JSON backup. Stats Health shows recorded days, the tracking start, the last local save and recovery state."),
@@ -305,7 +305,7 @@ enum WirelessSupportGuide {
             .heading("A station will not play"),
             .bullets(["Confirm the device is online.", "Try another stream in Audio Controls.", "Pause and press Play again.", "Try another station to identify a broadcaster-specific problem."]),
             .heading("Playback pauses or stutters"),
-            .bullets(["Turn TV Sync, Vocal Boost and bass off for standard playback.", "Try direct MP3 or AAC.", "Choose a lower bitrate in weak reception.", "Turn Vocal Boost and bass off to return to standard playback."]),
+            .bullets(["Turn TV Sync, Vocal Boost and music presets off for standard playback.", "Try direct MP3 or AAC.", "Choose a lower bitrate in weak reception.", "Turn Vocal Boost and music presets off to return to standard playback."]),
             .heading("TV Sync is unavailable or unstable"),
             .bullets(["Read the compatibility message in Sync.", "Try another stream variation.", "Prefer direct MP3 or AAC.", "Increase the delay if the connection cannot retain enough audio consistently."]),
             .heading("Station information is missing"),

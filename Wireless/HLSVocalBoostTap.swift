@@ -15,8 +15,8 @@ final class HLSVocalBoostTap {
     private let tap: MTAudioProcessingTap
 
     @available(iOS 27.0, *)
-    init(level: VocalBoostLevel, bassBoost: BassBoostLevel = .off) throws {
-        state = VocalBoostTapState(level: level, bassBoost: bassBoost)
+    init(level: VocalBoostLevel, musicPreset: MusicPreset = .off) throws {
+        state = VocalBoostTapState(level: level, musicPreset: musicPreset)
         let retained = Unmanaged.passRetained(state).toOpaque()
         var callbacks = MTAudioProcessingTapCallbacks(
             version: kMTAudioProcessingTapCallbacksVersion_0, clientInfo: retained,
@@ -52,8 +52,8 @@ final class HLSVocalBoostTap {
         tap = created
     }
 
-    func setLevel(_ level: VocalBoostLevel, bassBoost: BassBoostLevel) {
-        state.setPreset(level, bassBoost: bassBoost)
+    func setLevel(_ level: VocalBoostLevel, musicPreset: MusicPreset) {
+        state.setPreset(level, musicPreset: musicPreset)
     }
 
     @MainActor
@@ -101,21 +101,24 @@ final class VocalBoostTapState {
     private var bytesPerFrame: UInt32 = 0
     private var sampleTime: Float64 = 0
 
-    init(level: VocalBoostLevel, bassBoost: BassBoostLevel = .off) {
-        requestedPreset = Atomic(Self.presetIndex(level, bassBoost: bassBoost))
-        presets = (0...5).map { index in
+    init(level: VocalBoostLevel, musicPreset: MusicPreset = .off) {
+        requestedPreset = Atomic(Self.presetIndex(level, musicPreset: musicPreset))
+        let choices = VocalBoostLevel.allCases.map { ($0, MusicPreset.off) }
+            + MusicPreset.allCases.filter { $0 != .off }.map { (VocalBoostLevel.off, $0) }
+        presets = choices.map { level, music in
             VocalBoostConfiguration.subtypes.map {
-                VocalBoostConfiguration.parameters(for: $0, level: VocalBoostLevel.allCases[min(index, 3)], bassBoost: index == 4 ? .mid : index == 5 ? .deep : .off)
+                VocalBoostConfiguration.parameters(for: $0, level: level, musicPreset: music)
             }
         }
     }
 
-    private static func presetIndex(_ level: VocalBoostLevel, bassBoost: BassBoostLevel) -> Int {
-        bassBoost == .deep ? 5 : bassBoost == .mid ? 4 : VocalBoostLevel.allCases.firstIndex(of: level)!
+    private static func presetIndex(_ level: VocalBoostLevel, musicPreset: MusicPreset) -> Int {
+        musicPreset == .off ? VocalBoostLevel.allCases.firstIndex(of: level)!
+            : VocalBoostLevel.allCases.count + MusicPreset.allCases.firstIndex(of: musicPreset)! - 1
     }
 
-    func setPreset(_ level: VocalBoostLevel, bassBoost: BassBoostLevel) {
-        requestedPreset.store(Self.presetIndex(level, bassBoost: bassBoost), ordering: .releasing)
+    func setPreset(_ level: VocalBoostLevel, musicPreset: MusicPreset) {
+        requestedPreset.store(Self.presetIndex(level, musicPreset: musicPreset), ordering: .releasing)
     }
     deinit { unprepare() }
 
@@ -165,7 +168,7 @@ final class VocalBoostTapState {
                 // Connect every stage once. Preset changes bypass/configure units
                 // on the render thread, never rebuild or dispose a live graph.
                 let parameters = VocalBoostConfiguration.parameters(for: subtype, level: .standard,
-                    bassBoost: subtype == kAudioUnitSubType_LowShelfFilter ? .deep : .off)
+                    musicPreset: subtype == kAudioUnitSubType_LowShelfFilter ? .deep : .off)
                 var description = AudioComponentDescription(componentType: kAudioUnitType_Effect,
                     componentSubType: subtype, componentManufacturer: kAudioUnitManufacturer_Apple,
                     componentFlags: 0, componentFlagsMask: 0)

@@ -39,20 +39,20 @@ final class MobilePlayer: ObservableObject {
     @Published var vocalBoost: VocalBoostLevel {
         didSet {
             defaults.set(vocalBoost.rawValue, forKey: "vocalBoostLevel")
-            if vocalBoost != .off, bassBoost != .off { bassBoost = .off }
-            directoryAudio.setSoundControls(vocalBoost, bassBoost: bassBoost)
+            if vocalBoost != .off, musicPreset != .off { musicPreset = .off }
+            directoryAudio.setSoundControls(vocalBoost, musicPreset: musicPreset)
             applyTrackMetadata(nil, source: "settings.vocal-boost")
             startCompanionMetadataIfNeeded()
             publishNowPlaying()
             diagnose("settings.vocalBoost", "Vocal Boost changed", metadata: ["level": vocalBoost.rawValue])
         }
     }
-    @Published var bassBoost: BassBoostLevel {
+    @Published var musicPreset: MusicPreset {
         didSet {
-            defaults.set(bassBoost.rawValue, forKey: "bassBoostLevel")
-            if bassBoost != .off, vocalBoost != .off { vocalBoost = .off }
-            directoryAudio.setSoundControls(vocalBoost, bassBoost: bassBoost)
-            diagnose("settings.bassBoost", "Bass preset changed", metadata: ["level": bassBoost.rawValue])
+            defaults.set(musicPreset.rawValue, forKey: "musicPresetLevel")
+            if musicPreset != .off, vocalBoost != .off { vocalBoost = .off }
+            directoryAudio.setSoundControls(vocalBoost, musicPreset: musicPreset)
+            diagnose("settings.musicPreset", "Music preset changed", metadata: ["level": musicPreset.rawValue])
         }
     }
     @Published var delay: Double = UserDefaults.standard.double(forKey: "selectedDelaySeconds") {
@@ -64,8 +64,8 @@ final class MobilePlayer: ObservableObject {
     @Published private(set) var station: DirectoryStation
     @Published private(set) var trackMetadata: StreamTrackMetadata?
     @Published private(set) var audioEffectState: VocalBoostState = .off
-    var vocalBoostState: VocalBoostState { bassBoost != .off ? .off : audioEffectState }
-    var bassBoostState: VocalBoostState { bassBoost != .off ? audioEffectState : .off }
+    var vocalBoostState: VocalBoostState { musicPreset != .off ? .off : audioEffectState }
+    var musicPresetState: VocalBoostState { musicPreset != .off ? audioEffectState : .off }
     @Published private(set) var supportsDelay = false
     @Published var selectedStreamID = "" { didSet {
         guard oldValue != selectedStreamID else { return }
@@ -189,10 +189,11 @@ final class MobilePlayer: ObservableObject {
             defaults.set(true, forKey: Self.syncDefaultOffMigrationKey)
         }
         _syncEnabled = Published(initialValue: initialSyncEnabled)
-        let savedBassBoost = BassBoostLevel(rawValue: defaults.string(forKey: "bassBoostLevel") ?? "")
+        let savedMusicPreset = MusicPreset(rawValue: defaults.string(forKey: "musicPresetLevel")
+            ?? defaults.string(forKey: "bassBoostLevel") ?? "")
             ?? (defaults.bool(forKey: "deepBassEnabled") ? .deep : .off)
-        _bassBoost = Published(initialValue: savedBassBoost)
-        _vocalBoost = Published(initialValue: savedBassBoost != .off ? .off : VocalBoostLevel(
+        _musicPreset = Published(initialValue: savedMusicPreset)
+        _vocalBoost = Published(initialValue: savedMusicPreset != .off ? .off : VocalBoostLevel(
             rawValue: defaults.string(forKey: "vocalBoostLevel") ?? "off"
         ) ?? .off)
         self.defaults = defaults
@@ -243,7 +244,7 @@ final class MobilePlayer: ObservableObject {
             )
         }
         directoryAudio.setSyncEnabled(syncEnabled)
-        directoryAudio.setSoundControls(vocalBoost, bassBoost: bassBoost)
+        directoryAudio.setSoundControls(vocalBoost, musicPreset: musicPreset)
         directoryAudio.setDelay(delay)
         sleepTimer.onFadeVolume = { [weak self] volume in
             self?.directoryAudio.setVolume(volume)
@@ -597,7 +598,7 @@ final class MobilePlayer: ObservableObject {
 
     private var listeningMode: WirelessListeningMode {
         if syncEnabled { return .tvSync }
-        if bassBoost != .off, bassBoostState.isActive { return bassBoost == .mid ? .midBass : .deepBass }
+        if musicPreset != .off, musicPresetState.isActive { return musicPreset == .popRnB ? .popRnB : musicPreset == .mid ? .midBass : .deepBass }
         if vocalBoost != .off, vocalBoostState.isActive { return .vocalBoost }
         return .live
     }

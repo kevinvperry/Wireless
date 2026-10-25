@@ -1,5 +1,7 @@
 # Mid Bass and Audio Controls — 25 October 2026
 
+Follow-up: [Pop & R&B](POP_RNB_PRESET_2026-10-25.md) extends this model with a fourth music choice, labelled selection rows and generic music-preference persistence. The bass gains below remain unchanged.
+
 ## Behaviour
 
 Audio Controls now offers Off, Mid Bass and Deep Bass. The low shelf remains at 110 Hz: Mid Bass uses +2.5 dB and Deep Bass +5 dB. Both use unity limiter pre-gain instead of the original −5 dB reduction, retaining normal midrange level while limiting boosted peaks (2 ms attack, 50 ms decay). This removes the deliberate whole-programme attenuation; perceived loudness still depends on the source and playback equipment.
