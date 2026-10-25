@@ -40,7 +40,7 @@ struct WirelessSupportSection: Identifiable {
 enum WirelessSupportGuide {
     static let sections: [WirelessSupportSection] = [
         gettingStarted, discover, player, favourites, sync, streams,
-        vocalBoost, sleepTimer, sleepSchedule, systemPlayback, carPlay, listeningStats, listeningHistory, settings, contact, troubleshooting
+        vocalBoost, deepBass, sleepTimer, sleepSchedule, systemPlayback, carPlay, listeningStats, listeningHistory, settings, contact, troubleshooting
     ]
 
     private static let gettingStarted = WirelessSupportSection(
@@ -133,7 +133,7 @@ enum WirelessSupportGuide {
         blocks: [
             .paragraph("Wireless begins preparing the selected station’s audio as soon as it opens in the player, including the last station restored at launch. This uses internet data before you press Play but produces no sound. Pressing Play reuses the prepared connection and buffer where available. Preparation stops after one minute without playback, when the app enters the background without playing, or when you press Pause. Startup speed still depends on reception and the broadcaster."),
             .paragraph("While playback is requested, Wireless keeps trying after a lost connection. It tries the station’s published stream alternatives and repeats in cycles, with waits increasing from one second to a maximum of 15 seconds between cycles. Press Pause to stop reconnection attempts. If iOS suspends the app during a prolonged background outage, reopen Wireless to let recovery continue."),
-            .paragraph("With TV Sync and Vocal Boost off, Wireless uses Apple's AVPlayer for stable live playback. It allows a short reliability buffer where appropriate and does not make TV-delay corrections."),
+            .paragraph("With TV Sync, Vocal Boost and Deep Bass off, Wireless uses Apple's AVPlayer for stable live playback. It allows a short reliability buffer where appropriate and does not make TV-delay corrections."),
             .paragraph("Open **Audio Controls** to select another published stream. Wireless remembers the choice for that station. Format and bitrate appear in Details when the directory supplies them."),
             .bullets([
                 "A higher bitrate can improve quality but may require a stronger connection.",
@@ -156,7 +156,18 @@ enum WirelessSupportGuide {
             .paragraph("Vocal Boost works with compatible direct MP3 and AAC streams. On iOS 27 or later, it also processes compatible HLS streams while retaining Apple’s live-stream playback. If native HLS processing is unavailable, Wireless can use an unencrypted AAC-segment fallback. Other containers or protected streams continue without the effect. FairPlay-protected HLS cannot be processed."),
             .paragraph("Audio Controls shows whether Vocal Boost is ready, waiting for audio, active or unavailable. Active means audio has passed through speech processing; selecting a level alone does not mean the effect is running. If unavailable, try another stream. Listening Stats counts Vocal Boost only while processing is active."),
             .paragraph("Start with Light for broadcasts that are already heavily compressed. Standard and Strong can make speech more consistent, but may sound less natural on music or heavily processed broadcasts. Vocal Boost cannot restore detail lost in a low-bitrate source."),
-            .callout(.note, "TV Sync and Vocal Boost cannot operate together. Vocal Boost is disabled while TV Sync is on.")
+            .callout(.note, "TV Sync and Vocal Boost cannot operate together. Vocal Boost is disabled while TV Sync is on. Choosing a Vocal Boost level turns Deep Bass off.")
+        ]
+    )
+
+    private static let deepBass = WirelessSupportSection(
+        id: "deep-bass", icon: "speaker.wave.3", title: "Deep Bass",
+        summary: "Add bass weight to music stations",
+        blocks: [
+            .paragraph("Open **Audio Controls** and turn on **Deep Bass** under **Music**. It adds weight to kick drums and bass guitar, particularly on rock stations, while retaining headroom and peak protection. It is off by default and your choice is saved across stations and launches."),
+            .paragraph("Deep Bass and Vocal Boost are alternative sound presets. Enabling Deep Bass turns Vocal Boost off; choosing a Vocal Boost level turns Deep Bass off. Both are suspended while TV Sync is on and your saved choice resumes when TV Sync is turned off."),
+            .paragraph("Deep Bass supports compatible direct MP3/AAC streams and compatible HLS on iOS 27 or later, using the same processing and AAC-segment fallback as Vocal Boost. Audio Controls shows Ready, Waiting, Active or Unavailable. Unsupported streams continue without the effect. Listening Stats records Deep Bass only while processing is confirmed active."),
+            .paragraph("Headroom can make the overall sound quieter; adjust the listening volume to taste. The result depends on the broadcaster and your speakers or headphones. Deep Bass cannot restore missing low frequencies or undo a broadcaster’s compression.")
         ]
     )
 
@@ -235,7 +246,7 @@ enum WirelessSupportGuide {
                 ["Keep Screen Awake", "Stops dimming while audio plays on the full-screen player. Off by default."],
                 ["Share TestFlight link", "Opens the system share sheet with the Wireless TestFlight invitation."]
             ]),
-            .paragraph("Settings also provides this guide and the installed app version. The About section links to Wireless’s public GitHub repository and MIT Licence. Wireless’s original code and documentation use the MIT Licence; Vocal Boost retains MPL-2.0, with details in Open Source Acknowledgements.")
+            .paragraph("Settings also provides this guide and the installed app version. The About section links to Wireless’s public GitHub repository and MIT Licence. Wireless’s original code and documentation use the MIT Licence; the shared Vocal Boost and Deep Bass processing code retains MPL-2.0, with details in Open Source Acknowledgements.")
         ]
     )
 
@@ -251,7 +262,7 @@ enum WirelessSupportGuide {
                 ["Listening Heatmap", "Daily listening for the selected week or month."],
                 ["Listening Over Time", "Monthly listening for the selected year or Lifetime."],
                 ["Listening Clock", "The hours of day when you listen most."],
-                ["How You Listen", "Average and longest sessions, plus listening by Live, TV Sync, Vocal Boost and audio-route category."]
+                ["How You Listen", "Average and longest sessions, plus listening by Live, TV Sync, Vocal Boost, Deep Bass and audio-route category."]
             ]),
             .paragraph("A listening session begins when a station first renders audio and ends when you pause or change station. A brief reconnection or alternate-stream failover for the same station remains one session, but the silent gap is excluded."),
             .paragraph("Use the options button on Listening Stats to export an importable JSON backup or a CSV spreadsheet, or to import a previous JSON backup. Stats Health shows recorded days, the tracking start, the last local save and recovery state."),
@@ -294,7 +305,7 @@ enum WirelessSupportGuide {
             .heading("A station will not play"),
             .bullets(["Confirm the device is online.", "Try another stream in Audio Controls.", "Pause and press Play again.", "Try another station to identify a broadcaster-specific problem."]),
             .heading("Playback pauses or stutters"),
-            .bullets(["Turn TV Sync off for normal AVPlayer playback.", "Try direct MP3 or AAC.", "Choose a lower bitrate in weak reception.", "Disable Vocal Boost to return to standard playback."]),
+            .bullets(["Turn TV Sync, Vocal Boost and Deep Bass off for standard playback.", "Try direct MP3 or AAC.", "Choose a lower bitrate in weak reception.", "Turn Vocal Boost and Deep Bass off to return to standard playback."]),
             .heading("TV Sync is unavailable or unstable"),
             .bullets(["Read the compatibility message in Sync.", "Try another stream variation.", "Prefer direct MP3 or AAC.", "Increase the delay if the connection cannot retain enough audio consistently."]),
             .heading("Station information is missing"),

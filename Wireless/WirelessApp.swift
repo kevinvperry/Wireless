@@ -14,7 +14,9 @@ struct WirelessApp: App {
     /// Isolated populated player for repeatable layout checks. No saved library is modified.
     private static let previewPlayer: MobilePlayer = {
         let defaults = UserDefaults(suiteName: "Wireless.PlayerLayoutPreview")!
-        defaults.removePersistentDomain(forName: "Wireless.PlayerLayoutPreview")
+        if ProcessInfo.processInfo.environment["WIRELESS_PRESERVE_PREVIEW_DEFAULTS"] != "1" {
+            defaults.removePersistentDomain(forName: "Wireless.PlayerLayoutPreview")
+        }
         func station(_ id: String, _ name: String) -> DirectoryStation {
             DirectoryStation(id: id, name: name, network: "Preview Network", country: "Australia",
                 state: "VIC", cities: ["Melbourne"], tags: [], description: "Layout preview",

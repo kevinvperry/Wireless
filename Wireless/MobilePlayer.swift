@@ -40,12 +40,22 @@ final class MobilePlayer: ObservableObject {
     @Published var vocalBoost: VocalBoostLevel {
         didSet {
             defaults.set(vocalBoost.rawValue, forKey: "vocalBoostLevel")
-            directoryAudio.setVocalBoost(vocalBoost)
+            if vocalBoost != .off, deepBass { deepBass = false }
+            directoryAudio.setSoundControls(vocalBoost, deepBass: deepBass)
             applyTrackMetadata(nil, source: "settings.vocal-boost")
             startCompanionMetadataIfNeeded()
             updateAudioSessionMode()
             publishNowPlaying()
             diagnose("settings.vocalBoost", "Vocal Boost changed", metadata: ["level": vocalBoost.rawValue])
+        }
+    }
+    @Published var deepBass: Bool {
+        didSet {
+            defaults.set(deepBass, forKey: "deepBassEnabled")
+            if deepBass, vocalBoost != .off { vocalBoost = .off }
+            directoryAudio.setSoundControls(vocalBoost, deepBass: deepBass)
+            updateAudioSessionMode()
+            diagnose("settings.deepBass", deepBass ? "Deep Bass enabled" : "Deep Bass disabled")
         }
     }
     @Published var delay: Double = UserDefaults.standard.double(forKey: "selectedDelaySeconds") {
@@ -56,7 +66,9 @@ final class MobilePlayer: ObservableObject {
     }
     @Published private(set) var station: DirectoryStation
     @Published private(set) var trackMetadata: StreamTrackMetadata?
-    @Published private(set) var vocalBoostState: VocalBoostState = .off
+    @Published private(set) var audioEffectState: VocalBoostState = .off
+    var vocalBoostState: VocalBoostState { deepBass ? .off : audioEffectState }
+    var deepBassState: VocalBoostState { deepBass ? audioEffectState : .off }
     @Published private(set) var supportsDelay = false
     @Published var selectedStreamID = "" { didSet {
         guard oldValue != selectedStreamID else { return }
@@ -184,7 +196,9 @@ final class MobilePlayer: ObservableObject {
             defaults.set(true, forKey: Self.syncDefaultOffMigrationKey)
         }
         _syncEnabled = Published(initialValue: initialSyncEnabled)
-        _vocalBoost = Published(initialValue: VocalBoostLevel(
+        let savedDeepBass = defaults.bool(forKey: "deepBassEnabled")
+        _deepBass = Published(initialValue: savedDeepBass)
+        _vocalBoost = Published(initialValue: savedDeepBass ? .off : VocalBoostLevel(
             rawValue: defaults.string(forKey: "vocalBoostLevel") ?? "off"
         ) ?? .off)
         self.defaults = defaults
@@ -221,8 +235,8 @@ final class MobilePlayer: ObservableObject {
             }
             self.applyMetadataEvaluation(evaluation, source: "embedded")
         }
-        directoryAudio.onVocalBoostState = { [weak self] state in
-            self?.vocalBoostState = state
+        directoryAudio.onAudioEffectState = { [weak self] state in
+            self?.audioEffectState = state
         }
         directoryAudio.onPlaybackInterval = { [weak self] seconds, endedAt in
             guard let self else { return }
@@ -235,7 +249,7 @@ final class MobilePlayer: ObservableObject {
             )
         }
         directoryAudio.setSyncEnabled(syncEnabled)
-        directoryAudio.setVocalBoost(vocalBoost)
+        directoryAudio.setSoundControls(vocalBoost, deepBass: deepBass)
         directoryAudio.setDelay(delay)
         sleepTimer.onFadeVolume = { [weak self] volume in
             self?.directoryAudio.setVolume(volume)
@@ -588,7 +602,8 @@ final class MobilePlayer: ObservableObject {
 
     private var listeningMode: WirelessListeningMode {
         if syncEnabled { return .tvSync }
-        if vocalBoostState.isActive { return .vocalBoost }
+        if deepBass, deepBassState.isActive { return .deepBass }
+        if vocalBoost != .off, vocalBoostState.isActive { return .vocalBoost }
         return .live
     }
 

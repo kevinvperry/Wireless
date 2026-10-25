@@ -16,10 +16,10 @@ final class VocalBoostTests: XCTestCase {
 
     private func render(level: VocalBoostLevel, frequency: Double, amplitude: Double,
                         sampleRate: Double = 48_000, channels: AVAudioChannelCount = 2,
-                        interleaved: Bool = false) throws -> (rms: Double, peak: Double) {
+                        interleaved: Bool = false, deepBass: Bool = false) throws -> (rms: Double, peak: Double) {
         let format = try XCTUnwrap(AVAudioFormat(commonFormat: .pcmFormatFloat32,
             sampleRate: sampleRate, channels: channels, interleaved: interleaved))
-        let state = VocalBoostTapState(level: level)
+        let state = VocalBoostTapState(level: level, deepBass: deepBass)
         state.prepare(format: format.streamDescription.pointee, maximumFrames: 1_024)
         XCTAssertEqual(state.failure.load(ordering: .relaxed), 0)
         let buffer = try XCTUnwrap(AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 1_024))
@@ -50,6 +50,38 @@ final class VocalBoostTests: XCTestCase {
         }
         XCTAssertEqual(state.processedFrames.load(ordering: .relaxed), 120 * 1_024)
         return (sqrt(energy / Double(samples)), peak)
+    }
+
+    func testDeepBassLiftsLowFrequenciesWithoutSpeechFiltering() throws {
+        for rate in [44_100.0, 48_000.0] {
+            let bass = try render(level: .off, frequency: 40, amplitude: 0.1, sampleRate: rate, deepBass: true)
+            let mid = try render(level: .off, frequency: 1_000, amplitude: 0.1, sampleRate: rate, deepBass: true)
+            let lift = 20 * log10(bass.rms / mid.rms)
+            XCTAssertGreaterThan(lift, 3)
+            XCTAssertLessThan(lift, 6)
+            // Deep Bass takes precedence defensively, even if a caller passes a
+            // speech level: the 180 Hz speech high-pass must never cancel it.
+            let conflicting = try render(level: .strong, frequency: 40, amplitude: 0.1, sampleRate: rate, deepBass: true)
+            XCTAssertEqual(conflicting.rms, bass.rms, accuracy: 0.001)
+        }
+    }
+
+    func testDeepBassPreservesPeakHeadroomAndStereoFormats() throws {
+        for channels: AVAudioChannelCount in [1, 2] {
+            for interleaved in [false, true] {
+                let result = try render(level: .off, frequency: 60, amplitude: 0.99,
+                                        channels: channels, interleaved: interleaved, deepBass: true)
+                XCTAssertLessThanOrEqual(result.peak, 1.01)
+                XCTAssertGreaterThan(result.rms, 0.3)
+            }
+        }
+    }
+
+    func testDeepBassModePersistsWithoutBecomingVocalBoost() throws {
+        let data = try JSONEncoder().encode(WirelessListeningMode.deepBass)
+        XCTAssertEqual(try JSONDecoder().decode(WirelessListeningMode.self, from: data), .deepBass)
+        XCTAssertEqual(WirelessListeningMode.deepBass.title, "Deep Bass")
+        XCTAssertNotEqual(WirelessListeningMode.deepBass, .vocalBoost)
     }
 
     func testLightRemovesLowFrequencyRumbleWhileRetainingSpeechBand() throws {

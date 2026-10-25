@@ -25,6 +25,9 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
     private var processor: VocalBoostProcessor?
     private var stream: StationStream?
     private var level: VocalBoostLevel = .off
+    private var deepBass = false
+    private var effectName: String { deepBass ? "Deep Bass" : "Vocal Boost" }
+    private var effectDescription: String { deepBass ? "Deep Bass" : "Vocal Boost · " + level.title }
     private var generation = 0
     private var requested = false
     private var preparing = false
@@ -34,11 +37,12 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
     private var outputVolume: Float = 1
     private var packetBacklog: [(Data, AudioStreamPacketDescription)] = []
 
-    func configure(stream: StationStream, level: VocalBoostLevel) {
+    func configure(stream: StationStream, level: VocalBoostLevel, deepBass: Bool = false) {
         work.async {
             self.close()
             self.stream = stream
             self.level = level
+            self.deepBass = deepBass
         }
     }
 
@@ -70,13 +74,14 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
         }
     }
 
-    func setLevel(_ level: VocalBoostLevel) {
+    func setLevel(_ level: VocalBoostLevel, deepBass: Bool = false) {
         work.async {
             self.level = level
+            self.deepBass = deepBass
             do {
-                try self.processor?.setLevel(level)
+                try self.processor?.setLevel(level, deepBass: deepBass)
                 if self.started, self.requested {
-                    self.emit(title: "Playing", detail: "Vocal Boost · " + level.title, buffering: false, progress: 1)
+                    self.emit(title: "Playing", detail: self.effectDescription, buffering: false, progress: 1)
                 }
             } catch { self.fail("Speech processing could not change level.") }
         }
@@ -95,13 +100,13 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
         let hint: AudioFileTypeID = stream.format != "mp3" ? kAudioFileAAC_ADTSType : kAudioFileMP3Type
         guard AudioFileStreamOpen(Unmanaged.passUnretained(self).toOpaque(), enhancedPropertyCallback,
                                   enhancedPacketsCallback, hint, &parser) == noErr else {
-            fail("Could not prepare Vocal Boost playback.")
+            fail("Could not prepare sound processing.")
             return
         }
         if stream.format == "hls" {
             playlistURL = url
             refreshHLS()
-            emit(title: "Connecting…", detail: "Preparing HLS Vocal Boost", buffering: true, progress: 0)
+            emit(title: "Connecting…", detail: "Preparing HLS \(effectName)", buffering: true, progress: 0)
             return
         }
         var request = URLRequest(url: url)
@@ -115,7 +120,7 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
         self.session = session
         task = session.dataTask(with: request)
         task?.resume()
-        emit(title: "Connecting…", detail: "Preparing Vocal Boost", buffering: true, progress: 0)
+        emit(title: "Connecting…", detail: "Preparing \(effectName)", buffering: true, progress: 0)
     }
 
     private func close(keepRequest: Bool = false) {
@@ -155,18 +160,18 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
                                          channels: channels,
                                          interleaved: false),
               let converter = AVAudioConverter(from: source, to: output) else {
-            fail("This stream cannot be decoded for Vocal Boost.")
+            fail("This stream cannot be decoded for sound processing.")
             return
         }
         do {
-            let processor = try VocalBoostProcessor(format: output, level: level)
+            let processor = try VocalBoostProcessor(format: output, level: level, deepBass: deepBass)
             processor.setVolume(outputVolume)
             self.compressedFormat = source
             self.pcmFormat = output
             self.converter = converter
             self.processor = processor
         } catch {
-            fail("Vocal Boost audio output could not start.")
+            fail("Sound processing output could not start.")
         }
     }
 
@@ -219,7 +224,7 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
             return compressed
         }
         guard conversionError == nil, status != .error, pcm.frameLength > 0 else {
-            fail("This stream could not be decoded for Vocal Boost.")
+            fail("This stream could not be decoded for sound processing.")
             return
         }
         let renderedSeconds = Double(pcm.frameLength) / pcmFormat.sampleRate
@@ -237,12 +242,12 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
             do {
                 try processor.beginPlayback()
             } catch {
-                fail("Vocal Boost audio output could not start.")
+                fail("Sound processing output could not start.")
                 return
             }
-            emit(title: "Playing", detail: "Vocal Boost · " + level.title, buffering: false, progress: 1)
+            emit(title: "Playing", detail: effectDescription, buffering: false, progress: 1)
         } else if !started {
-            emit(title: "Buffering…", detail: "Preparing Vocal Boost",
+            emit(title: "Buffering…", detail: "Preparing \(effectName)",
                  buffering: true, progress: min(1, scheduledSeconds / 2))
         }
         if !packetBacklog.isEmpty { decodeBacklog() }
@@ -286,18 +291,18 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
                 guard self.generation == token else { return }
                 guard error == nil, (response as? HTTPURLResponse)?.statusCode == 200,
                       let data, let text = String(data: data, encoding: .utf8) else {
-                    self.fail("The HLS playlist could not be loaded for speech processing."); return
+                    self.fail("The HLS playlist could not be loaded for sound processing."); return
                 }
                 let base = response?.url ?? url
                 if let variant = PackedAudioHLS.variant(in: text, base: base), depth < 3 {
                     self.playlistURL = variant; self.refreshHLS(depth: depth + 1); return
                 }
                 guard let segments = PackedAudioHLS.segments(in: text, base: base) else {
-                    self.fail("This HLS container or encryption does not support the speech-processing fallback."); return
+                    self.fail("This HLS container or encryption does not support the sound-processing fallback."); return
                 }
                 if self.hlsNextSequence == nil { self.hlsNextSequence = segments.last?.sequence }
                 if let next = self.hlsNextSequence, let first = segments.first?.sequence, next < first {
-                    self.fail("The HLS audio window moved beyond speech processing."); return
+                    self.fail("The HLS audio window moved beyond sound processing."); return
                 }
                 self.hlsSegments = segments.filter { $0.sequence >= (self.hlsNextSequence ?? Int.max) }
                 self.fetchHLSSegment()
@@ -329,7 +334,7 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
                     return AudioFileStreamParseBytes(parser, UInt32(bytes.count), base, [])
                 }
                 guard result == noErr, self.generation == token, next < Int.max else {
-                    if self.generation == token { self.fail("The HLS audio could not be decoded for speech processing.") }
+                    if self.generation == token { self.fail("The HLS audio could not be decoded for sound processing.") }
                     return
                 }
                 self.hlsNextSequence = next + 1

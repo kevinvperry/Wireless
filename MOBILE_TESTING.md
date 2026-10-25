@@ -78,3 +78,12 @@ Implementation and current evidence: `Docs/HLS_VOCAL_BOOST_2026-10-25.md`.
 - On hardware, compare Off/Light/Standard/Strong at matched perceived loudness on speech, music and already heavily compressed broadcasts. Listen for distortion, pumping, lost consonants and excessive bass loss. Check a direct MP3, direct AAC, packed-AAC HLS and another HLS container.
 - Confirm the status follows actual processing, Off returns to original playback, TV Sync suspends the effect, and automatic stream changes/reconnection do not leave a stale Active label. Check level changes during active playback, Pause/Play and station changes.
 - Check locked-screen/background playback, interruptions, Bluetooth, AirPlay and compatible Mac use. A source/route that cannot supply processable audio must explain that the effect is unavailable while ordinary playback continues. FairPlay audio must remain unprocessed.
+
+## Deep Bass — 25 October 2026
+
+Implementation and evidence: `Docs/DEEP_BASS_2026-10-25.md`.
+
+- In Audio Controls → Music, enable Deep Bass. Confirm Vocal Boost becomes Off; selecting a speech level must disable Deep Bass. Restart and change stations to check the saved choice.
+- Check Ready/Waiting/Active/Unavailable, iOS 26 HLS unavailability, TV Sync suspension/resumption, and switching Off during playback. Listening Stats/History should count confirmed bass processing as Deep Bass, rather than Vocal Boost.
+- Compare Off and Deep Bass at matched perceived loudness on rock and other music stations. Check kick/bass weight, transient detail, distortion and unwanted pumping on already compressed broadcasts. Account for the preset's reserved headroom; equal system-volume settings are not a loudness-matched comparison.
+- Repeat on speakers/headphones, Bluetooth and AirPlay, with locked-screen/background playback, interruptions and compatible Mac windows. Test direct MP3/AAC and different HLS containers. Native HLS tap behaviour remains a separate hardware validation requirement.

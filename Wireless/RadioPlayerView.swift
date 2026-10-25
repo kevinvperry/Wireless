@@ -42,6 +42,16 @@ private struct AudioControlsSheet: View {
                         .accessibilityIdentifier("vocalBoostStatus")
                 }
                 Section {
+                    Toggle("Deep Bass", isOn: $player.deepBass)
+                        .disabled(player.syncEnabled)
+                        .accessibilityIdentifier("deepBassToggle")
+                } header: {
+                    Text("Music")
+                } footer: {
+                    Text(deepBassHelp)
+                        .accessibilityIdentifier("deepBassStatus")
+                }
+                Section {
                     Text("Choose an alternative stream if reception is unreliable.")
                     Text("Delay controls are available when the broadcaster provides a seekable live buffer.")
                     Text("Use the Sync pane to match commentary to your television.")
@@ -57,11 +67,17 @@ private struct AudioControlsSheet: View {
             }
         }
         .presentationBackground(.regularMaterial)
-        .presentationDetents([.medium, .large])
+        .presentationDetents([.large])
+    }
+
+    private var deepBassHelp: String {
+        let status = player.syncEnabled ? "Unavailable while TV Sync is on."
+            : player.deepBass ? player.deepBassState.message(for: "Deep Bass") : "Off."
+        return status + " Adds weight to kick drums and bass guitar. Selecting Deep Bass turns Vocal Boost off. The overall level may be quieter to protect peaks."
     }
 
     private var vocalBoostHelp: String {
-        player.vocalBoostState.message + " Light reduces rumble; Standard and Strong also compress speech and limit peaks. HLS processing requires iOS 27 or later."
+        (player.deepBass ? "Off · Deep Bass is selected." : player.vocalBoostState.message) + " Light reduces rumble; Standard and Strong also compress speech and limit peaks. HLS processing requires iOS 27 or later."
     }
 }
 

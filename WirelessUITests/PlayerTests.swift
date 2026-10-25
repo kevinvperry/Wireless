@@ -2,6 +2,89 @@ import XCTest
 
 final class PlayerTests: XCTestCase {
     @MainActor
+    func testDeepBassAvailabilityAndExclusiveSelection() {
+        let app = XCUIApplication()
+        app.launchEnvironment["WIRELESS_PLAYER_PREVIEW"] = "1"
+        app.launch()
+        XCTAssertTrue(app.buttons["Audio Controls"].waitForExistence(timeout: 15))
+        app.buttons["Audio Controls"].tap()
+        let vocal = app.segmentedControls["vocalBoostPicker"]
+        vocal.buttons["Strong"].tap()
+        let bass = app.switches["deepBassToggle"]
+        if !bass.isHittable { app.swipeUp() }
+        XCTAssertTrue(bass.waitForExistence(timeout: 5))
+        bass.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap()
+        let status = app.staticTexts["deepBassStatus"]
+        XCTAssertTrue(status.waitForExistence(timeout: 5))
+        if #available(iOS 27.0, *) {
+            XCTAssertTrue(status.label.contains("Ready · Press Play to use Deep Bass"), status.label)
+        } else {
+            XCTAssertTrue(status.label.contains("HLS Deep Bass requires iOS 27"), status.label)
+        }
+        XCTAssertTrue(vocal.buttons["Off"].isSelected)
+        let shot = XCTAttachment(screenshot: app.screenshot())
+        shot.name = "Deep Bass availability"; shot.lifetime = .keepAlways; add(shot)
+        app.buttons["Close"].tap()
+        app.terminate()
+        app.launchEnvironment["WIRELESS_PRESERVE_PREVIEW_DEFAULTS"] = "1"
+        app.launch()
+        app.buttons["Audio Controls"].tap()
+        XCTAssertEqual(bass.value as? String, "1", "Deep Bass should survive an app restart")
+        // Selecting speech restores the mutually exclusive preset in both directions.
+        if !vocal.buttons["Light"].isHittable { app.swipeDown() }
+        vocal.buttons["Light"].tap()
+        XCTAssertEqual(bass.value as? String, "0")
+        if !bass.isHittable { app.swipeUp() }
+        bass.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap()
+        app.buttons["Close"].tap()
+        app.buttons["Sync"].tap()
+        let sync = app.switches["syncEnabled"]
+        sync.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap()
+        XCTAssertEqual(sync.value as? String, "1")
+        app.buttons["Playing"].tap()
+        let audio = app.buttons["Audio Controls"]
+        expectation(for: NSPredicate { _, _ in audio.isHittable && audio.frame.minX >= 0 }, evaluatedWith: app)
+        waitForExpectations(timeout: 5)
+        audio.tap()
+        XCTAssertTrue(bass.waitForExistence(timeout: 5))
+        XCTAssertFalse(bass.isEnabled)
+        XCTAssertTrue(status.waitForExistence(timeout: 5))
+        XCTAssertTrue(status.label.contains("Unavailable while TV Sync is on"))
+    }
+
+    @MainActor
+    func testLiveHLSDeepBassAndOff() {
+        guard #available(iOS 27.0, *) else { return }
+        let app = XCUIApplication()
+        app.launchEnvironment["WIRELESS_PLAYER_PREVIEW"] = "1"
+        app.launchArguments = ["-streamDiagnosticLoggingEnabled", "YES"]
+        app.launch()
+        XCTAssertTrue(app.buttons["Audio Controls"].waitForExistence(timeout: 15))
+        app.buttons["Audio Controls"].tap()
+        let bass = app.switches["deepBassToggle"]
+        if !bass.isHittable { app.swipeUp() }
+        bass.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap()
+        app.buttons["Close"].tap()
+        app.buttons["Play"].tap()
+        let playing = NSPredicate(format: "label == %@", "Playing")
+        expectation(for: playing, evaluatedWith: app.staticTexts["playbackStatus"])
+        waitForExpectations(timeout: 35)
+        app.buttons["Audio Controls"].tap()
+        let status = app.staticTexts["deepBassStatus"]
+        if !status.isHittable { app.swipeUp() }
+        expectation(for: NSPredicate(format: "label CONTAINS %@", "Active · Bass enhancement"), evaluatedWith: status)
+        waitForExpectations(timeout: 25)
+        let shot = XCTAttachment(screenshot: app.screenshot())
+        shot.name = "Live HLS Deep Bass"; shot.lifetime = .keepAlways; add(shot)
+        bass.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap()
+        XCTAssertTrue(status.label.hasPrefix("Off."))
+        app.buttons["Close"].tap()
+        expectation(for: playing, evaluatedWith: app.staticTexts["playbackStatus"])
+        waitForExpectations(timeout: 20)
+        app.buttons["Pause"].tap()
+    }
+
+    @MainActor
     func testLiveHLSVocalBoostBecomesActive() {
         guard #available(iOS 27.0, *) else { return }
         let app = XCUIApplication()

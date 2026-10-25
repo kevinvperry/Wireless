@@ -4,12 +4,14 @@ enum WirelessListeningMode: String, Codable, CaseIterable, Sendable {
     case live
     case tvSync
     case vocalBoost
+    case deepBass
 
     var title: String {
         switch self {
         case .live: "Live"
         case .tvSync: "TV Sync"
         case .vocalBoost: "Vocal Boost"
+        case .deepBass: "Deep Bass"
         }
     }
 }

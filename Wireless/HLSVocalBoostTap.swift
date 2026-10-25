@@ -15,8 +15,8 @@ final class HLSVocalBoostTap {
     private let tap: MTAudioProcessingTap
 
     @available(iOS 27.0, *)
-    init(level: VocalBoostLevel) throws {
-        state = VocalBoostTapState(level: level)
+    init(level: VocalBoostLevel, deepBass: Bool = false) throws {
+        state = VocalBoostTapState(level: level, deepBass: deepBass)
         let retained = Unmanaged.passRetained(state).toOpaque()
         var callbacks = MTAudioProcessingTapCallbacks(
             version: kMTAudioProcessingTapCallbacksVersion_0, clientInfo: retained,
@@ -52,6 +52,7 @@ final class HLSVocalBoostTap {
         tap = created
     }
 
+    @MainActor
     @available(iOS 27.0, *)
     func attach(to item: AVPlayerItem) {
         let parameters = AVMutableAudioMixInputParameters()
@@ -71,6 +72,7 @@ final class VocalBoostTapState {
     let failure = Atomic<OSStatus>(noErr)
     let processedFrames = Atomic<Int64>(0)
     private let level: VocalBoostLevel
+    private let deepBass: Bool
     private var units: [AudioUnit] = []
     private var delivery: AVAudioPCMBuffer?
     private var latencyFrames: UInt32 = 0
@@ -86,7 +88,7 @@ final class VocalBoostTapState {
     private var bytesPerFrame: UInt32 = 0
     private var sampleTime: Float64 = 0
 
-    init(level: VocalBoostLevel) { self.level = level }
+    init(level: VocalBoostLevel, deepBass: Bool = false) { self.level = level; self.deepBass = deepBass }
     deinit { unprepare() }
 
     func prepare(format: AudioStreamBasicDescription, maximumFrames: CMItemCount) {
@@ -130,7 +132,7 @@ final class VocalBoostTapState {
             try check(AudioConverterNew(&format, &working, &inputConverter))
             try check(AudioConverterNew(&working, &format, &outputConverter))
             for subtype in VocalBoostConfiguration.subtypes {
-                let parameters = VocalBoostConfiguration.parameters(for: subtype, level: level)
+                let parameters = VocalBoostConfiguration.parameters(for: subtype, level: level, deepBass: deepBass)
                 guard !parameters.isEmpty else { continue }
                 var description = AudioComponentDescription(componentType: kAudioUnitType_Effect,
                     componentSubType: subtype, componentManufacturer: kAudioUnitManufacturer_Apple,
