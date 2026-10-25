@@ -64,8 +64,10 @@ final class MobilePlayer: ObservableObject {
         if station.playableStreams.contains(where: { $0.id == selectedStreamID }) {
             defaults.set(selectedStreamID, forKey: streamSelectionKey(for: station.id))
         }
+        let shouldResume = requested
         directoryAudio.configure(station, streamID: selectedStreamID)
-        if requested {
+        if shouldResume {
+            requested = true
             directoryAudio.start()
             startCompanionMetadataIfNeeded()
         }
@@ -107,8 +109,10 @@ final class MobilePlayer: ObservableObject {
         applyTrackMetadata(nil, source: "station-change")
         station = value; supportsDelay = false; measured = nil
         resetNowPlayingArtwork()
-        selectedStreamID = savedStreamID(for: value) ?? value.preferredStream?.id ?? ""
-        directoryAudio.configure(value, streamID: selectedStreamID)
+        let nextStreamID = savedStreamID(for: value) ?? value.preferredStream?.id ?? ""
+        if selectedStreamID == nextStreamID {
+            directoryAudio.configure(value, streamID: nextStreamID)
+        } else { selectedStreamID = nextStreamID }
         directoryAudio.setDelay(delay)
         if let data = try? JSONEncoder().encode(value) { defaults.set(data, forKey: "lastPlayedStation.v1") }
         library.recordRecent(value)
@@ -324,6 +328,11 @@ final class MobilePlayer: ObservableObject {
         refreshDetails()
     }
 
+    func prepareAudio() {
+        guard hasDetails, !requested else { return }
+        directoryAudio.prepare()
+    }
+
     func play() {
         diagnose("player.play", "Play requested", metadata: ["stationID": station.id, "streamID": selectedStreamID])
         cancelSleepScheduleFade()
@@ -505,8 +514,11 @@ final class MobilePlayer: ObservableObject {
         if phase == .active {
             refreshRoute()
             refreshDetails()
+            if requested && buffering { reconnectEngine() }
             publishNowPlaying()
         } else {
+            if phase == .background && !requested { directoryAudio.stop() }
+            updateRecoveryGrace()
             statsStore.checkpoint()
         }
     }
@@ -691,6 +703,7 @@ final class MobilePlayer: ObservableObject {
         else if let source = station.taptProgrammeSource {
             guide.startTapt(website: source.website, timeZoneIdentifier: source.timeZoneIdentifier)
         }
+        else if let serviceID = station.abcProgrammeServiceID { guide.startABC(serviceID: serviceID) }
         else { guide.stop() }
     }
 

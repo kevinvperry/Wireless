@@ -20,6 +20,8 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
     private var level: VocalBoostLevel = .off
     private var generation = 0
     private var requested = false
+    private var preparing = false
+    private var formatReady = false
     private var started = false
     private var scheduledSeconds = 0.0
     private var outputVolume: Float = 1
@@ -33,10 +35,24 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
         }
     }
 
+    func prepare() {
+        work.async {
+            self.preparing = true
+            self.connect()
+        }
+    }
+
     func start() {
         work.async {
             self.requested = true
-            self.connect()
+            self.preparing = false
+            if self.session == nil { self.connect() }
+            else {
+                if self.formatReady {
+                    self.receivedProperty(kAudioFileStreamProperty_ReadyToProducePackets)
+                    self.decodeBacklog()
+                }
+            }
         }
     }
 
@@ -55,7 +71,7 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
     }
 
     private func connect() {
-        guard requested, let stream, let url = stream.playableURL else { return }
+        guard requested || preparing, let stream, let url = stream.playableURL else { return }
         close(keepRequest: true)
         let hint: AudioFileTypeID = stream.format == "aac" ? kAudioFileAAC_ADTSType : kAudioFileMP3Type
         guard AudioFileStreamOpen(Unmanaged.passUnretained(self).toOpaque(), enhancedPropertyCallback,
@@ -83,6 +99,7 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
         session?.invalidateAndCancel(); session = nil
         if let parser { AudioFileStreamClose(parser) }
         parser = nil
+        formatReady = false
         converter = nil
         compressedFormat = nil
         pcmFormat = nil
@@ -90,11 +107,13 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
         packetBacklog.removeAll(keepingCapacity: false)
         started = false
         scheduledSeconds = 0
-        if !keepRequest { requested = false }
+        if !keepRequest { requested = false; preparing = false }
     }
 
     fileprivate func receivedProperty(_ property: AudioFileStreamPropertyID) {
-        guard property == kAudioFileStreamProperty_ReadyToProducePackets, let parser else { return }
+        guard property == kAudioFileStreamProperty_ReadyToProducePackets else { return }
+        formatReady = true
+        guard requested, let parser else { return }
         var description = AudioStreamBasicDescription()
         var size = UInt32(MemoryLayout<AudioStreamBasicDescription>.size)
         guard AudioFileStreamGetProperty(parser, kAudioFileStreamProperty_DataFormat, &size, &description) == noErr,
@@ -125,7 +144,7 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
 
     fileprivate func receivedPackets(_ count: UInt32, _ input: UnsafeRawPointer,
                                      _ descriptions: UnsafeMutablePointer<AudioStreamPacketDescription>?) {
-        guard requested, let descriptions else { return }
+        guard requested || preparing, let descriptions else { return }
         for index in 0..<Int(count) {
             var description = descriptions[index]
             let bytes = Data(bytes: input.advanced(by: Int(description.mStartOffset)),
@@ -133,7 +152,10 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
             description.mStartOffset = 0
             packetBacklog.append((bytes, description))
         }
-        decodeBacklog()
+        // Retain a bounded compressed history without activating an audio output.
+        if preparing {
+            if packetBacklog.count > 256 { packetBacklog.removeFirst(packetBacklog.count - 256) }
+        } else { decodeBacklog() }
     }
 
     private func decodeBacklog() {
@@ -227,7 +249,8 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
 
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
         work.async {
-            guard self.session === session, self.requested else { return }
+            guard self.session === session else { return }
+            if !self.requested { self.close(); return }
             self.fail(error == nil ? "The stream ended." : "The stream connection was lost.")
         }
     }

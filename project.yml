@@ -82,6 +82,8 @@ targets:
       - path: Shared/StationDirectory.swift
       - path: Shared/StationListOrganisation.swift
       - path: Shared/WirelessContact.swift
+      - path: Wireless/StreamRecoveryPolicy.swift
+      - path: Wireless/ProgrammeGuide.swift
       - path: Wireless/DelayCorrection.swift
       - path: Wireless/StreamTrackMetadata.swift
       - path: Wireless/CompanionMetadataProvider.swift

@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 
 struct Programme: Decodable, Identifiable {
     let id: String
@@ -53,12 +54,23 @@ private struct TaptScheduleEntry: Decodable {
 }
 
 private enum ProgrammeSource: Equatable {
+    case abc(serviceID: String)
     case sen(channelID: String)
     case tapt(website: URL, timeZoneIdentifier: String)
 }
 
 @MainActor
 final class ProgrammeGuide: ObservableObject {
+    typealias Loader = @Sendable (URLRequest) async throws -> (Data, URLResponse)
+    private let loader: Loader
+    private let now: @Sendable () -> Date
+
+    init(loader: @escaping Loader = { try await URLSession.shared.data(for: $0) },
+         now: @escaping @Sendable () -> Date = { Date() }) {
+        self.loader = loader
+        self.now = now
+    }
+
     @Published private(set) var current: Programme?
     @Published private(set) var upcoming: [Programme] = []
     @Published private(set) var message = ""
@@ -68,6 +80,9 @@ final class ProgrammeGuide: ObservableObject {
     private var refreshTask: Task<Void, Never>?
     private var taptSchedule: [TaptScheduleEntry] = []
     private var taptFetchedAt: Date?
+    private var abcCache: (serviceID: String, day: String, fetchedAt: Date, programmes: [Programme])?
+
+    func startABC(serviceID: String) { start(source: .abc(serviceID: serviceID)) }
 
     func start(channelID: String) { start(source: .sen(channelID: channelID)) }
 
@@ -79,7 +94,7 @@ final class ProgrammeGuide: ObservableObject {
         if source != newSource {
             refreshTask?.cancel()
             current = nil; upcoming = []; message = "Loading programme guide…"
-            taptSchedule = []; taptFetchedAt = nil; source = newSource
+            taptSchedule = []; taptFetchedAt = nil; abcCache = nil; source = newSource
         }
         refresh()
         guard timer == nil else { return }
@@ -91,7 +106,7 @@ final class ProgrammeGuide: ObservableObject {
     func stop() {
         timer?.invalidate(); timer = nil
         refreshTask?.cancel(); refreshTask = nil
-        source = nil; taptSchedule = []; taptFetchedAt = nil
+        source = nil; taptSchedule = []; taptFetchedAt = nil; abcCache = nil
         current = nil; upcoming = []; message = ""
     }
 
@@ -102,19 +117,68 @@ final class ProgrammeGuide: ObservableObject {
             do {
                 let programmes: [Programme]
                 switch source {
+                case .abc(let serviceID): programmes = try await fetchABC(serviceID: serviceID)
                 case .sen(let channelID): programmes = try await fetchSEN(channelID: channelID)
                 case .tapt(let website, let timeZoneIdentifier):
                     programmes = try await fetchTapt(website: website, timeZoneIdentifier: timeZoneIdentifier)
                 }
                 try Task.checkCancellation()
                 guard self.source == source else { return }
-                apply(programmes, now: Date())
+                apply(programmes, now: now())
             } catch is CancellationError { }
             catch {
-                guard self.source == source else { return }
+                guard !Task.isCancelled, self.source == source else { return }
+                if let current, current.end <= now() { self.current = nil }
+                upcoming.removeAll { $0.start < now() }
                 message = current == nil ? "Programme guide unavailable" : "Programme guide could not refresh"
             }
         }
+    }
+
+    private func fetchABC(serviceID: String) async throws -> [Programme] {
+        let now = now()
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.calendar = calendar
+        formatter.timeZone = calendar.timeZone
+        formatter.dateFormat = "yyyy-MM-dd"
+        let day = formatter.string(from: now)
+        if let cache = abcCache, cache.serviceID == serviceID, cache.day == day,
+           now.timeIntervalSince(cache.fetchedAt) < 5 * 60 {
+            return cache.programmes
+        }
+        // Include both sides of midnight: a programme may have begun yesterday,
+        // and tomorrow's first programme should still appear in Coming up.
+        var programmes: [Programme] = []
+        for offset in -1...1 {
+            let date = calendar.date(byAdding: .day, value: offset, to: now)!
+            var components = URLComponents(string: "https://www.abc.net.au/core-next/api/schedule")!
+            components.queryItems = [
+                URLQueryItem(name: "service", value: serviceID),
+                URLQueryItem(name: "date", value: formatter.string(from: date)),
+                URLQueryItem(name: "tz", value: "UTC"),
+                URLQueryItem(name: "ratio", value: "1x1")
+            ]
+            var request = URLRequest(url: components.url!)
+            request.timeoutInterval = 12
+            request.cachePolicy = .reloadIgnoringLocalCacheData
+            let (data, response) = try await loader(request)
+            try Task.checkCancellation()
+            guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw URLError(.badServerResponse) }
+            programmes += try ABCProgrammeParser.parse(data, serviceID: serviceID)
+        }
+        // ABC's RN_VIC and RN_TAS schedule services currently return no entries.
+        // Use the national eastern schedule only for these two eastern-time feeds;
+        // delayed QLD/SA/NT/WA services must retain their own schedules.
+        if programmes.isEmpty, ["RN_VIC", "RN_TAS"].contains(serviceID) {
+            programmes = try await fetchABC(serviceID: "RN")
+        }
+        var ids = Set<String>()
+        programmes = programmes.filter { ids.insert($0.id).inserted }
+        abcCache = (serviceID, day, now, programmes)
+        return programmes
     }
 
     private func fetchSEN(channelID: String) async throws -> [Programme] {
@@ -122,7 +186,7 @@ final class ProgrammeGuide: ObservableObject {
         components.queryItems = [URLQueryItem(name: "channelID", value: channelID)]
         var request = URLRequest(url: components.url!)
         request.cachePolicy = .reloadIgnoringLocalCacheData; request.timeoutInterval = 12
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await loader(request)
         guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw URLError(.badServerResponse) }
         let decoder = JSONDecoder(); decoder.dateDecodingStrategy = .iso8601
         let guide = try decoder.decode(SENProgrammeResponse.self, from: data)
@@ -132,18 +196,18 @@ final class ProgrammeGuide: ObservableObject {
     }
 
     private func fetchTapt(website: URL, timeZoneIdentifier: String) async throws -> [Programme] {
-        if let taptFetchedAt, Date().timeIntervalSince(taptFetchedAt) < 15 * 60, !taptSchedule.isEmpty {
-            return Self.programmes(from: taptSchedule, timeZoneIdentifier: timeZoneIdentifier, now: Date())
+        if let taptFetchedAt, now().timeIntervalSince(taptFetchedAt) < 15 * 60, !taptSchedule.isEmpty {
+            return Self.programmes(from: taptSchedule, timeZoneIdentifier: timeZoneIdentifier, now: now())
         }
         var request = URLRequest(url: website)
         request.cachePolicy = .reloadRevalidatingCacheData; request.timeoutInterval = 15
         request.setValue("Mozilla/5.0 (iPhone; Wireless Radio)", forHTTPHeaderField: "User-Agent")
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await loader(request)
         guard (response as? HTTPURLResponse)?.statusCode == 200,
               let html = String(data: data, encoding: .utf8) else { throw URLError(.badServerResponse) }
         let schedule = try Self.decodeTaptSchedule(from: html)
-        taptSchedule = schedule; taptFetchedAt = Date()
-        return Self.programmes(from: schedule, timeZoneIdentifier: timeZoneIdentifier, now: Date())
+        taptSchedule = schedule; taptFetchedAt = now()
+        return Self.programmes(from: schedule, timeZoneIdentifier: timeZoneIdentifier, now: now())
     }
 
     private func apply(_ programmes: [Programme], now: Date) {
@@ -203,5 +267,39 @@ final class ProgrammeGuide: ObservableObject {
             return Programme(id: "tapt-\(entry.id)-\(Int(start.timeIntervalSince1970))", name: entry.showName,
                              start: start, end: end, presenter: presenter.isEmpty ? nil : presenter)
         } }
+    }
+}
+
+/// The same schedule payload used by ABC listen's website. Absolute timestamps,
+/// rather than the formatted clock labels or onNow flag, determine live programmes.
+enum ABCProgrammeParser {
+    private struct Response: Decodable { let formattedScheduleArray: [Block] }
+    private struct Block: Decodable { let items: [Item]? }
+    private struct Item: Decodable {
+        let id: String?
+        let title: String?
+        let rawStartTime: String?
+        let rawEndTime: String?
+        let presenters: [Presenter]?
+    }
+    private struct Presenter: Decodable { let displayName: String? }
+
+    static func parse(_ data: Data, serviceID: String) throws -> [Programme] {
+        let response = try JSONDecoder().decode(Response.self, from: data)
+        let iso = ISO8601DateFormatter()
+        let fractional = ISO8601DateFormatter()
+        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        func date(_ value: String?) -> Date? {
+            guard let value else { return nil }
+            return iso.date(from: value) ?? fractional.date(from: value)
+        }
+        return response.formattedScheduleArray.flatMap { $0.items ?? [] }.compactMap { item in
+            guard let title = item.title?.trimmingCharacters(in: .whitespacesAndNewlines), !title.isEmpty,
+                  let start = date(item.rawStartTime), let end = date(item.rawEndTime), end > start else { return nil }
+            let presenters = (item.presenters ?? []).compactMap { $0.displayName?.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }.joined(separator: ", ")
+            return Programme(id: "abc-\(serviceID)-\(item.id ?? "programme")-\(Int(start.timeIntervalSince1970))",
+                             name: title, start: start, end: end, presenter: presenters.isEmpty ? nil : presenters)
+        }
     }
 }

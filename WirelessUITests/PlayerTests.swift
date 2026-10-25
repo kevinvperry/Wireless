@@ -2,6 +2,38 @@ import XCTest
 
 final class PlayerTests: XCTestCase {
     @MainActor
+    func testPopulatedAdaptivePlayerLayout() {
+        let app = XCUIApplication()
+        app.launchEnvironment["WIRELESS_PLAYER_PREVIEW"] = "1"
+        XCUIDevice.shared.orientation = .portrait
+        app.launch()
+        let audio = app.buttons["Audio Controls"]
+        XCTAssertTrue(audio.waitForExistence(timeout: 15))
+        let route = app.descendants(matching: .any)["audioSourceSelector"].firstMatch
+        XCTAssertTrue(route.exists)
+        if app.frame.width >= 368 {
+            XCTAssertEqual(audio.frame.midY, route.frame.midY, accuracy: 2)
+        }
+        let favourite = app.buttons["favouriteShortcut-layout-favourite"]
+        XCTAssertTrue(favourite.isHittable)
+        XCTAssertLessThanOrEqual(favourite.frame.height, 80)
+        XCTAssertLessThan(favourite.frame.maxY, app.frame.maxY)
+        let shot = XCTAttachment(screenshot: app.screenshot())
+        shot.name = "Populated portrait player"; shot.lifetime = .keepAlways; add(shot)
+        if app.frame.width >= 600 {
+            XCUIDevice.shared.orientation = .landscapeLeft
+            expectation(for: NSPredicate { _, _ in app.frame.width > app.frame.height }, evaluatedWith: app)
+            waitForExpectations(timeout: 5)
+            Thread.sleep(forTimeInterval: 2) // Let the rotation and screenshot orientation settle.
+            XCTAssertTrue(audio.waitForExistence(timeout: 5))
+            XCTAssertTrue(favourite.isHittable)
+            let wide = XCTAttachment(screenshot: app.screenshot())
+            wide.name = "Populated landscape player"; wide.lifetime = .keepAlways; add(wide)
+        }
+        XCUIDevice.shared.orientation = .portrait
+    }
+
+    @MainActor
     func testHiddenStreamDiagnosticsCanBeUnlocked() {
         let app = XCUIApplication()
         app.launch()
@@ -120,10 +152,66 @@ final class PlayerTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Listening Heatmap"].exists)
         XCTAssertTrue(app.staticTexts["Listening Clock"].exists)
 
+        let tabs = ["week", "month", "year", "lifetime"].map { app.buttons["statsRange-\($0)"] }
+        for tab in tabs { XCTAssertTrue(tab.isHittable) }
+        let left = tabs.first!.frame.minX
+        let right = tabs.last!.frame.maxX
+        XCTAssertEqual((left + right) / 2, app.frame.midX, accuracy: 2, "Period tabs should be centred")
+        for tab in tabs {
+            XCTAssertEqual(tab.frame.midY, tabs[0].frame.midY, accuracy: 1)
+            tab.tap()
+            XCTAssertTrue(tab.isSelected)
+        }
+        tabs[0].tap()
+
         let screenshot = XCTAttachment(screenshot: app.screenshot())
         screenshot.name = "Listening Stats"
         screenshot.lifetime = .keepAlways
         add(screenshot)
+    }
+
+    @MainActor
+    func testStatsPeriodSelectionMatchesAutohop() {
+        let app = XCUIApplication()
+        app.launchEnvironment["WIRELESS_STATS_PREVIEW"] = "1"
+        app.launch()
+        let tabs = ["week", "month", "year", "lifetime"].map { app.buttons["statsRange-\($0)"] }
+        XCTAssertTrue(tabs[0].waitForExistence(timeout: 10))
+        func assertCentred() {
+            for tab in tabs { XCTAssertTrue(tab.isHittable) }
+            XCTAssertEqual((tabs[0].frame.minX + tabs[3].frame.maxX) / 2, app.frame.midX, accuracy: 2)
+            for tab in tabs { XCTAssertEqual(tab.frame.midY, tabs[0].frame.midY, accuracy: 1) }
+        }
+        assertCentred()
+        XCTAssertTrue(tabs[0].isSelected)
+        app.buttons["Last Week"].tap()
+        XCTAssertTrue(app.buttons["Last Week"].isSelected)
+        tabs[1].tap()
+        XCTAssertTrue(app.buttons["Last Month"].isSelected)
+        let lastMonth = Calendar.current.date(byAdding: .month, value: -1, to: Date())!
+        XCTAssertEqual(tabs[1].label, lastMonth.formatted(.dateTime.month(.wide)))
+        tabs[2].tap()
+        XCTAssertTrue(app.buttons["Last Year"].isSelected)
+        let lastYear = Calendar.current.date(byAdding: .year, value: -1, to: Date())!
+        XCTAssertEqual(tabs[2].label, lastYear.formatted(.dateTime.year()))
+        tabs[3].tap()
+        XCTAssertFalse(app.buttons["Last Year"].exists)
+        tabs[1].tap()
+        XCTAssertTrue(app.buttons["Last Month"].isSelected, "Lifetime must preserve the This/Last choice")
+        app.buttons["This Month"].tap()
+        XCTAssertEqual(tabs[1].label, Date().formatted(.dateTime.month(.wide)))
+        let bar = app.buttons["This Month"].frame.union(app.buttons["Last Month"].frame)
+        XCTAssertEqual(bar.midX, app.frame.midX, accuracy: 2)
+        assertCentred()
+        let shot = XCTAttachment(screenshot: app.screenshot())
+        shot.name = "Centred glass period tabs and This Last control"
+        shot.lifetime = .keepAlways
+        add(shot)
+        if app.frame.width > 600 {
+            XCUIDevice.shared.orientation = .landscapeLeft
+            assertCentred()
+            XCUIDevice.shared.orientation = .portrait
+        }
     }
 
     @MainActor
@@ -489,6 +577,26 @@ final class PlayerTests: XCTestCase {
         XCTAssertTrue(app.buttons["abc-subnetwork-Radio National"].exists)
         XCTAssertTrue(app.buttons["abc-subnetwork-ABC Sport"].exists)
         XCTAssertTrue(app.buttons["abc-subnetwork-ABC Country"].exists)
+        app.buttons["abc-subnetwork-Triple J"].tap()
+        XCTAssertTrue(app.navigationBars["Triple J"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["triple-j-group-national"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["triple-j-group-specialty"].exists)
+        XCTAssertTrue(app.buttons["triple-j-group-stateFeeds"].exists)
+
+        app.buttons["triple-j-group-national"].tap()
+        XCTAssertTrue(app.buttons["Play triple j"].waitForExistence(timeout: 10))
+        app.navigationBars["triple j"].buttons.firstMatch.tap()
+
+        app.buttons["triple-j-group-specialty"].tap()
+        XCTAssertTrue(app.buttons["Play triple j Hottest"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["Play triple j Unearthed"].exists)
+        app.navigationBars["Specialty Music Stations"].buttons.firstMatch.tap()
+
+        app.buttons["triple-j-group-stateFeeds"].tap()
+        XCTAssertTrue(app.buttons["Play ABC triple j (QLD)"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["Play ABC triple j (WA)"].exists)
+        app.navigationBars["State-based triple j feeds"].buttons.firstMatch.tap()
+        app.navigationBars["Triple J"].buttons.firstMatch.tap()
         app.buttons["abc-subnetwork-ABC Local Radio"].tap()
         XCTAssertTrue(app.navigationBars["ABC Local Radio"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Play ")).firstMatch.waitForExistence(timeout: 10))
@@ -790,6 +898,42 @@ final class PlayerTests: XCTestCase {
         waitForExpectations(timeout: 35)
         app.buttons["Pause"].tap()
         XCTAssertTrue(app.buttons["Play"].waitForExistence(timeout: 3))
+    }
+
+    @MainActor
+    func testPreparedStationWaitsForPlayAndPauseStaysPaused() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-syncEnabled", "NO", "-syncEnabledDefaultOffMigration.v1", "YES",
+                               "-vocalBoostLevel", "off", "-autoResumePlayback", "NO",
+                               "-streamDiagnosticLoggingEnabled", "YES"]
+        app.launch()
+        if app.buttons["Discover"].waitForExistence(timeout: 2) {
+            app.buttons["Discover"].tap()
+        }
+        let search = app.textFields["stationSearch"]
+        XCTAssertTrue(search.waitForExistence(timeout: 10))
+        search.tap(); search.typeText("3AW")
+        let station = app.buttons["Play 3AW Melbourne"]
+        XCTAssertTrue(station.waitForExistence(timeout: 45))
+        station.tap()
+        XCTAssertTrue(app.buttons["Pause"].waitForExistence(timeout: 5))
+        app.buttons["Pause"].tap()
+        app.terminate()
+        app.launch()
+        // The restored station prepares silently, without changing playback intent.
+        XCTAssertTrue(app.buttons["Play"].waitForExistence(timeout: 10))
+        Thread.sleep(forTimeInterval: 4)
+        XCTAssertTrue(app.buttons["Play"].exists)
+        XCTAssertFalse(app.buttons["Pause"].exists)
+        app.buttons["Play"].tap()
+        let playing = NSPredicate(format: "label == %@", "Playing")
+        expectation(for: playing, evaluatedWith: app.staticTexts["playbackStatus"])
+        waitForExpectations(timeout: 40)
+        app.buttons["Pause"].tap()
+        // Longer than the stall watchdog: deliberate Pause must not reconnect.
+        Thread.sleep(forTimeInterval: 16)
+        XCTAssertTrue(app.buttons["Play"].exists)
+        XCTAssertFalse(app.buttons["Pause"].exists)
     }
 
     @MainActor

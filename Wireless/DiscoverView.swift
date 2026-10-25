@@ -14,6 +14,7 @@ struct DiscoverView: View {
     var cityFilter = ""
     var stateFilter = ""
     var musicGenreFilter = ""
+    var tripleJGroupFilter: TripleJBrowseGroup? = nil
     @State private var query = ""
     @State private var pendingRemoval: DirectoryStation?
 
@@ -42,7 +43,8 @@ struct DiscoverView: View {
                 Text(error).font(.caption).foregroundStyle(.secondary).padding(.horizontal).padding(.bottom, 8).accessibilityIdentifier("directoryError")
             }
             let filtered = library.results(favouritesOnly: favouritesOnly, query: query, network: networkFilter, city: cityFilter, state: stateFilter, subnetwork: subnetworkFilter, musicGenre: musicGenreFilter)
-            let results = region.map { DiscoverRegions.stations(filtered, in: $0) } ?? filtered
+            let grouped = tripleJGroupFilter.map { group in filtered.filter(group.includes) } ?? filtered
+            let results = region.map { DiscoverRegions.stations(grouped, in: $0) } ?? grouped
             if !favouritesOnly && region == nil && query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && networkFilter.isEmpty && subnetworkFilter.isEmpty && cityFilter.isEmpty && stateFilter.isEmpty && musicGenreFilter.isEmpty {
                 regionTiles(metrics: metrics)
             } else if results.isEmpty {
@@ -549,11 +551,14 @@ enum DiscoverBrowseRoute {
     private static let locationPrefix = "DiscoverLocation:"
     private static let statePrefix = "DiscoverState:"
     private static let subnetworkPrefix = "DiscoverSubnetwork:"
+    static let tripleJ = "DiscoverTripleJ"
+    private static let tripleJGroupPrefix = "DiscoverTripleJGroup:"
 
     static func network(_ value: String) -> String { networkPrefix + value }
     static func location(_ value: String) -> String { locationPrefix + value }
     static func state(_ value: String) -> String { statePrefix + value }
     static func subnetwork(network: String, value: String) -> String { subnetworkPrefix + network + "|" + value }
+    static func tripleJGroup(_ group: TripleJBrowseGroup) -> String { tripleJGroupPrefix + group.rawValue }
     static func networkValue(_ route: String) -> String? { route.hasPrefix(networkPrefix) ? String(route.dropFirst(networkPrefix.count)) : nil }
     static func locationValue(_ route: String) -> String? { route.hasPrefix(locationPrefix) ? String(route.dropFirst(locationPrefix.count)) : nil }
     static func stateValue(_ route: String) -> String? { route.hasPrefix(statePrefix) ? String(route.dropFirst(statePrefix.count)) : nil }
@@ -562,6 +567,46 @@ enum DiscoverBrowseRoute {
         let components = route.dropFirst(subnetworkPrefix.count).split(separator: "|", maxSplits: 1).map(String.init)
         guard components.count == 2 else { return nil }
         return (components[0], components[1])
+    }
+    static func tripleJGroupValue(_ route: String) -> TripleJBrowseGroup? {
+        guard route.hasPrefix(tripleJGroupPrefix) else { return nil }
+        return TripleJBrowseGroup(rawValue: String(route.dropFirst(tripleJGroupPrefix.count)))
+    }
+}
+
+enum TripleJBrowseGroup: String, CaseIterable, Identifiable {
+    case national
+    case specialty
+    case stateFeeds
+
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .national: return "triple j"
+        case .specialty: return "Specialty Music Stations"
+        case .stateFeeds: return "State-based triple j feeds"
+        }
+    }
+    var symbol: String {
+        switch self {
+        case .national: return "antenna.radiowaves.left.and.right"
+        case .specialty: return "music.note.list"
+        case .stateFeeds: return "map"
+        }
+    }
+    func includes(_ station: DirectoryStation) -> Bool {
+        guard station.network.caseInsensitiveCompare("ABC") == .orderedSame,
+              station.subnetwork?.caseInsensitiveCompare("Triple J") == .orderedSame else { return false }
+        switch self {
+        case .national:
+            return station.state.caseInsensitiveCompare("National") == .orderedSame
+                && station.name.caseInsensitiveCompare("triple j") == .orderedSame
+        case .specialty:
+            return station.name.localizedCaseInsensitiveContains("Hottest")
+                || station.name.localizedCaseInsensitiveContains("Unearthed")
+        case .stateFeeds:
+            return station.state.caseInsensitiveCompare("National") != .orderedSame
+        }
     }
 }
 
@@ -718,7 +763,7 @@ struct NetworkSubnetworkView: View {
                         .font(.system(size: metrics.detailTitle, weight: .bold))
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: metrics.tileMinimumWidth, maximum: metrics.tileMaximumWidth), spacing: metrics.tileSpacing)], spacing: metrics.tileSpacing) {
                         ForEach(NetworkSubnetworkCatalogue.services(for: network) ?? []) { service in
-                            NavigationLink(value: DiscoverBrowseRoute.subnetwork(network: network, value: service.name)) {
+                            NavigationLink(value: destination(for: service)) {
                                 DiscoverBrowseTile(
                                     title: service.name,
                                     subtitle: stationCountText(service.name),
@@ -742,6 +787,54 @@ struct NetworkSubnetworkView: View {
 
     private func stationCountText(_ subnetwork: String) -> String {
         let count = library.results(favouritesOnly: false, query: "", network: network, city: "", subnetwork: subnetwork).count
+        return "\(count) \(count == 1 ? "station" : "stations")"
+    }
+
+    private func destination(for service: NetworkSubnetwork) -> String {
+        if network.caseInsensitiveCompare("ABC") == .orderedSame,
+           service.name.caseInsensitiveCompare("Triple J") == .orderedSame {
+            return DiscoverBrowseRoute.tripleJ
+        }
+        return DiscoverBrowseRoute.subnetwork(network: network, value: service.name)
+    }
+}
+
+struct TripleJBrowseView: View {
+    @ObservedObject var library: StationLibrary
+
+    var body: some View {
+        GeometryReader { proxy in
+            let metrics = WirelessLayoutMetrics(width: proxy.size.width)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    Text("Choose a triple j service")
+                        .font(.system(size: metrics.detailTitle, weight: .bold))
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: metrics.tileMinimumWidth, maximum: metrics.tileMaximumWidth), spacing: metrics.tileSpacing)], spacing: metrics.tileSpacing) {
+                        ForEach(TripleJBrowseGroup.allCases) { group in
+                            NavigationLink(value: DiscoverBrowseRoute.tripleJGroup(group)) {
+                                DiscoverBrowseTile(
+                                    title: group.title,
+                                    subtitle: stationCountText(group),
+                                    symbol: group.symbol,
+                                    metrics: metrics
+                                )
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityIdentifier("triple-j-group-\(group.rawValue)")
+                        }
+                    }
+                }
+                .padding(metrics.pagePadding)
+                .padding(.bottom, metrics.discoverTileBottomClearance)
+                .frame(maxWidth: metrics.playerMaximumWidth)
+                .frame(maxWidth: .infinity)
+            }
+        }
+        .task { await library.refresh() }
+    }
+
+    private func stationCountText(_ group: TripleJBrowseGroup) -> String {
+        let count = library.stations.filter(group.includes).count
         return "\(count) \(count == 1 ? "station" : "stations")"
     }
 }

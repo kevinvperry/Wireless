@@ -17,7 +17,7 @@ On a first installation with no saved station, Wireless opens Discover instead o
 
 The Discover page provides several ways to browse the directory:
 
-- **Search by Network** begins with an alphabetical grid of major broadcasters using network artwork maintained in the Wireless directory. **All Networks** then lists every network, including the featured broadcasters, alphabetically. ACE Radio Network appears as **ACE Radio**, ARN as **ARN Regional** and Hit Network as **Hit**. Networks with distinct services open a second set of tiles.
+- **Search by Network** begins with an alphabetical grid of major broadcasters using network artwork maintained in the Wireless directory. **All Networks** then lists every network, including the featured broadcasters, alphabetically. ACE Radio Network appears as **ACE Radio**, ARN as **ARN Regional** and Hit Network as **Hit**. Networks with distinct services open a second set of tiles. Within ABC, **Triple J** opens separate choices for the national station, specialty music stations and state-based feeds.
 - **Search by Location** opens National, capital-city, Other Locations and State tiles.
 - **Music** opens a searchable list of music and audio genres, including Kids & Family and Soundscapes. A station can appear under more than one relevant genre. News and Sport have their own top-level destinations.
 - **News and Talkback** and **Sport** open their matching station lists directly.
@@ -37,6 +37,8 @@ Wireless downloads the published station directory and keeps its last complete c
 
 ## The Player
 
+The Playing pane keeps artwork large in portrait and places favourite shortcuts near the bottom. Favourite station names stay on one line. Audio output shares the controls row where space permits; narrow windows use a separate output row. Short windows and larger text can scroll, while wide landscape windows show artwork beside the controls.
+
 The main player has three panes:
 
 | Pane | Purpose |
@@ -48,6 +50,8 @@ The main player has three panes:
 The progress bar represents the current live position and buffering state. With TV Sync enabled, the captions show **TV Sync Enabled** and the measured stream delay. When reception is interrupted, Wireless attempts to reconnect automatically without requiring another press of Play.
 
 Where a music stream or supported broadcaster now-playing service supplies reliable track metadata, Wireless shows **song title · artist** on the top row, with the **station name below**. The mini-player uses the same order. Album information, when supplied, remains available in the mini-player. CarPlay and other system playback surfaces use their third text line for the station name. Song information is also sent to the Lock Screen, Control Centre and connected vehicles. Triple M and Hit Metro and Regional broadcast stations use metadata embedded directly in their selected stream. Wireless also supports ABC music services, supported Triton StreamTheWorld feeds and official LiSTNR now-playing data for LiSTNR and SCA digital music stations. A brief gap is normal when a broadcaster reports that no current track is available. Track metadata is available only during normal playback with TV Sync off.
+
+ABC Local Radio, Radio National, NewsRadio, Radio Australia and ABC sport feeds use ABC’s official programme schedules. When supplied, the current programme appears in Playing; Details shows its presenter, broadcast times and upcoming programmes. Schedules refresh automatically and follow the selected regional feed. Sport and event streams may have no programme listed between broadcasts, and some regional services may have gaps in ABC’s schedule data. Radio National’s Victorian and Tasmanian feeds use the national eastern schedule when ABC supplies no regional listings. Programme times describe the live broadcast and do not move with TV Sync delay. ABC music stations retain their song title and artist information.
 
 Triple M and Hit embedded metadata remains authoritative. During some national networked programmes, a station may repeatedly supply an old technical playout marker rather than current song information. Wireless hides only exact `Asset Link`, `Asset Spot` and `Asset Stop` markers, records them in Stream Diagnostics, and clears any previous song rather than leaving it frozen on screen. It also prevents old timestamped values from replacing current information and clears metadata that remains unchanged beyond its freshness limit. Each SCA playback session uses a new stream request identifier so a previous session's playlist is not deliberately reused.
 
@@ -80,6 +84,10 @@ Direct MP3 and AAC streams can be retained in Wireless's packet buffer. Compatib
 HLS audio arrives in segments, so its measured delay can move in small steps. Wireless avoids repeated automatic HLS corrections that would introduce audible micro-stutters. If one stream variation performs poorly, open **Audio Controls** and try another available stream.
 
 ## Normal Live Playback and Stream Selection
+
+Wireless begins preparing the selected station’s audio as soon as it opens in the player, including the last station restored at launch. This uses internet data before you press Play but produces no sound. Pressing Play reuses the prepared connection and buffer where available. Preparation stops after one minute without playback, when the app enters the background without playing, or when you press Pause. Startup speed still depends on reception and the broadcaster.
+
+While playback is requested, Wireless keeps trying after a lost connection. It tries the station’s published stream alternatives and repeats in cycles, with waits increasing from one second to a maximum of 15 seconds between cycles. Press Pause to stop reconnection attempts. If iOS suspends the app during a prolonged background outage, reopen Wireless to let recovery continue.
 
 With TV Sync off and Vocal Boost off, Wireless uses Apple's AVPlayer for stable live playback. It allows a short reliability buffer to build where appropriate and does not make TV-delay corrections.
 
@@ -151,7 +159,7 @@ Favourites changed in CarPlay also update on your iPhone. Auto Resume applies wh
 
 Open **Settings > Listening Stats** to see how you use Wireless. Tracking begins when this version is installed. Wireless cannot reconstruct earlier listening time from Favourites or Recently Played because those records do not prove how long audio was heard.
 
-Choose **7 Days**, the displayed month, the displayed year or **Lifetime**. When an earlier completed period contains listening, a **This / Last** control compares the current and previous week, month or year.
+Choose **7 Days**, the displayed month, the displayed year or **Lifetime**. The glass period tabs are centred above the statistics. At larger text sizes or in narrow windows, swipe the tabs horizontally if needed. When an earlier completed period contains listening, a **This / Last** control compares the current and previous week, month or year.
 
 | Section | Meaning |
 |---|---|

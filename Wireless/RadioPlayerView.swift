@@ -98,7 +98,7 @@ struct RadioPlayerView: View {
                 VStack(spacing: 10) {
                     topBar(width: geometry.size.width)
                     TabView(selection: $pane) {
-                        playing(size: geometry.size).accessibilityHidden(pane != .playing).tag(PlayerPane.playing)
+                        playing().accessibilityHidden(pane != .playing).tag(PlayerPane.playing)
                         if player.hasDetails {
                             details(size: geometry.size).accessibilityHidden(pane != .details).tag(PlayerPane.details)
                         }
@@ -121,6 +121,8 @@ struct RadioPlayerView: View {
                     else if destination == DiscoverBrowseRoute.networks { DiscoverFacetView(library: library, kind: .networks) }
                     else if destination == DiscoverBrowseRoute.locations { DiscoverLocationBrowseView(library: library) }
                     else if destination == DiscoverBrowseRoute.otherLocations { DiscoverFacetView(library: library, kind: .locations) }
+                    else if destination == DiscoverBrowseRoute.tripleJ { TripleJBrowseView(library: library) }
+                    else if let group = DiscoverBrowseRoute.tripleJGroupValue(destination) { stationList(favouritesOnly: false, network: "ABC", subnetwork: "Triple J", tripleJGroup: group) }
                     else if let network = DiscoverBrowseRoute.networkValue(destination), NetworkSubnetworkCatalogue.services(for: network) != nil { NetworkSubnetworkView(library: library, network: network) }
                     else if let network = DiscoverBrowseRoute.networkValue(destination) { stationList(favouritesOnly: false, network: network) }
                     else if let subnetwork = DiscoverBrowseRoute.subnetworkValue(destination) { stationList(favouritesOnly: false, network: subnetwork.network, subnetwork: subnetwork.value) }
@@ -169,7 +171,7 @@ struct RadioPlayerView: View {
         .onChange(of: player.requested) { _, _ in updateIdleTimer() }
         .onChange(of: path) { _, _ in updateIdleTimer() }
         .onChange(of: keepScreenAwake) { _, _ in updateIdleTimer() }
-        .onAppear { updateIdleTimer() }
+        .onAppear { updateIdleTimer(); player.prepareAudio() }
         .onDisappear { UIApplication.shared.isIdleTimerDisabled = false }
         .onChange(of: player.hasDetails) { _, available in
             if !available && pane == .details { pane = .playing }
@@ -253,35 +255,17 @@ struct RadioPlayerView: View {
         .frame(maxWidth: .infinity)
     }
 
-    private func playing(size: CGSize) -> some View {
-        let metrics = WirelessLayoutMetrics(width: size.width)
-        let availableWidth = min(size.width, metrics.playerMaximumWidth) - (metrics.horizontalGutter * 2)
-        let wideArtwork = min(metrics.playerArtworkMaximumWidth, max(260, (availableWidth - 28) * 0.5))
-        let portraitArtwork = min(
-            metrics.playerArtworkMaximumWidth,
-            max(100, availableWidth),
-            max(240, size.height - 420)
-        )
-        return ScrollView {
-            Group {
-                if metrics.usesWidePlayerLayout && availableWidth >= 760 {
-                    HStack(alignment: .center, spacing: 28) {
-                        playerArtwork(side: wideArtwork)
-                        playingControls(metrics: metrics)
-                            .frame(maxWidth: metrics.playerControlColumnMaximumWidth)
-                    }
-                } else {
-                    VStack(spacing: 14) {
-                        playerArtwork(side: portraitArtwork)
-                        playingControls(metrics: metrics)
-                    }
-                }
+    private func playing() -> some View {
+        WirelessPlayerContent(preferredReservedHeight: 330, mediaAspectRatio: 1) {
+            GeometryReader { geometry in
+                let side = max(0, min(geometry.size.width - 32, geometry.size.height - 20, 620))
+                playerArtwork(side: side)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .frame(maxWidth: metrics.playerMaximumWidth)
-            .padding(.horizontal, metrics.horizontalGutter)
-            .padding(.top, 11)
-            .padding(.bottom, 30)
-            .frame(maxWidth: .infinity)
+        } controls: { width in
+            playingControls(metrics: WirelessLayoutMetrics(width: width), width: width)
+                .padding(.horizontal, 16)
+                .padding(.bottom, 8)
         }
     }
 
@@ -289,11 +273,12 @@ struct RadioPlayerView: View {
         StationImage(station: player.station, cornerRadius: 20)
             .frame(width: side, height: side)
             .background { Circle().fill(.purple.opacity(0.34)).blur(radius: 45) }
+            .accessibilityIdentifier("playerArtwork")
     }
 
     @ViewBuilder
-    private func playingControls(metrics: WirelessLayoutMetrics) -> some View {
-        VStack(spacing: 14) {
+    private func playingControls(metrics: WirelessLayoutMetrics, width: CGFloat) -> some View {
+        VStack(spacing: 12) {
             PlayerMetadataText(
                 stationName: player.station.name,
                 stationDetail: player.displayTitle != player.station.name
@@ -310,7 +295,8 @@ struct RadioPlayerView: View {
                     .glassEffect(.regular.tint(.purple), in: Circle())
                     .shadow(color: .purple.opacity(0.35), radius: 14)
             }.accessibilityLabel(player.requested ? "Pause" : "Play")
-            playerActionRow
+            playerActionRow(width: width - 32)
+            Spacer(minLength: 0)
             favouriteShortcuts
         }
     }
@@ -338,7 +324,8 @@ struct RadioPlayerView: View {
                                 Text(station.name)
                                     .font(.system(size: 13, weight: .bold))
                                     .foregroundStyle(.primary)
-                                    .lineLimit(2)
+                                    .lineLimit(1)
+                                    .truncationMode(.tail)
                                 Text([station.network, station.location].filter { !$0.isEmpty }.joined(separator: " · "))
                                     .font(.system(size: 10))
                                     .foregroundStyle(.secondary)
@@ -494,14 +481,14 @@ struct RadioPlayerView: View {
                         }
                         Text(current.timeLabel).font(.system(size: metrics.secondary)).foregroundStyle(.secondary)
                     }
-                    if !player.guide.upcoming.isEmpty {
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("Coming up").font(.system(size: metrics.primary, weight: .bold))
-                            ForEach(player.guide.upcoming.prefix(3)) { programme in
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(programme.name).font(.system(size: metrics.primary, weight: .semibold))
-                                    Text(programme.timeLabel).font(.system(size: metrics.secondary)).foregroundStyle(.secondary)
-                                }
+                }
+                if !player.guide.upcoming.isEmpty {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Coming up").font(.system(size: metrics.primary, weight: .bold))
+                        ForEach(player.guide.upcoming.prefix(3)) { programme in
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(programme.name).font(.system(size: metrics.primary, weight: .semibold))
+                                Text(programme.timeLabel).font(.system(size: metrics.secondary)).foregroundStyle(.secondary)
                             }
                         }
                     }
@@ -675,43 +662,72 @@ struct RadioPlayerView: View {
         }
     }
 
-    private var playerActionRow: some View {
-        HStack(spacing: 10) {
-            HStack(spacing: 8) {
-                Button { showAudio = true } label: { playerActionIcon("slider.horizontal.3") }
-                    .buttonStyle(.plain).accessibilityLabel("Audio Controls")
-                Button { showSleepTimer = true } label: { sleepTimerButtonLabel }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Sleep Timer")
-            }
-            .frame(width: 96, alignment: .leading)
-
-            audioSourceButton
-                .frame(maxWidth: .infinity, alignment: .center)
-
-            Button {
-                if library.contains(player.station) {
-                    confirmsUnfavourite = true
-                } else {
-                    library.toggle(player.station)
+    private func playerActionRow(width: CGFloat) -> some View {
+        Group {
+            if width >= 304 {
+                HStack(spacing: 10) {
+                    playerAudioActions
+                    audioSourceButton.frame(height: 48)
+                    playerFavouriteAction
                 }
-            } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: library.contains(player.station) ? "heart.fill" : "heart")
-                    Text(library.contains(player.station) ? "Unfavourite" : "Favourite")
-                        .font(.system(size: 10, weight: .semibold))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
+            } else {
+                VStack(spacing: 4) {
+                    HStack {
+                        playerAudioActions
+                        Spacer(minLength: 8)
+                        playerFavouriteAction
+                    }
+                    audioSourceButton.frame(height: 48)
                 }
-                .foregroundStyle(.purple)
-                .frame(width: 96, height: 32)
-                .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 9))
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel(library.contains(player.station) ? "Remove \(player.station.name) from Favourites" : "Add \(player.station.name) to Favourites")
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 7)
+    }
+
+    private var playerAudioActions: some View {
+        HStack(spacing: 8) {
+            Button { showAudio = true } label: { playerActionIcon("slider.horizontal.3") }
+                .buttonStyle(.plain).accessibilityLabel("Audio Controls")
+            Button { showSleepTimer = true } label: { sleepTimerButtonLabel }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Sleep Timer")
+        }
+        .frame(width: 96, alignment: .leading)
+
+    }
+
+    private var playerFavouriteAction: some View {
+        Button {
+            if library.contains(player.station) {
+                confirmsUnfavourite = true
+            } else {
+                library.toggle(player.station)
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: library.contains(player.station) ? "heart.fill" : "heart")
+                Text(library.contains(player.station) ? "Unfavourite" : "Favourite")
+                    .font(.system(size: 10, weight: .semibold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+            .foregroundStyle(.purple)
+            .frame(width: 96, height: 32)
+            .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 9))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(library.contains(player.station) ? "Remove \(player.station.name) from Favourites" : "Add \(player.station.name) to Favourites")
+    }
+
+
+    private var audioRouteTitle: String {
+        #if DEBUG
+        if ProcessInfo.processInfo.environment["WIRELESS_PLAYER_PREVIEW"] == "1" {
+            return "Kevin’s AirPods Pro #3"
+        }
+        #endif
+        return player.route
     }
 
     private var audioSourceButton: some View {
@@ -722,7 +738,7 @@ struct RadioPlayerView: View {
                     .foregroundStyle(Color.purple.opacity(0.9))
                     .fixedSize()
 
-                Text(player.route)
+                Text(audioRouteTitle)
                     .font(.caption.weight(.bold))
                     .foregroundStyle(Color(white: 0.55))
                     .lineLimit(1)
@@ -923,12 +939,12 @@ struct RadioPlayerView: View {
         }
     }
 
-    private func stationList(favouritesOnly: Bool, region: DiscoverRegion? = nil, network: String = "", subnetwork: String = "", city: String = "", state: String = "", musicGenre: String = "") -> some View {
+    private func stationList(favouritesOnly: Bool, region: DiscoverRegion? = nil, network: String = "", subnetwork: String = "", city: String = "", state: String = "", musicGenre: String = "", tripleJGroup: TripleJBrowseGroup? = nil) -> some View {
         DiscoverView(library: player.library, currentID: player.station.id, isPlaying: player.requested, favouritesOnly: favouritesOnly, play: { station in
             player.playStation(station); showFavourites = false; path = []; pane = .playing
         }, browse: {
             showFavourites = false; path = ["Discover"]
-        }, region: region, networkFilter: network, subnetworkFilter: subnetwork, cityFilter: city, stateFilter: state, musicGenreFilter: musicGenre)
+        }, region: region, networkFilter: network, subnetworkFilter: subnetwork, cityFilter: city, stateFilter: state, musicGenreFilter: musicGenre, tripleJGroupFilter: tripleJGroup)
     }
 
     private func discoverTitle(_ destination: String) -> String {
@@ -939,6 +955,8 @@ struct RadioPlayerView: View {
         if destination == DiscoverBrowseRoute.locations { return "Locations" }
         if destination == DiscoverBrowseRoute.otherLocations { return "Other Locations" }
         if destination == DiscoverBrowseRoute.national { return "National" }
+        if destination == DiscoverBrowseRoute.tripleJ { return "Triple J" }
+        if let group = DiscoverBrowseRoute.tripleJGroupValue(destination) { return group.title }
         if let network = DiscoverBrowseRoute.networkValue(destination) { return network }
         if let subnetwork = DiscoverBrowseRoute.subnetworkValue(destination) { return subnetwork.value }
         if let city = DiscoverBrowseRoute.locationValue(destination) { return city }

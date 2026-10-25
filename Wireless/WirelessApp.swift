@@ -10,11 +10,37 @@ struct WirelessApp: App {
         NotificationService.shared.configure()
     }
 
+    #if DEBUG
+    /// Isolated populated player for repeatable layout checks. No saved library is modified.
+    private static let previewPlayer: MobilePlayer = {
+        let defaults = UserDefaults(suiteName: "Wireless.PlayerLayoutPreview")!
+        defaults.removePersistentDomain(forName: "Wireless.PlayerLayoutPreview")
+        func station(_ id: String, _ name: String) -> DirectoryStation {
+            DirectoryStation(id: id, name: name, network: "Preview Network", country: "Australia",
+                state: "VIC", cities: ["Melbourne"], tags: [], description: "Layout preview",
+                website_url: "", logo_url: "", preferred_stream_id: DirectoryStation.sen.preferred_stream_id,
+                streams: DirectoryStation.sen.streams)
+        }
+        let current = station("layout-current", "Wireless Radio Melbourne")
+        let favourites = [station("layout-favourite", "The Commute with Marty Sheargold"),
+                          station("layout-second", "Melbourne's Favourite Music Station")]
+        defaults.set(try! JSONEncoder().encode(current), forKey: "lastPlayedStation.v1")
+        defaults.set(try! JSONEncoder().encode(favourites), forKey: "stationFavourites.v1")
+        return MobilePlayer(defaults: defaults)
+    }()
+    #endif
+
     var body: some Scene {
         WindowGroup {
             #if DEBUG
-            if ProcessInfo.processInfo.environment["WIRELESS_METADATA_PREVIEW"] == "1" {
+            if ProcessInfo.processInfo.environment["WIRELESS_PLAYER_PREVIEW"] == "1" {
+                RadioPlayerView(player: Self.previewPlayer)
+                    .preferredColorScheme(.dark)
+                    .tint(.purple)
+            } else if ProcessInfo.processInfo.environment["WIRELESS_METADATA_PREVIEW"] == "1" {
                 WirelessMetadataPreview()
+            } else if ProcessInfo.processInfo.environment["WIRELESS_STATS_PREVIEW"] == "1" {
+                WirelessStatsPreview()
             } else {
                 WirelessRootView(player: player)
             }

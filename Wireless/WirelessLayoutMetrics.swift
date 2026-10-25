@@ -74,3 +74,103 @@ struct WirelessLayoutMetrics {
     /// Lets the last station row scroll fully above the persistent mini-player.
     var stationListBottomClearance: CGFloat { miniPlayerArtworkSize + 32 }
 }
+
+// Adaptive media/control foundation. The portrait budget preserves the established
+// phone artwork size; measured controls increase scrollable height when needed.
+// A single Layout changes placement without replacing media or control identity.
+struct WirelessPlayerGeometry {
+    let media: CGRect
+    let controls: CGRect
+    let size: CGSize
+
+    static func usesColumns(in size: CGSize) -> Bool {
+        size.width >= 600 && size.width > size.height
+    }
+
+    init(viewport: CGSize, width: CGFloat, controlsHeight: CGFloat,
+         preferredReservedHeight: CGFloat, mediaAspectRatio: CGFloat) {
+        let width = max(0, min(width, 1_100))
+        let ratio = max(0.1, mediaAspectRatio)
+        if Self.usesColumns(in: CGSize(width: width, height: viewport.height)) {
+            let column = max(0, (width - 28) / 2)
+            let availableMediaWidth = max(0, column - 32)
+            let mediaHeight = min(availableMediaWidth / ratio, max(80, viewport.height - 20))
+            let height = max(viewport.height, mediaHeight + 20, controlsHeight)
+            media = CGRect(x: 0, y: (height - mediaHeight - 20) / 2,
+                           width: column, height: mediaHeight + 20)
+            controls = CGRect(x: column + 28, y: (height - controlsHeight) / 2,
+                              width: column, height: controlsHeight)
+            size = CGSize(width: width, height: height)
+        } else {
+            let availableMediaWidth = min(620, max(0, width - 32))
+            let artworkHeight = max(min(80, availableMediaWidth), min(availableMediaWidth,
+                viewport.height - preferredReservedHeight))
+            // Video keeps its 16:9 aspect and the existing portrait media band.
+            // On short windows it shrinks instead of consuming the full width.
+            let videoHeight = min(availableMediaWidth / ratio, max(80, viewport.height * 0.5))
+            let mediaHeight = ratio == 1 ? artworkHeight : max(artworkHeight, videoHeight)
+            media = CGRect(x: 0, y: 0, width: width, height: mediaHeight + 20)
+            // Preserve the portrait row's existing flexible vertical space.
+            // Intrinsic height wins when the controls need to scroll instead.
+            controls = CGRect(x: 0, y: media.maxY, width: width,
+                              height: max(controlsHeight, viewport.height - media.maxY))
+            size = CGSize(width: width, height: controls.maxY)
+        }
+    }
+}
+
+struct WirelessPlayerContentLayout: Layout {
+    var viewport: CGSize
+    var preferredReservedHeight: CGFloat
+    var mediaAspectRatio: CGFloat
+
+    private func geometry(width: CGFloat, subviews: Subviews) -> WirelessPlayerGeometry {
+        let width = max(0, min(width, 1_100))
+        let columns = WirelessPlayerGeometry.usesColumns(in: CGSize(width: width, height: viewport.height))
+        let controlsWidth = columns ? max(0, (width - 28) / 2) : width
+        let height = subviews[1].sizeThatFits(ProposedViewSize(width: controlsWidth, height: nil)).height
+        return WirelessPlayerGeometry(viewport: viewport, width: width, controlsHeight: height,
+                                      preferredReservedHeight: preferredReservedHeight,
+                                      mediaAspectRatio: mediaAspectRatio)
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        geometry(width: proposal.width ?? viewport.width, subviews: subviews).size
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let geometry = geometry(width: bounds.width, subviews: subviews)
+        for (view, frame) in zip(subviews, [geometry.media, geometry.controls]) {
+            view.place(at: CGPoint(x: bounds.minX + frame.minX, y: bounds.minY + frame.minY),
+                       anchor: .topLeading,
+                       proposal: ProposedViewSize(width: frame.width, height: frame.height))
+        }
+    }
+}
+
+/// The viewport owns scrolling; media and controls remain the same two children
+/// as a window resizes. This container has no playback or navigation ownership.
+struct WirelessPlayerContent<Media: View, Controls: View>: View {
+    let preferredReservedHeight: CGFloat
+    let mediaAspectRatio: CGFloat
+    @ViewBuilder var media: () -> Media
+    @ViewBuilder var controls: (CGFloat) -> Controls
+
+    var body: some View {
+        GeometryReader { proxy in
+            let contentWidth = min(proxy.size.width, 1_100)
+            let controlsWidth = WirelessPlayerGeometry.usesColumns(in: CGSize(width: contentWidth, height: proxy.size.height))
+                ? max(0, (contentWidth - 28) / 2) : contentWidth
+            ScrollView {
+                WirelessPlayerContentLayout(viewport: proxy.size,
+                                            preferredReservedHeight: preferredReservedHeight,
+                                            mediaAspectRatio: mediaAspectRatio) {
+                    media()
+                    controls(controlsWidth)
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .scrollBounceBehavior(.basedOnSize)
+        }
+    }
+}

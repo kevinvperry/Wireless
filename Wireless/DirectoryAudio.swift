@@ -65,7 +65,7 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
         packetEngine.onStatus = { [weak self] update in
             Task { @MainActor in
                 guard let self, self.requested, self.usesPacketBuffer else { return }
-                if update.title == "Playing" { self.lastAdvance = Date() }
+                if update.title == "Playing" { self.lastAdvance = Date(); self.recovery.recordPlayback(at: Date()) }
                 self.onStatus?(PlaybackStatus(active: self.requested, buffering: update.buffering, progress: update.progress, title: update.title, detail: update.detail, measuredDelay: update.measuredDelay), true)
             }
         }
@@ -78,13 +78,15 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
         enhancedEngine.onStatus = { [weak self] update in
             Task { @MainActor in
                 guard let self, self.requested, self.usesEnhancedPlayback else { return }
-                if update.title == "Playing" { self.lastAdvance = Date() }
-                self.onStatus?(update, false)
+                if update.title == "Playing" { self.lastAdvance = Date(); self.recovery.recordPlayback(at: Date()) }
+                self.onStatus?(PlaybackStatus(active: self.requested, buffering: update.buffering, progress: update.progress, title: update.title, detail: update.detail, measuredDelay: update.measuredDelay), false)
             }
         }
         enhancedEngine.onPlaybackInterval = { [weak self] seconds, endedAt in
             Task { @MainActor in
                 guard let self, self.requested, self.usesEnhancedPlayback else { return }
+                self.lastAdvance = Date()
+                self.recovery.recordPlayback(at: Date())
                 self.onPlaybackInterval?(seconds, endedAt)
             }
         }
@@ -92,6 +94,10 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
     private var streams: [StationStream] = []
     private var index = 0
     private var requested = false
+    private var preparing = false
+    private var prerollStarted = false
+    private var retryAt: Date?
+    private var recovery = StreamRecoveryPolicy()
     private var timer: Timer?
     private var started = Date()
     private var lastAdvance = Date()
@@ -123,25 +129,58 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
             "requestedStreamID": streamID ?? "automatic",
             "candidateCount": "\(streams.count)"
         ])
+        prepare()
     }
-    func start() {
-        guard !streams.isEmpty else { emitFailure("This station has no compatible stream."); return }
-        guard !requested else { return }
-        requested = true; failure = ""; index = 0
-        diagnose("playback.start", "Playback requested")
+
+    /// Adapted from Autohop’s paused-player preload; reuse the same backend on Play.
+    func prepare() {
+        guard !requested, !preparing, !streams.isEmpty else { return }
+        preparing = true
         load()
+        startTimer()
+    }
+
+    private func startTimer() {
         timer?.invalidate()
         timer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in Task { @MainActor in self?.tick() } }
     }
+
+    func start() {
+        guard !streams.isEmpty else { emitFailure("This station has no compatible stream."); return }
+        guard !requested else { return }
+        let wasPrepared = preparing && Date().timeIntervalSince(started) < 60
+        requested = true; preparing = false; failure = ""
+        recovery.reset(); retryAt = nil
+        diagnose("playback.start", "Playback requested", metadata: ["reusedPreparation": "\(wasPrepared)"])
+        if wasPrepared {
+            started = Date(); lastAdvance = started
+            if usesPacketBuffer { packetEngine.start() }
+            else if usesEnhancedPlayback {
+                enhancedEngine.start()
+                if let url = StreamRequestPolicy.playbackURL(for: streams[index]) {
+                    startMetadataSidecar(url: url, stream: streams[index], token: generation)
+                }
+            } else if player.currentItem?.status != .failed {
+                player.cancelPendingPrerolls()
+                // A paused live window can move on while the user reads the player.
+                if !syncEnabled, let range = seekRange,
+                   CMTimeRangeGetEnd(range).seconds - player.currentTime().seconds > 10 {
+                    player.seek(to: CMTime(seconds: max(range.start.seconds, CMTimeRangeGetEnd(range).seconds - 5), preferredTimescale: 600))
+                }
+                player.play()
+            } else { load() }
+        } else { index = 0; load() }
+        startTimer()
+    }
     func reconnect() {
         guard requested, !streams.isEmpty else { return }
-        failure = ""
+        failure = ""; retryAt = nil
         diagnose("playback.reconnect", "Reconnect requested")
         load()
     }
     func stop() {
         if requested { diagnose("playback.stop", "Playback stopped") }
-        requested = false; generation = UUID(); seeking = false
+        requested = false; preparing = false; retryAt = nil; recovery.reset(); generation = UUID(); seeking = false
         timer?.invalidate(); timer = nil
         removeItemObservers()
         player.pause(); player.replaceCurrentItem(with: nil)
@@ -164,13 +203,13 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
         player.currentItem?.preferredForwardBufferDuration = 5
         // The playback backend is a mode decision: ordinary listening always
         // returns to AVPlayer, while Sync may need Wireless's retained packets.
-        if requested { load() }
+        if requested || preparing { load() }
     }
     func setVocalBoost(_ level: VocalBoostLevel) {
         guard vocalBoost != level else { return }
         vocalBoost = level
         onTrackMetadata?(nil)
-        if requested { load() }
+        if requested || preparing { load() }
     }
     func setDelay(_ value: Double) {
         let materiallyChanged = abs(delay - value) >= 0.49
@@ -187,10 +226,10 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
         companionMetadataPreferred = preferred
     }
     private func load() {
-        guard requested, streams.indices.contains(index),
+        guard requested || preparing, streams.indices.contains(index),
               let url = StreamRequestPolicy.playbackURL(for: streams[index]) else { return }
         onTrackMetadata?(nil)
-        generation = UUID(); seeking = false; selectedStreamID = streams[index].id
+        generation = UUID(); seeking = false; prerollStarted = false; selectedStreamID = streams[index].id
         avPlayerAccountingSample = nil
         packetEngine.stop(); packetEngine.suspendPreparation()
         enhancedEngine.stop()
@@ -215,13 +254,16 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
             "vocalBoost": vocalBoost.rawValue
         ])
         if usesPacketBuffer {
-            packetEngine.selectBufferedStream(stream); packetEngine.setDelay(delay); packetEngine.start()
+            packetEngine.selectBufferedStream(stream); packetEngine.setDelay(delay)
+            if requested { packetEngine.start() }
             return
         }
         if usesEnhancedPlayback {
             enhancedEngine.configure(stream: stream, level: vocalBoost)
-            enhancedEngine.start()
-            startMetadataSidecar(url: url, stream: stream, token: generation)
+            if requested {
+                enhancedEngine.start()
+                startMetadataSidecar(url: url, stream: stream, token: generation)
+            } else { enhancedEngine.prepare() }
             publish(title: "Connecting…", detail: "Preparing Vocal Boost", buffering: true, supportsDelay: false)
             return
         }
@@ -236,12 +278,13 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
             metadataOutput = output
         }
         item.preferredForwardBufferDuration = 5
+        item.canUseNetworkResourcesForLiveStreamingWhilePaused = true
         player.automaticallyWaitsToMinimizeStalling = true
         player.replaceCurrentItem(with: item)
         installItemObservers(item, token: generation)
         started = Date(); lastAdvance = started; lastTime = -1; pendingDelay = true
-        player.play()
-        publish(title: "Connecting…", detail: "\(streams[index].format.uppercased()) · \(streams[index].label)", buffering: true, supportsDelay: false)
+        if requested { player.play() }
+        publish(title: requested ? "Connecting…" : "Preparing audio…", detail: "\(streams[index].format.uppercased()) · \(streams[index].label)", buffering: true, supportsDelay: false)
     }
 
     private func configureMetadataReceiver(token: UUID, transport: String) {
@@ -333,16 +376,43 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
         }
     }
     private func tick() {
+        if preparing {
+            if !usesPacketBuffer, !usesEnhancedPlayback, !prerollStarted,
+               player.status == .readyToPlay, player.currentItem?.status == .readyToPlay,
+               player.rate == 0 {
+                prerollStarted = true
+                let token = generation
+                player.preroll(atRate: 1) { [weak self] ready in
+                    Task { @MainActor in
+                        guard let self, self.generation == token, self.preparing else { return }
+                        self.diagnose("stream.prepared", "Silent audio preparation completed", metadata: ["ready": "\(ready)"])
+                    }
+                }
+            }
+            // Bound unattended mobile-data use. Opening the player again can prepare anew.
+            if Date().timeIntervalSince(started) >= 60 {
+                stop()
+                publish(title: "Ready to play", detail: "Press Play to connect to the live broadcast.", buffering: false, supportsDelay: false)
+            }
+            return
+        }
         guard requested else { return }
+        if let retryAt {
+            if Date() >= retryAt { self.retryAt = nil; load() }
+            return
+        }
         checkMetadataDiagnostics()
-        if usesPacketBuffer {
-            if Date().timeIntervalSince(lastAdvance) > max(45, delay + 25) { nextStream() }
+        if usesPacketBuffer || usesEnhancedPlayback {
+            if Date().timeIntervalSince(lastAdvance) > max(20, syncEnabled ? delay + 15 : 20) { nextStream() }
             return
         }
         guard let item = player.currentItem else { return }
         let time = player.currentTime().seconds
-        if time.isFinite, abs(time - lastTime) > 0.05 { lastAdvance = Date(); lastTime = time }
-        if item.status == .failed || Date().timeIntervalSince(lastAdvance) > 25 {
+        if player.timeControlStatus == .playing, time.isFinite, abs(time - lastTime) > 0.05 {
+            lastAdvance = Date(); lastTime = time
+            recovery.recordPlayback(at: Date())
+        }
+        if item.status == .failed || Date().timeIntervalSince(lastAdvance) > 12 {
             diagnose("stream.stalled", "Stream stopped advancing", metadata: [
                 "streamID": selectedStreamID ?? "unknown",
                 "elapsedSeconds": String(format: "%.1f", Date().timeIntervalSince(lastAdvance))
@@ -424,13 +494,23 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
         metadataTimeline = timeline
     }
     private func nextStream() {
-        if index + 1 < streams.count {
-            let previous = streams[index].id
-            index += 1
-            diagnose("stream.failover", "Trying alternate stream", metadata: ["fromStreamID": previous, "toStreamID": streams[index].id])
-            load()
-        }
-        else { emitFailure("Couldn’t play this station. Check your connection or try another station.") }
+        guard requested, retryAt == nil, !streams.isEmpty else { return }
+        let attempt = recovery.nextAttempt(streamCount: streams.count, currentIndex: index)
+        index = attempt.index
+        retryAt = Date().addingTimeInterval(attempt.wait)
+        generation = UUID(); seeking = false
+        removeItemObservers()
+        player.pause(); player.replaceCurrentItem(with: nil)
+        stopMetadataSidecar()
+        packetEngine.stop(); packetEngine.suspendPreparation()
+        enhancedEngine.stop()
+        avPlayerAccountingSample = nil
+        onTrackMetadata?(nil)
+        diagnose("stream.retryScheduled", "Retrying station connection", metadata: [
+            "cycle": "\(attempt.cycle)", "waitSeconds": "\(attempt.wait)",
+            "streamID": streams[index].id
+        ])
+        publish(title: "Reconnecting…", detail: "Retry cycle \(attempt.cycle). Waiting for reception to return.", buffering: true, supportsDelay: false)
     }
     private func switchHLSIntoPacketFallback() {
         guard requested, streams.indices.contains(index) else { return }
@@ -449,14 +529,14 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
     private func installItemObservers(_ item: AVPlayerItem, token: UUID) {
         itemStatusObservation = item.observe(\.status, options: [.new]) { [weak self, weak item] _, _ in
             Task { @MainActor in
-                guard let self, let item, self.generation == token, self.player.currentItem === item else { return }
+                guard let self, let item, self.generation == token, self.player.currentItem === item, self.requested else { return }
                 if item.status == .failed { self.nextStream() }
             }
         }
         itemObservers = [
             NotificationCenter.default.addObserver(forName: AVPlayerItem.playbackStalledNotification, object: item, queue: .main) { [weak self, weak item] _ in
                 Task { @MainActor in
-                    guard let self, let item, self.generation == token, self.player.currentItem === item else { return }
+                    guard let self, let item, self.generation == token, self.player.currentItem === item, self.requested else { return }
                     self.diagnose("stream.playbackStalled", "AVPlayer reported a playback stall", metadata: ["streamID": self.selectedStreamID ?? "unknown"])
                     self.publish(title: "Buffering…", detail: "Waiting for enough stream data.", buffering: true, supportsDelay: self.seekRange != nil)
                     self.player.play()
@@ -464,19 +544,20 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
             },
             NotificationCenter.default.addObserver(forName: AVPlayerItem.failedToPlayToEndTimeNotification, object: item, queue: .main) { [weak self, weak item] _ in
                 Task { @MainActor in
-                    guard let self, let item, self.generation == token, self.player.currentItem === item else { return }
+                    guard let self, let item, self.generation == token, self.player.currentItem === item, self.requested else { return }
                     self.nextStream()
                 }
             },
             NotificationCenter.default.addObserver(forName: AVPlayerItem.didPlayToEndTimeNotification, object: item, queue: .main) { [weak self, weak item] _ in
                 Task { @MainActor in
-                    guard let self, let item, self.generation == token, self.player.currentItem === item else { return }
+                    guard let self, let item, self.generation == token, self.player.currentItem === item, self.requested else { return }
                     self.nextStream()
                 }
             }
         ]
     }
     private func removeItemObservers() {
+        player.cancelPendingPrerolls()
         metadataDelegate.cancelPendingMetadata()
         lastMetadataEvaluation = nil
         lastEmbeddedMetadata = nil

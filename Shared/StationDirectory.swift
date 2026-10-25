@@ -68,6 +68,83 @@ struct DirectoryStation: Codable, Identifiable, Equatable, Sendable {
         default: return nil
         }
     }
+    /// Official ABC service identifiers, independent of display names and stream hosts.
+    var abcProgrammeServiceID: String? {
+        guard network.caseInsensitiveCompare("ABC") == .orderedSame else { return nil }
+        return Self.abcProgrammeServiceIDs[id]
+    }
+
+    private static let abcProgrammeServiceIDs: [String: String] = [
+        "station_7de64417a171": "LOCAL_ADELAIDE", // ABC Adelaide
+        "station_60fc0bebc191": "ITINERANT_ONE", // ABC AFL
+        "station_ee997462d2e1": "ABC_AFL_RAPID", // ABC AFL RAPID
+        "station_c50a27e9c288": "ITINERANT_TWO", // ABC AFLW
+        "station_0a8787bf2108": "LOCAL_ALICESPRINGS", // ABC Alice Springs
+        "station_14507c9b8ceb": "LOCAL_BALLARAT", // ABC Ballarat
+        "station_53134d345305": "LOCAL_BRISBANE", // ABC Brisbane
+        "station_4bf3194e1a9e": "LOCAL_BROKENHILL", // ABC Broken Hill
+        "station_15e980155375": "LOCAL_CANBERRA", // ABC Canberra
+        "station_9772a310b0e3": "LOCAL_CAPRICORNIA", // ABC Capricornia
+        "station_99b3bb19eb43": "LOCAL_CENTRALCOAST", // ABC Central Coast
+        "station_73a1d390e062": "LOCAL_CENTRALVIC", // ABC Central Victoria
+        "station_c002afafbc41": "LOCAL_CENTRALWEST", // ABC Central West
+        "station_93680e18e95a": "LOCAL_COFFSCOAST", // ABC Coffs Coast
+        "station_a8c2f7d8d6dc": "ITINERANT_FOUR", // ABC CRICKET
+        "station_941a34adbebd": "LOCAL_DARWIN", // ABC Darwin
+        "station_653201ae289d": "LOCAL_ESPERANCE", // ABC Esperance
+        "station_a90da22ac432": "LOCAL_EYRE", // ABC Eyre Peninsula
+        "station_c4c205df6e7e": "LOCAL_FARNORTH", // ABC Far North
+        "station_4801b9905447": "LOCAL_GIPPSLAND", // ABC Gippsland
+        "station_a309cb38ecac": "LOCAL_GOLDCOAST", // ABC Gold Coast
+        "station_3dad42887bb6": "LOCAL_GOLDFIELDS", // ABC Goldfields
+        "station_2343ffe24282": "LOCAL_GOULBURNMURRAY", // ABC Goulburn Murray
+        "station_d3534adbb7fe": "LOCAL_GREATSOUTHERN", // ABC Great Southern
+        "station_d1fe63732c57": "LOCAL_HOBART", // ABC Hobart
+        "station_43c5f5ca49bb": "LOCAL_ILLAWARRA", // ABC Illawarra
+        "station_762cbfe271d7": "LOCAL_KIMBERLEY", // ABC Kimberley
+        "station_f9e327bf23a1": "LOCAL_MELBOURNE", // ABC Melbourne
+        "station_e5533eeadc62": "LOCAL_MIDNORTHCOAST", // ABC Mid North Coast
+        "station_0650f64f78c5": "LOCAL_WHEATBELT", // ABC Midwest & Wheatbelt
+        "station_e9e997dad3ec": "LOCAL_MILDURASWANHILL", // ABC Mildura-Swan Hill
+        "station_039505caff2c": "LOCAL_NEWENGLAND", // ABC New England North West
+        "station_d73098a08ad5": "LOCAL_NEWCASTLE", // ABC Newcastle
+        "station_57237cd688e3": "NEWS", // ABC NewsRadio
+        "station_948704c88060": "LOCAL_NORTHANDWEST", // ABC North and West SA
+        "station_7036414f3e12": "LOCAL_NORTHCOAST", // ABC North Coast
+        "station_9b4c00d98e3f": "LOCAL_NORTHQLD", // ABC North Queensland
+        "station_4dbd91d2af75": "LOCAL_NORTHWEST", // ABC North West Queensland
+        "station_e9bf6a5ac6cc": "LOCAL_NORTHTAS", // ABC Northern Tasmania
+        "station_1b89f545bcf2": "LOCAL_PERTH", // ABC Perth
+        "station_0eddffb877dd": "LOCAL_NORTHWESTWA", // ABC Pilbara
+        "station_fd471a4b1ded": "RA", // ABC Radio Australia
+        "station_1a92d25435ee": "RN", // ABC Radio National
+        "station_6a02d43112fd": "RN_NT", // ABC Radio National (NT)
+        "station_bbaa8d5649e5": "RN_QLD", // ABC Radio National (QLD)
+        "station_9c938af92e05": "RN_SA", // ABC Radio National (SA)
+        "station_007624180058": "RN_TAS", // ABC Radio National (TAS)
+        "station_0c3d40dfa76e": "RN_VIC", // ABC Radio National (VIC)
+        "station_7979e56607a5": "RN_WA", // ABC Radio National (WA)
+        "station_a7d2616a45cc": "LOCAL_RIVERINA", // ABC Riverina
+        "station_a7c8c38f021e": "LOCAL_RIVERLAND", // ABC Riverland
+        "station_62502aba32b2": "LOCAL_SHEPPARTON", // ABC Shepparton
+        "station_e4675602c7cb": "LOCAL_SOUTHEASTNSW", // ABC South East NSW
+        "station_7acfc90b06ff": "LOCAL_SOUTHEASTSA", // ABC South East SA
+        "station_28e4cf3b5f8a": "LOCAL_SOUTHWESTVIC", // ABC South West Victoria
+        "station_2937be8bf5b5": "LOCAL_SOUTHWESTWA", // ABC South West WA
+        "station_49102dcadfd8": "LOCAL_SOUTHQLD", // ABC Southern Queensland
+        "station_eca1f2e3e975": "GRANDSTAND", // ABC Sport
+        "station_449b4872a200": "ITINERANT_THREE", // ABC SPORT EXTRA
+        "station_55386dde3229": "ABCSPORTSYNC", // ABC SPORT RAPID
+        "station_b390cf220927": "LOCAL_SUNSHINE", // ABC Sunshine Coast
+        "station_11264c4bac29": "LOCAL_SYDNEY", // ABC Sydney
+        "station_f69e36284be1": "LOCAL_TROPIC", // ABC Tropical North
+        "station_d45ea3d63457": "LOCAL_UPPERHUNTER", // ABC Upper Hunter
+        "station_a50cc1574153": "LOCAL_WESTERNPLAINS", // ABC Western Plains
+        "station_4d2e56d87173": "LOCAL_WESTQLD", // ABC Western Queensland
+        "station_2bc5fa3b1ff6": "LOCAL_WIDEBAY", // ABC Wide Bay
+        "station_7f296c08035f": "LOCAL_WESTERNVIC", // ABC Wimmera
+    ]
+
     var location: String { cities.isEmpty ? [state, country].filter { !$0.isEmpty }.joined(separator: " · ") : cities.joined(separator: ", ") }
     var playableStreams: [StationStream] { streams.filter(\.isSupported) }
     var preferredStream: StationStream? {

@@ -49,7 +49,9 @@ enum CompanionMetadataSource: Equatable, Sendable {
             return "listnr-station-not-music-focused"
         }
         if station.network.caseInsensitiveCompare("ABC") == .orderedSame {
-            return "abc-service-has-no-supported-music-endpoint"
+            return station.abcProgrammeServiceID == nil
+                ? "abc-service-has-no-supported-music-endpoint"
+                : "abc-programme-guide-used-instead-of-song-provider"
         }
         return "no-supported-official-provider"
     }

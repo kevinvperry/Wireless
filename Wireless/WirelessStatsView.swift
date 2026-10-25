@@ -163,50 +163,74 @@ struct WirelessStatsView: View {
         }
     }
 
+    // Adapted directly from Autohop StatsRangeSelector: centred glass range
+    // pills and a compact solid This/Last bar. Overflow remains scrollable for
+    // narrow windows and accessibility text sizes without wrapping pill labels.
     private var rangeSelector: some View {
         VStack(spacing: 12) {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     ForEach(StatsRange.allCases) { item in
-                        Button {
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                range = item
-                                if !item.supportsLast { showingLast = false }
-                            }
-                        } label: {
-                            Text(item.title(last: item == range && isLast))
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(range == item ? .white : .secondary)
-                                .padding(.horizontal, 15)
-                                .frame(height: 38)
-                                .background(range == item ? Color.purple : Color.white.opacity(0.07), in: Capsule())
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityAddTraits(range == item ? .isSelected : [])
+                        rangePill(item)
                     }
                 }
             }
+            .scrollClipDisabled()
+            .defaultScrollAnchor(.center, for: .alignment)
+            .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
+            .accessibilityIdentifier("statsRangeSelector")
+
             if let labels = range.toggleLabels, hasLastData {
                 HStack(spacing: 0) {
                     periodToggle(labels.0, active: !isLast) { showingLast = false }
                     periodToggle(labels.1, active: isLast) { showingLast = true }
                 }
                 .padding(3)
-                .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 11))
+                .background(Color.white.opacity(0.10), in: Capsule())
+                .overlay(Capsule().stroke(Color.white.opacity(0.10), lineWidth: 0.5))
+                .fixedSize()
             }
         }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func rangePill(_ item: StatsRange) -> some View {
+        Button {
+            withAnimation(.easeInOut(duration: 0.15)) {
+                range = item
+            }
+        } label: {
+            let pill = Text(item.title(last: item == range && isLast))
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(range == item ? Color.white : Color.secondary)
+                .padding(.horizontal, 13)
+                .padding(.vertical, 7)
+                .fixedSize()
+            if range == item {
+                pill.glassEffect(.regular.tint(.purple), in: Capsule())
+            } else {
+                pill.glassEffect(in: Capsule())
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("statsRange-\(item)")
+        .accessibilityAddTraits(range == item ? .isSelected : [])
     }
 
     private func periodToggle(_ title: String, active: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+        Button {
+            withAnimation(.easeInOut(duration: 0.15)) { action() }
+        } label: {
             Text(title)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(active ? .white : .secondary)
-                .frame(maxWidth: .infinity)
-                .frame(height: 34)
-                .background(active ? Color.purple : .clear, in: RoundedRectangle(cornerRadius: 8))
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(active ? Color.white : Color.secondary)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 6)
+                .background(active ? Color.purple : Color.clear, in: Capsule())
+                .contentShape(Capsule())
         }
         .buttonStyle(.plain)
+        .accessibilityAddTraits(active ? .isSelected : [])
     }
 
     private func hero(_ summary: WirelessListeningStatsSummary) -> some View {
@@ -713,3 +737,28 @@ private func formatDuration(_ seconds: TimeInterval) -> String {
     if minutes > 0 { return "\(minutes)m" }
     return "\(total % 60)s"
 }
+
+#if DEBUG
+/// Isolated data for exercising the real period controls without altering listening history.
+struct WirelessStatsPreview: View {
+    @StateObject private var store: WirelessListeningStatsStore
+
+    init() {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("stats-preview-\(UUID().uuidString).json")
+        let store = WirelessListeningStatsStore(fileURL: url)
+        let now = Date()
+        for date in [now, Calendar.current.date(byAdding: .day, value: -7, to: now)!,
+                     Calendar.current.date(byAdding: .month, value: -1, to: now)!,
+                     Calendar.current.date(byAdding: .year, value: -1, to: now)!] {
+            store.recordRendered(seconds: 120, station: .sen, mode: .live, route: .other, endedAt: date)
+            store.endSession(reason: .paused)
+        }
+        _store = StateObject(wrappedValue: store)
+    }
+
+    var body: some View {
+        NavigationStack { WirelessStatsView(store: store) }
+            .tint(.purple)
+    }
+}
+#endif

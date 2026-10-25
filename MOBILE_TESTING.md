@@ -46,3 +46,25 @@ Compatible Mac use is through Designed for iPad; Mac Catalyst is disabled. Test 
 See [station-directory/README.md](station-directory/README.md) for local Worker checks. Production credentials and private research datasets are not required for the app build or the service's synthetic integration tests.
 
 Keep [SUPPORT_GUIDE.md](SUPPORT_GUIDE.md) and `Wireless/SupportContent.swift` aligned whenever user-visible behaviour changes. Internal upload records, device identifiers and raw diagnostics belong outside the public repository.
+
+## Early buffering and reception recovery
+
+- With Auto Resume off, restore a previously selected station and leave the player open for a few seconds. Confirm it remains silent and shows Play; press Play and confirm playback starts. Repeat with normal playback, Vocal Boost on a direct MP3/AAC stream, and TV Sync with a saved delay.
+- Leave the player idle for more than a minute, then press Play. Confirm it reconnects normally. Put the idle app in the background and confirm it does not keep preparing indefinitely.
+- During playback on a physical iPhone, interrupt mobile data for at least two minutes. Confirm Reconnecting remains active across repeated cycles, including for a station with only one stream. Restore data and confirm playback resumes without pressing Play.
+- Repeat the outage with the screen locked, across Wi-Fi/mobile-data transitions, with Vocal Boost, and with TV Sync. iOS may suspend recovery during a prolonged silent background outage; reopening the app must restart recovery when playback is still requested.
+- During a retry wait, press Pause. Restore reception and wait at least 30 seconds; confirm playback remains paused. Repeat with a station change and confirm the previous station cannot resume.
+- Compare Stream Diagnostics timestamps for `player.play`, `stream.prepared`, `stream.retryScheduled` and `playback.state`. Record startup time and recovery time separately; a simulator or successful build does not establish performance under real mobile reception.
+
+## Stats period controls — 25 October 2026
+
+- Adapted Autohop's glass period capsules and compact solid This/Last capsule directly, including typography, padding, colours and animation duration.
+- UI checks passed on iPhone 17e, iPhone 17 Pro Max and iPad Pro 11-inch (iOS 26.5). Assertions cover horizontal centring, a shared tab baseline, selected states, previous month/year labels, This/Last selection and retaining Last through Lifetime. The iPad check also verifies landscape centring.
+- Inspected simulator screenshots for the glass tabs and centred This/Last control. Results are retained in `tmp/stats-tabs/Phone26.xcresult`, `tmp/stats-tabs/SmallPhoneSigned.xcresult` and `tmp/stats-tabs/iPadSigned.xcresult`.
+- The debug-only `WIRELESS_STATS_PREVIEW=1` fixture opens the real Stats view with isolated temporary listening data. It does not change the user's listening history.
+- Build-for-testing passed. Initial iOS 27 and concurrent fresh-simulator runs stalled during test-runner launch; the successful checks above used individual iOS 26.5 destinations. Physical-device and accessibility text-size overflow checks were not performed.
+
+
+## 25 October 2026 — approved Autohop player layout adapted to Wireless
+
+The populated player fixture covers a long audio-output label and two long favourite names. iPhone 14 Pro Max portrait and iPad Pro 13-inch portrait/landscape UI checks run on iOS 27.0. The regression suite passed 65 unit tests with one optional live-directory test skipped. Forty-five geometry combinations cover narrow phone/window widths through large displays, including taller controls without artwork shrinkage. See `Docs/ADAPTIVE_PLAYER_LAYOUT_2026-10-25.md` for scope and limitations. Exact iOS 27.0.1, physical audio routing and interactive Mac resizing remain unverified.

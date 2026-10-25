@@ -64,7 +64,7 @@ enum WirelessSupportGuide {
         blocks: [
             .paragraph("Discover provides several ways to browse the station directory:"),
             .table([
-                ["Search by Network", "Shows major broadcasters alphabetically in a grid using the network artwork maintained in the Wireless directory. All Networks then lists every network, including the featured broadcasters, alphabetically. ACE Radio Network appears as ACE Radio, ARN as ARN Regional and Hit Network as Hit. Networks with distinct services offer sub-network tiles."],
+                ["Search by Network", "Shows major broadcasters alphabetically in a grid using the network artwork maintained in the Wireless directory. All Networks then lists every network, including the featured broadcasters, alphabetically. ACE Radio Network appears as ACE Radio, ARN as ARN Regional and Hit Network as Hit. Networks with distinct services offer sub-network tiles. Within ABC, Triple J opens separate choices for the national station, specialty music stations and state-based feeds."],
                 ["Search by Location", "Opens National, capital-city, Other Locations and State tiles."],
                 ["Music", "Opens searchable music and audio genres, including Kids & Family and Soundscapes. A station can appear under more than one relevant genre. News and Sport have their own top-level destinations."],
                 ["News and Talkback", "Opens news, current affairs and talk stations directly."],
@@ -84,6 +84,7 @@ enum WirelessSupportGuide {
         id: "player", icon: "play.circle.fill", title: "The Player",
         summary: "Playing, Details and Sync panes",
         blocks: [
+            .paragraph("The Playing pane keeps artwork large in portrait and places favourite shortcuts near the bottom. Favourite station names stay on one line. Audio output shares the controls row where space permits; narrow windows use a separate output row. Short windows and larger text can scroll, while wide landscape windows show artwork beside the controls."),
             .table([
                 ["Playing", "Artwork, programme or song information, live-position bar, Play/Pause, audio controls, Sleep Timer and favourite shortcuts."],
                 ["Details", "Station description, contact links, location, state, frequency, region, network, genres, stream type and bitrate. Programme information appears when available."],
@@ -92,6 +93,7 @@ enum WirelessSupportGuide {
             .paragraph("The progress bar represents live position and buffering. With TV Sync enabled, its captions show **TV Sync Enabled** and the measured stream delay. Wireless attempts to reconnect automatically after reception is interrupted."),
             .heading("Song and programme information"),
             .paragraph("When a music stream or supported broadcaster now-playing service supplies reliable metadata, Wireless shows **song title · artist** on the top row and the **station name below**, including in the mini-player. Album information remains available in the mini-player when supplied. CarPlay and other system playback surfaces use their third text line for the station name. Triple M and Hit Metro and Regional broadcast stations use metadata embedded directly in their selected stream. Wireless also supports ABC music services, supported Triton StreamTheWorld feeds and official LiSTNR now-playing data for LiSTNR and SCA digital music stations. A brief gap is normal when a broadcaster reports that no current track is available. Track metadata is available only during normal playback with TV Sync off."),
+            .paragraph("ABC Local Radio, Radio National, NewsRadio, Radio Australia and ABC sport feeds use ABC’s official programme schedules. When supplied, the current programme appears in Playing; Details shows its presenter, broadcast times and upcoming programmes. Schedules refresh automatically and follow the selected regional feed. Sport and event streams may have no programme listed between broadcasts, and some regional services may have gaps in ABC’s schedule data. Radio National’s Victorian and Tasmanian feeds use the national eastern schedule when ABC supplies no regional listings. Programme times describe the live broadcast and do not move with TV Sync delay. ABC music stations retain their song title and artist information."),
             .paragraph("Triple M and Hit embedded metadata remains authoritative. During some national networked programmes, a station may repeatedly supply an old technical playout marker rather than current song information. Wireless hides only exact Asset Link, Asset Spot and Asset Stop markers, records them in Stream Diagnostics, and clears any previous song rather than leaving it frozen on screen. It also prevents old timestamped values from replacing current information and clears metadata that remains unchanged beyond its freshness limit. Each SCA playback session uses a new stream request identifier so a previous session's playlist is not deliberately reused.")
         ]
     )
@@ -129,6 +131,8 @@ enum WirelessSupportGuide {
         id: "streams", icon: "waveform", title: "Live Playback and Streams",
         summary: "Choose a stream and understand quality and reliability",
         blocks: [
+            .paragraph("Wireless begins preparing the selected station’s audio as soon as it opens in the player, including the last station restored at launch. This uses internet data before you press Play but produces no sound. Pressing Play reuses the prepared connection and buffer where available. Preparation stops after one minute without playback, when the app enters the background without playing, or when you press Pause. Startup speed still depends on reception and the broadcaster."),
+            .paragraph("While playback is requested, Wireless keeps trying after a lost connection. It tries the station’s published stream alternatives and repeats in cycles, with waits increasing from one second to a maximum of 15 seconds between cycles. Press Pause to stop reconnection attempts. If iOS suspends the app during a prolonged background outage, reopen Wireless to let recovery continue."),
             .paragraph("With TV Sync and Vocal Boost off, Wireless uses Apple's AVPlayer for stable live playback. It allows a short reliability buffer where appropriate and does not make TV-delay corrections."),
             .paragraph("Open **Audio Controls** to select another published stream. Wireless remembers the choice for that station. Format and bitrate appear in Details when the directory supplies them."),
             .bullets([
@@ -238,7 +242,7 @@ enum WirelessSupportGuide {
         summary: "Listening time, top stations and your radio habits",
         blocks: [
             .paragraph("Open **Settings > Listening Stats**. Wireless begins tracking when this version is installed; Favourites and Recently Played cannot be used to reconstruct earlier listening time."),
-            .paragraph("Choose **7 Days**, the displayed month, the displayed year or **Lifetime**. When an earlier completed period contains listening, use the **This / Last** control to compare it."),
+            .paragraph("Choose **7 Days**, the displayed month, the displayed year or **Lifetime**. The glass period tabs are centred above the statistics. At larger text sizes or in narrow windows, swipe the tabs horizontally if needed. When an earlier completed period contains listening, use the **This / Last** control to compare it."),
             .table([
                 ["Time listened", "Audio confirmed as rendered by the active playback engine. Connecting, buffering, delay insertion and reconnection time do not count."],
                 ["Top Stations", "Stations ranked by listening time, with session length, listening share and last-listened detail."],

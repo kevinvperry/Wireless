@@ -15,7 +15,9 @@
 		1274C83EFCDCD8DB757457B0 /* RadioPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6630D03B5125433D04BF5126 /* RadioPlayerView.swift */; };
 		1A550EFD3663A227D9535BDE /* CarPlayStationPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47A2A61AFBF289006DDAA5D2 /* CarPlayStationPresenter.swift */; };
 		1AB81CB4588920248D4C2095 /* WirelessContact.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3717973812D13753B64AA286 /* WirelessContact.swift */; };
+		1F07BD3BF33F2F59C35FFC53 /* StreamRecoveryPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5345DD72CF65E9CFDB358002 /* StreamRecoveryPolicyTests.swift */; };
 		1FC47233BE7FFDEA69C06427 /* DelayCorrectionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34B1977BE352BBA9A863FDE9 /* DelayCorrectionTests.swift */; };
+		21CC75C02ADBE6B253B2C5AC /* ProgrammeGuide.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA29A1EC84D04AB7DC690374 /* ProgrammeGuide.swift */; };
 		22B4604A476E15BE939B98DE /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CCDDE53C4D89A836A68EB050 /* Assets.xcassets */; };
 		23E33CD7E3C09DCF55E53DE1 /* StreamDiagnosticView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29D4ED78062FDB9798BCDE64 /* StreamDiagnosticView.swift */; };
 		34DD8193B4205D3E2AA6F797 /* CarPlayCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 660E395F79C005C6A04D90BD /* CarPlayCoordinator.swift */; };
@@ -36,6 +38,7 @@
 		5159695192C19A96DADBAC1A /* CarPlayArtworkProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4B565D9CE0CF8E403FFE1AF /* CarPlayArtworkProvider.swift */; };
 		55FD82A995E07EB83D1EF85D /* WirelessLayoutMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C4C5FB32A97D0A7967DB3B7 /* WirelessLayoutMetrics.swift */; };
 		590F0BDA4B946413726899F6 /* WirelessStatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3884AC1AE2B969BCC399EC85 /* WirelessStatsView.swift */; };
+		6B3A8C68F3F45E516032FCAB /* ABCProgrammeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B66A150E5FB7C840D3E237B6 /* ABCProgrammeTests.swift */; };
 		73E1D0864EB74C991822F99F /* CompanionMetadataProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8800F6E720F2C3333B59800D /* CompanionMetadataProvider.swift */; };
 		7CA4F8F83D57C89DAD394095 /* CarPlaySceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC86E444D35081690AAF4613 /* CarPlaySceneDelegate.swift */; };
 		86957CB1D807DBCED53ABFA6 /* AcknowledgementsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B93FC87D9BD4E8BACD869C22 /* AcknowledgementsView.swift */; };
@@ -56,6 +59,8 @@
 		C89F04449FBB07EC59415E59 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BA72FAA2C094B89B91EDDB0A /* SwiftUI.framework */; };
 		C8E710ADFE49E904E1AEDDB7 /* StreamDiagnosticLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88790567F035940004B0EBAA /* StreamDiagnosticLogger.swift */; };
 		CA7BF2C861CB4E04B35CF97F /* StationDirectory.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9002A99CCA693E52ACD1413 /* StationDirectory.swift */; };
+		D46C9703D6C56A9551DB03E7 /* StreamRecoveryPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D3048423531FE7F443A0CBE /* StreamRecoveryPolicy.swift */; };
+		D565155980B3FA013496C850 /* StreamRecoveryPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D3048423531FE7F443A0CBE /* StreamRecoveryPolicy.swift */; };
 		DE659AB256BFE3DCA18317DD /* DirectoryAudio.swift in Sources */ = {isa = PBXBuildFile; fileRef = 356B5F063701F0E28EDEFEA3 /* DirectoryAudio.swift */; };
 		E1AF39BD2B6BFE81EDAA2C26 /* WirelessContact.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3717973812D13753B64AA286 /* WirelessContact.swift */; };
 		E28F9FFAAAB0C2668D4C823F /* WirelessListeningStats.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8543212D37AF30202BD33BBC /* WirelessListeningStats.swift */; };
@@ -99,6 +104,7 @@
 		46E14DACD66F8DAD68FBCE55 /* SleepTimerSheetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepTimerSheetView.swift; sourceTree = "<group>"; };
 		47A2A61AFBF289006DDAA5D2 /* CarPlayStationPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarPlayStationPresenter.swift; sourceTree = "<group>"; };
 		509C5AC7230E3614C5D34982 /* WirelessListeningHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WirelessListeningHistoryView.swift; sourceTree = "<group>"; };
+		5345DD72CF65E9CFDB358002 /* StreamRecoveryPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamRecoveryPolicyTests.swift; sourceTree = "<group>"; };
 		556152EC26B1D066815D33FA /* PlayerMetadataText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerMetadataText.swift; sourceTree = "<group>"; };
 		570A0F3D564007C7DEDEFA92 /* MobilePlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MobilePlayer.swift; sourceTree = "<group>"; };
 		58BFE7BF60266E86CADBF19A /* Wireless.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Wireless.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -106,6 +112,7 @@
 		660E395F79C005C6A04D90BD /* CarPlayCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarPlayCoordinator.swift; sourceTree = "<group>"; };
 		6630D03B5125433D04BF5126 /* RadioPlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RadioPlayerView.swift; sourceTree = "<group>"; };
 		6BFD4212FFDC5CC34E34973C /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		6D3048423531FE7F443A0CBE /* StreamRecoveryPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamRecoveryPolicy.swift; sourceTree = "<group>"; };
 		76EECFE6B7E52C2FE1E8A08B /* StationDirectoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationDirectoryTests.swift; sourceTree = "<group>"; };
 		776676EA121CB50213E02B4F /* SleepTimerService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepTimerService.swift; sourceTree = "<group>"; };
 		7C4C5FB32A97D0A7967DB3B7 /* WirelessLayoutMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WirelessLayoutMetrics.swift; sourceTree = "<group>"; };
@@ -120,6 +127,7 @@
 		AA29A1EC84D04AB7DC690374 /* ProgrammeGuide.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgrammeGuide.swift; sourceTree = "<group>"; };
 		ACA583DD67F921EB96066384 /* SleepScheduleService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepScheduleService.swift; sourceTree = "<group>"; };
 		AE1362AA3B04385625EA8C94 /* StreamTrackMetadata.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamTrackMetadata.swift; sourceTree = "<group>"; };
+		B66A150E5FB7C840D3E237B6 /* ABCProgrammeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ABCProgrammeTests.swift; sourceTree = "<group>"; };
 		B9002A99CCA693E52ACD1413 /* StationDirectory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationDirectory.swift; sourceTree = "<group>"; };
 		B93FC87D9BD4E8BACD869C22 /* AcknowledgementsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AcknowledgementsView.swift; sourceTree = "<group>"; };
 		BA72FAA2C094B89B91EDDB0A /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
@@ -230,6 +238,7 @@
 				46E14DACD66F8DAD68FBCE55 /* SleepTimerSheetView.swift */,
 				88790567F035940004B0EBAA /* StreamDiagnosticLogger.swift */,
 				29D4ED78062FDB9798BCDE64 /* StreamDiagnosticView.swift */,
+				6D3048423531FE7F443A0CBE /* StreamRecoveryPolicy.swift */,
 				AE1362AA3B04385625EA8C94 /* StreamTrackMetadata.swift */,
 				E2DF93E69BA58ED5894962B2 /* SupportContent.swift */,
 				591B7217A9AFB466BB7BCB52 /* SupportView.swift */,
@@ -261,9 +270,11 @@
 		E142FE54ADD958E04CDEC72F /* WirelessTests */ = {
 			isa = PBXGroup;
 			children = (
+				B66A150E5FB7C840D3E237B6 /* ABCProgrammeTests.swift */,
 				34B1977BE352BBA9A863FDE9 /* DelayCorrectionTests.swift */,
 				91FFC7D91231CDB151A40688 /* SleepScheduleServiceTests.swift */,
 				76EECFE6B7E52C2FE1E8A08B /* StationDirectoryTests.swift */,
+				5345DD72CF65E9CFDB358002 /* StreamRecoveryPolicyTests.swift */,
 				81ED0C6EA381C06DF5A478BD /* StreamTrackMetadataTests.swift */,
 				15C674C8AE307BA75136D01F /* WirelessContactTests.swift */,
 				2DD436D04A71FF86FB8E7354 /* WirelessListeningStatsTests.swift */,
@@ -412,6 +423,7 @@
 				9AE1A4D2D0BDB13104A385EC /* StationListOrganisation.swift in Sources */,
 				B5E7DAD5A8EBF39FF51D1A61 /* StreamDiagnosticLogger.swift in Sources */,
 				23E33CD7E3C09DCF55E53DE1 /* StreamDiagnosticView.swift in Sources */,
+				D565155980B3FA013496C850 /* StreamRecoveryPolicy.swift in Sources */,
 				4642152C38CEE3D957B5498D /* StreamTrackMetadata.swift in Sources */,
 				4AEAB1BE50069C484DBB86AC /* SupportContent.swift in Sources */,
 				E396F8FA9F67C6D9C77168E6 /* SupportView.swift in Sources */,
@@ -430,15 +442,19 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				6B3A8C68F3F45E516032FCAB /* ABCProgrammeTests.swift in Sources */,
 				95740333BD9D9B2F2C99148B /* CompanionMetadataProvider.swift in Sources */,
 				9E9A282431B79EC5423B2A0A /* DelayCorrection.swift in Sources */,
 				1FC47233BE7FFDEA69C06427 /* DelayCorrectionTests.swift in Sources */,
+				21CC75C02ADBE6B253B2C5AC /* ProgrammeGuide.swift in Sources */,
 				3D8FF267AA6E72161211EC8A /* SleepScheduleService.swift in Sources */,
 				A22D696E51B5C4358CC15B98 /* SleepScheduleServiceTests.swift in Sources */,
 				CA7BF2C861CB4E04B35CF97F /* StationDirectory.swift in Sources */,
 				358967CA5B027BE2CE6A8AB6 /* StationDirectoryTests.swift in Sources */,
 				E9D7118009B5E543896324EB /* StationListOrganisation.swift in Sources */,
 				C8E710ADFE49E904E1AEDDB7 /* StreamDiagnosticLogger.swift in Sources */,
+				D46C9703D6C56A9551DB03E7 /* StreamRecoveryPolicy.swift in Sources */,
+				1F07BD3BF33F2F59C35FFC53 /* StreamRecoveryPolicyTests.swift in Sources */,
 				B2974319EDD6D7321D088AAC /* StreamTrackMetadata.swift in Sources */,
 				0D78887AA33D15E59DD98787 /* StreamTrackMetadataTests.swift in Sources */,
 				E1AF39BD2B6BFE81EDAA2C26 /* WirelessContact.swift in Sources */,
