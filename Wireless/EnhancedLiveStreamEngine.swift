@@ -5,9 +5,9 @@ import Foundation
 /// Decodes direct MP3/AAC radio packets to PCM and plays them through the
 /// AVAudioEngine Vocal Boost graph. AVPlayer remains the ordinary live backend.
 final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @unchecked Sendable {
-    var onUnsupportedHLS: (@Sendable (String) -> Void)?
-    var onStatus: (@Sendable (PlaybackStatus) -> Void)?
-    var onPlaybackInterval: (@Sendable (TimeInterval, Date) -> Void)?
+    var onUnsupportedHLS: (@Sendable (UUID, String) -> Void)?
+    var onStatus: (@Sendable (UUID, PlaybackStatus) -> Void)?
+    var onPlaybackInterval: (@Sendable (UUID, TimeInterval, Date) -> Void)?
 
     private let work = DispatchQueue(label: "au.com.kevmarl.Wireless.vocalBoost")
     private var session: URLSession?
@@ -27,7 +27,9 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
     private var level: VocalBoostLevel = .off
     private var deepBass = false
     private var effectName: String { deepBass ? "Deep Bass" : "Vocal Boost" }
-    private var effectDescription: String { deepBass ? "Deep Bass" : "Vocal Boost · " + level.title }
+    private var effectDescription: String { deepBass ? "Deep Bass" : level == .off ? "Original broadcast audio" : "Vocal Boost · " + level.title }
+    private var playbackID = UUID()
+    private var pendingFailure = false
     private var generation = 0
     private var requested = false
     private var preparing = false
@@ -37,9 +39,10 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
     private var outputVolume: Float = 1
     private var packetBacklog: [(Data, AudioStreamPacketDescription)] = []
 
-    func configure(stream: StationStream, level: VocalBoostLevel, deepBass: Bool = false) {
+    func configure(stream: StationStream, level: VocalBoostLevel, deepBass: Bool = false, playbackID: UUID) {
         work.async {
             self.close()
+            self.playbackID = playbackID
             self.stream = stream
             self.level = level
             self.deepBass = deepBass
@@ -125,6 +128,7 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
 
     private func close(keepRequest: Bool = false) {
         generation += 1
+        pendingFailure = false
         playlistTask?.cancel(); playlistTask = nil
         segmentTask?.cancel(); segmentTask = nil
         playlistURL = nil; hlsNextSequence = nil; hlsSegments.removeAll(); fetchingSegment = false
@@ -144,9 +148,9 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
     }
 
     fileprivate func receivedProperty(_ property: AudioFileStreamPropertyID) {
-        guard property == kAudioFileStreamProperty_ReadyToProducePackets else { return }
+        guard !pendingFailure, property == kAudioFileStreamProperty_ReadyToProducePackets else { return }
         formatReady = true
-        guard requested, let parser else { return }
+        guard requested, processor == nil, let parser else { return }
         var description = AudioStreamBasicDescription()
         var size = UInt32(MemoryLayout<AudioStreamBasicDescription>.size)
         guard AudioFileStreamGetProperty(parser, kAudioFileStreamProperty_DataFormat, &size, &description) == noErr,
@@ -192,7 +196,7 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
     }
 
     private func decodeBacklog() {
-        guard let converter, let compressedFormat, let pcmFormat, let processor,
+        guard !pendingFailure, let converter, let compressedFormat, let pcmFormat, let processor,
               !packetBacklog.isEmpty else { return }
         let batch = Array(packetBacklog.prefix(24))
         packetBacklog.removeFirst(batch.count)
@@ -233,7 +237,7 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
             guard let self else { return }
             self.work.async {
                 guard self.requested, self.generation == token else { return }
-                self.onPlaybackInterval?(renderedSeconds, Date())
+                self.onPlaybackInterval?(self.playbackID, renderedSeconds, Date())
             }
         }
         scheduledSeconds += renderedSeconds
@@ -254,9 +258,21 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
     }
 
     private func fail(_ message: String) {
+        guard !pendingFailure else { return }
+        pendingFailure = true
+        let token = generation
+        // AudioFileStream invokes parser callbacks synchronously. Never close
+        // its parser or destroy its converter before ParseBytes has returned.
+        work.async { [self] in
+            guard generation == token else { return }
+            handleFailure(message)
+        }
+    }
+
+    private func handleFailure(_ message: String) {
         if stream?.format == "hls" {
             close()
-            onUnsupportedHLS?(message)
+            onUnsupportedHLS?(playbackID, message)
             return
         }
         let token = generation
@@ -270,7 +286,7 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
     }
 
     private func emit(title: String, detail: String, buffering: Bool, progress: Double) {
-        onStatus?(PlaybackStatus(active: requested, buffering: buffering, progress: progress,
+        onStatus?(playbackID, PlaybackStatus(active: requested, buffering: buffering, progress: progress,
                                  title: title, detail: detail, measuredDelay: nil))
     }
 
@@ -333,7 +349,7 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
                     guard let base = bytes.baseAddress else { return kAudio_ParamError }
                     return AudioFileStreamParseBytes(parser, UInt32(bytes.count), base, [])
                 }
-                guard result == noErr, self.generation == token, next < Int.max else {
+                guard result == noErr, !self.pendingFailure, self.generation == token, next < Int.max else {
                     if self.generation == token { self.fail("The HLS audio could not be decoded for sound processing.") }
                     return
                 }
@@ -346,7 +362,7 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
 
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
         work.async {
-            guard self.session === session, let parser = self.parser else { return }
+            guard !self.pendingFailure, self.session === session, let parser = self.parser else { return }
             let result = data.withUnsafeBytes { bytes -> OSStatus in
                 guard let base = bytes.baseAddress else { return noErr }
                 return AudioFileStreamParseBytes(parser, UInt32(bytes.count), base, [])

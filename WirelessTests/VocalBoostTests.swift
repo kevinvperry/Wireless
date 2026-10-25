@@ -1,7 +1,110 @@
 import XCTest
 import AVFoundation
+import MediaToolbox
 
 final class VocalBoostTests: XCTestCase {
+    func testConcurrentTapCleanupAndRenderingDoNotUseDisposedUnits() throws {
+        final class RenderContext: @unchecked Sendable {
+            let state = VocalBoostTapState(level: .strong)
+            let format = AVAudioFormat(standardFormatWithSampleRate: 48_000, channels: 2)!
+        }
+        let context = RenderContext()
+        context.state.prepare(format: context.format.streamDescription.pointee, maximumFrames: 256)
+        let complete = DispatchGroup()
+        complete.enter()
+        DispatchQueue.global(qos: .userInitiated).async {
+            let pcm = AVAudioPCMBuffer(pcmFormat: context.format, frameCapacity: 256)!
+            pcm.frameLength = 256
+            for index in 0..<6_000 {
+                for channel in 0..<2 {
+                    for frame in 0..<256 { pcm.floatChannelData![channel][frame] = 0.1 }
+                }
+                context.state.process(pcm.mutableAudioBufferList, frames: 256, discontinuity: index.isMultiple(of: 4))
+            }
+            complete.leave()
+        }
+        complete.enter()
+        DispatchQueue.global(qos: .userInitiated).async {
+            for _ in 0..<150 {
+                context.state.unprepare()
+                context.state.prepare(format: context.format.streamDescription.pointee, maximumFrames: 256)
+            }
+            complete.leave()
+        }
+        XCTAssertEqual(complete.wait(timeout: .now() + 20), .success)
+        context.state.unprepare()
+    }
+
+    func testLiveTapPresetChangesAndOffBypassUseTheSamePreparedGraph() throws {
+        let format = try XCTUnwrap(AVAudioFormat(standardFormatWithSampleRate: 48_000, channels: 2))
+        let state = VocalBoostTapState(level: .standard)
+        state.prepare(format: format.streamDescription.pointee, maximumFrames: 1_024)
+        let pcm = try XCTUnwrap(AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 1_024))
+        pcm.frameLength = 1_024
+        let initialPreparations = state.prepareCount.load(ordering: .relaxed)
+        for _ in 0..<20 {
+            for (level, bass) in [(VocalBoostLevel.light, false), (.strong, false), (.off, true), (.off, false)] {
+                state.setPreset(level, deepBass: bass)
+                XCTAssertFalse(state.hasAppliedPreset)
+                for channel in 0..<2 {
+                    for frame in 0..<1_024 { pcm.floatChannelData![channel][frame] = 0.125 }
+                }
+                state.process(pcm.mutableAudioBufferList, frames: 1_024, discontinuity: false)
+                XCTAssertTrue(state.hasAppliedPreset)
+                XCTAssertEqual(state.failure.load(ordering: .relaxed), 0)
+                XCTAssertEqual(state.prepareCount.load(ordering: .relaxed), initialPreparations)
+                if level == .off, !bass {
+                    for channel in 0..<2 {
+                        XCTAssertTrue((0..<1_024).allSatisfy { pcm.floatChannelData![channel][$0] == 0.125 }, "Off must bypass the existing graph without altering the original PCM")
+                    }
+                }
+            }
+        }
+    }
+
+    func testRepeatedStartFlagsCannotReprimeLatencyForever() throws {
+        final class Source {
+            let format = AVAudioFormat(standardFormatWithSampleRate: 48_000, channels: 2)!
+            let pcm: AVAudioPCMBuffer
+            var calls = 0
+            var framesRead = 0
+            init() {
+                pcm = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 1_024)!
+                pcm.frameLength = 1_024
+            }
+        }
+        let source = Source()
+        let state = VocalBoostTapState(level: .standard)
+        state.prepare(format: source.format.streamDescription.pointee, maximumFrames: 1_024)
+        let output = try XCTUnwrap(AVAudioPCMBuffer(pcmFormat: source.format, frameCapacity: 1_024))
+        output.frameLength = 1_024
+        var framesOut = 0
+        var flagsOut: MTAudioProcessingTapFlags = 0
+        state.render(frames: 1_024, flags: kMTAudioProcessingTapFlag_StartOfStream,
+            buffers: output.mutableAudioBufferList, framesOut: &framesOut, flagsOut: &flagsOut,
+            sourceContext: Unmanaged.passUnretained(source).toOpaque(), readSource: { context, count, buffers, flags, produced in
+                let source = Unmanaged<Source>.fromOpaque(context).takeUnretainedValue()
+                source.calls += 1
+                guard source.calls < 64 else { produced.pointee = 0; return noErr }
+                source.framesRead += count
+                let input = UnsafeMutableAudioBufferListPointer(source.pcm.mutableAudioBufferList)
+                let output = UnsafeMutableAudioBufferListPointer(buffers)
+                for channel in input.indices {
+                    for frame in 0..<count { source.pcm.floatChannelData![channel][frame] = 0.125 }
+                    output[channel] = input[channel]
+                    output[channel].mDataByteSize = UInt32(count) * 4
+                }
+                // Native HLS can repeat this bit on each look-ahead source read.
+                flags.pointee = kMTAudioProcessingTapFlag_StartOfStream
+                produced.pointee = count
+                return noErr
+            })
+        XCTAssertEqual(framesOut, 1_024, "A single processing callback must return audio rather than consume its source forever")
+        XCTAssertLessThan(source.calls, 64)
+        XCTAssertLessThanOrEqual(source.framesRead, 49_024)
+        XCTAssertEqual(state.failure.load(ordering: .relaxed), 0)
+    }
+
     func testHLSSupportDependsOnOSAndDirectStreamsRemainSupported() {
         XCTAssertNotNil(VocalBoostState.unsupportedReason(format: "hls", supportsHLSTap: false))
         XCTAssertNil(VocalBoostState.unsupportedReason(format: "hls", supportsHLSTap: true))

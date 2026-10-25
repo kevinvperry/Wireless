@@ -32,7 +32,6 @@ final class MobilePlayer: ObservableObject {
             applyTrackMetadata(nil, source: "settings.tv-sync")
             startCompanionMetadataIfNeeded()
             if !syncEnabled { measured = nil }
-            updateAudioSessionMode()
             publishNowPlaying()
             diagnose("settings.sync", syncEnabled ? "TV Sync enabled" : "TV Sync disabled", metadata: ["delaySeconds": String(format: "%.1f", delay)])
         }
@@ -44,7 +43,6 @@ final class MobilePlayer: ObservableObject {
             directoryAudio.setSoundControls(vocalBoost, deepBass: deepBass)
             applyTrackMetadata(nil, source: "settings.vocal-boost")
             startCompanionMetadataIfNeeded()
-            updateAudioSessionMode()
             publishNowPlaying()
             diagnose("settings.vocalBoost", "Vocal Boost changed", metadata: ["level": vocalBoost.rawValue])
         }
@@ -54,7 +52,6 @@ final class MobilePlayer: ObservableObject {
             defaults.set(deepBass, forKey: "deepBassEnabled")
             if deepBass, vocalBoost != .off { vocalBoost = .off }
             directoryAudio.setSoundControls(vocalBoost, deepBass: deepBass)
-            updateAudioSessionMode()
             diagnose("settings.deepBass", deepBass ? "Deep Bass enabled" : "Deep Bass disabled")
         }
     }
@@ -135,10 +132,6 @@ final class MobilePlayer: ObservableObject {
         startCompanionMetadataIfNeeded()
     }
     private func reconnectEngine() { directoryAudio.reconnect() }
-    private func updateAudioSessionMode() {
-        let mode: AVAudioSession.Mode = !syncEnabled && vocalBoost != .off ? .spokenAudio : .default
-        try? AVAudioSession.sharedInstance().setMode(mode)
-    }
     @Published private(set) var requested = false
     @Published private(set) var status = "Ready to play"
     @Published private(set) var detail = "Choose a station in Discover"
@@ -378,8 +371,9 @@ final class MobilePlayer: ObservableObject {
         }
         do {
             let session = AVAudioSession.sharedInstance()
-            let mode: AVAudioSession.Mode = !syncEnabled && vocalBoost != .off ? .spokenAudio : .default
-            try session.setCategory(.playback, mode: mode, policy: .longFormAudio, options: [])
+            // Sound presets are DSP choices, not session/route changes. Changing
+            // session mode during playback can invalidate a running audio graph.
+            try session.setCategory(.playback, mode: .default, policy: .longFormAudio, options: [])
             if #available(iOS 27.0, *) {
                 session.activate(options: []) { [weak self] activated, error in
                     Task { @MainActor in

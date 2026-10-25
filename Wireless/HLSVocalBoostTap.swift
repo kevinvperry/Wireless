@@ -52,6 +52,10 @@ final class HLSVocalBoostTap {
         tap = created
     }
 
+    func setLevel(_ level: VocalBoostLevel, deepBass: Bool) {
+        state.setPreset(level, deepBass: deepBass)
+    }
+
     @MainActor
     @available(iOS 27.0, *)
     func attach(to item: AVPlayerItem) {
@@ -65,14 +69,23 @@ final class HLSVocalBoostTap {
     }
 }
 
-/// Only prepare/process/unprepare access the render graph. The main actor reads
-/// atomic telemetry; no locks, tasks, logging or allocation occur in process.
+/// AVFoundation can call unprepare on its cleanup queue while a processing
+/// callback is in flight (including server-connection teardown). The audio
+/// callback only tries the lifecycle lock: it passes through original audio
+/// rather than waiting. Preparation/cleanup may wait for an in-flight render.
 final class VocalBoostTapState {
+    private let lifecycleLock = NSLock()
     let prepareCount = Atomic<Int>(0)
     let failure = Atomic<OSStatus>(noErr)
     let processedFrames = Atomic<Int64>(0)
-    private let level: VocalBoostLevel
-    private let deepBass: Bool
+    private let requestedPreset: Atomic<Int>
+    private let appliedPreset = Atomic<Int>(-1)
+    private var configuredPreset = -1
+    // Allocate parameter tables before callbacks; applying a preset only reads them.
+    private let presets: [[[(AudioUnitParameterID, Float)]]]
+    var hasAppliedPreset: Bool {
+        appliedPreset.load(ordering: .acquiring) == requestedPreset.load(ordering: .acquiring)
+    }
     private var units: [AudioUnit] = []
     private var delivery: AVAudioPCMBuffer?
     private var latencyFrames: UInt32 = 0
@@ -88,11 +101,28 @@ final class VocalBoostTapState {
     private var bytesPerFrame: UInt32 = 0
     private var sampleTime: Float64 = 0
 
-    init(level: VocalBoostLevel, deepBass: Bool = false) { self.level = level; self.deepBass = deepBass }
+    init(level: VocalBoostLevel, deepBass: Bool = false) {
+        requestedPreset = Atomic(Self.presetIndex(level, deepBass: deepBass))
+        presets = (0...4).map { index in
+            VocalBoostConfiguration.subtypes.map {
+                VocalBoostConfiguration.parameters(for: $0, level: VocalBoostLevel.allCases[min(index, 3)], deepBass: index == 4)
+            }
+        }
+    }
+
+    private static func presetIndex(_ level: VocalBoostLevel, deepBass: Bool) -> Int {
+        deepBass ? 4 : VocalBoostLevel.allCases.firstIndex(of: level)!
+    }
+
+    func setPreset(_ level: VocalBoostLevel, deepBass: Bool) {
+        requestedPreset.store(Self.presetIndex(level, deepBass: deepBass), ordering: .releasing)
+    }
     deinit { unprepare() }
 
     func prepare(format: AudioStreamBasicDescription, maximumFrames: CMItemCount) {
-        unprepare()
+        lifecycleLock.lock()
+        defer { lifecycleLock.unlock() }
+        unprepareGraph()
         prepareCount.wrappingAdd(1, ordering: .relaxed)
         failure.store(noErr, ordering: .relaxed)
         processedFrames.store(0, ordering: .relaxed)
@@ -132,8 +162,10 @@ final class VocalBoostTapState {
             try check(AudioConverterNew(&format, &working, &inputConverter))
             try check(AudioConverterNew(&working, &format, &outputConverter))
             for subtype in VocalBoostConfiguration.subtypes {
-                let parameters = VocalBoostConfiguration.parameters(for: subtype, level: level, deepBass: deepBass)
-                guard !parameters.isEmpty else { continue }
+                // Connect every stage once. Preset changes bypass/configure units
+                // on the render thread, never rebuild or dispose a live graph.
+                let parameters = VocalBoostConfiguration.parameters(for: subtype, level: .standard,
+                    deepBass: subtype == kAudioUnitSubType_LowShelfFilter)
                 var description = AudioComponentDescription(componentType: kAudioUnitType_Effect,
                     componentSubType: subtype, componentManufacturer: kAudioUnitManufacturer_Apple,
                     componentFlags: 0, componentFlagsMask: 0)
@@ -167,6 +199,7 @@ final class VocalBoostTapState {
                 }
                 try check(AudioUnitInitialize(unit))
             }
+            try applyRequestedPreset()
             var latency: Float64 = 0
             for unit in units {
                 var seconds: Float64 = 0
@@ -179,12 +212,20 @@ final class VocalBoostTapState {
             latencyFrames = UInt32(ceil(latency * format.mSampleRate))
             pendingLatencyFrames = latencyFrames
         } catch {
-            unprepare()
+            unprepareGraph()
             failure.store((error as? TapError)?.code ?? kAudio_ParamError, ordering: .relaxed)
         }
     }
 
     func unprepare() {
+        lifecycleLock.lock()
+        defer { lifecycleLock.unlock() }
+        unprepareGraph()
+    }
+
+    private func unprepareGraph() {
+        configuredPreset = -1
+        appliedPreset.store(-1, ordering: .releasing)
         for unit in units.reversed() {
             AudioUnitUninitialize(unit)
             AudioComponentInstanceDispose(unit)
@@ -199,15 +240,59 @@ final class VocalBoostTapState {
         source = nil
     }
 
+    private func applyRequestedPreset() throws {
+        let preset = requestedPreset.load(ordering: .acquiring)
+        guard preset != configuredPreset else { return }
+        guard units.count == VocalBoostConfiguration.subtypes.count else { throw TapError.status(kAudio_ParamError) }
+        // Reserve headroom first when switching to bass; restore speech gain
+        // after disabling its conflicting shelf when switching back.
+        let first = preset == 4 ? units.count - 1 : 0
+        for offset in 0..<units.count {
+            let index = (first + offset) % units.count
+            let parameters = presets[preset][index]
+            for (parameter, value) in parameters {
+                try check(AudioUnitSetParameter(units[index], parameter, kAudioUnitScope_Global, 0, value, 0))
+            }
+            var bypass: UInt32 = parameters.isEmpty ? 1 : 0
+            try check(AudioUnitSetProperty(units[index], kAudioUnitProperty_BypassEffect,
+                kAudioUnitScope_Global, 0, &bypass, UInt32(MemoryLayout<UInt32>.size)))
+        }
+        configuredPreset = preset
+        appliedPreset.store(preset, ordering: .releasing)
+    }
+
     /// Absorb the Audio Units' look-ahead latency as required by the tap API.
     /// Pull extra source samples at each start/discontinuity, discard the initial
     /// delayed output, then deliver the requested frame count from preallocated memory.
+    typealias SourceReader = @convention(c) (UnsafeMutableRawPointer, CMItemCount,
+        UnsafeMutablePointer<AudioBufferList>, UnsafeMutablePointer<MTAudioProcessingTapFlags>,
+        UnsafeMutablePointer<CMItemCount>) -> OSStatus
+
     func render(tap: MTAudioProcessingTap, frames: CMItemCount, flags: MTAudioProcessingTapFlags,
                 buffers: UnsafeMutablePointer<AudioBufferList>, framesOut: UnsafeMutablePointer<CMItemCount>,
                 flagsOut: UnsafeMutablePointer<MTAudioProcessingTapFlags>) {
+        render(frames: frames, flags: flags, buffers: buffers, framesOut: framesOut, flagsOut: flagsOut,
+            sourceContext: Unmanaged.passUnretained(tap).toOpaque(), readSource: { context, count, data, flags, produced in
+                let tap = Unmanaged<MTAudioProcessingTap>.fromOpaque(context).takeUnretainedValue()
+                return MTAudioProcessingTapGetSourceAudio(tap, count, data, flags, nil, produced)
+            })
+    }
+
+    // A C function pointer keeps the production callback allocation-free and
+    // allows deterministic tests of native source flags and partial reads.
+    func render(frames: CMItemCount, flags: MTAudioProcessingTapFlags,
+                buffers: UnsafeMutablePointer<AudioBufferList>, framesOut: UnsafeMutablePointer<CMItemCount>,
+                flagsOut: UnsafeMutablePointer<MTAudioProcessingTapFlags>, sourceContext: UnsafeMutableRawPointer,
+                readSource: SourceReader) {
+        guard lifecycleLock.try() else {
+            let status = readSource(sourceContext, frames, buffers, flagsOut, framesOut)
+            if status != noErr { framesOut.pointee = 0 }
+            return
+        }
+        defer { lifecycleLock.unlock() }
         guard let delivery, frames > 0, frames <= maximumFrames,
               failure.load(ordering: .relaxed) == noErr else {
-            let status = MTAudioProcessingTapGetSourceAudio(tap, frames, buffers, flagsOut, nil, framesOut)
+            let status = readSource(sourceContext, frames, buffers, flagsOut, framesOut)
             if status != noErr { framesOut.pointee = 0; failure.store(status, ordering: .relaxed) }
             return
         }
@@ -217,21 +302,27 @@ final class VocalBoostTapState {
         var written: UInt32 = 0
         flagsOut.pointee = 0
         var firstPull = true
-        while written < frames {
+        var pulledFrames: UInt64 = 0
+        let frameBudget = UInt64(frames) + UInt64(latencyFrames)
+        while written < frames, pulledFrames < frameBudget {
             let request = CMItemCount(min(UInt64(maximumFrames), UInt64(frames) - UInt64(written) + UInt64(pendingLatencyFrames)))
             var received: CMItemCount = 0
             var sourceFlags: MTAudioProcessingTapFlags = 0
-            let status = MTAudioProcessingTapGetSourceAudio(tap, request, buffers, &sourceFlags, nil, &received)
+            let status = readSource(sourceContext, request, buffers, &sourceFlags, &received)
             guard status == noErr, received > 0 else {
                 if status != noErr { failure.store(status, ordering: .relaxed) }
                 flagsOut.pointee |= sourceFlags
                 break
             }
-            let discontinuity = (sourceFlags & kMTAudioProcessingTapFlag_StartOfStream) != 0
-                || (firstPull && (flags & kMTAudioProcessingTapFlag_StartOfStream) != 0)
+            // A native source can repeat StartOfStream on look-ahead pulls in
+            // this callback. Re-priming on every pull consumes audio indefinitely
+            // and returns no frames, starving AVPlayer and its media server.
+            guard received <= request else { failure.store(kAudio_ParamError, ordering: .relaxed); break }
+            pulledFrames += UInt64(received)
+            let discontinuity = firstPull && ((sourceFlags | flags) & kMTAudioProcessingTapFlag_StartOfStream) != 0
             if discontinuity { pendingLatencyFrames = latencyFrames }
             // Reset at source discontinuities; subsequent continuous pulls retain DSP state.
-            process(buffers, frames: UInt32(received), discontinuity: discontinuity)
+            processGraph(buffers, frames: UInt32(received), discontinuity: discontinuity)
             firstPull = false
             let discard = failure.load(ordering: .relaxed) == noErr ? min(pendingLatencyFrames, UInt32(received)) : 0
             pendingLatencyFrames -= discard
@@ -259,6 +350,12 @@ final class VocalBoostTapState {
     }
 
     func process(_ buffers: UnsafeMutablePointer<AudioBufferList>, frames: UInt32, discontinuity: Bool) {
+        guard lifecycleLock.try() else { return }
+        defer { lifecycleLock.unlock() }
+        processGraph(buffers, frames: frames, discontinuity: discontinuity)
+    }
+
+    private func processGraph(_ buffers: UnsafeMutablePointer<AudioBufferList>, frames: UInt32, discontinuity: Bool) {
         guard frames > 0, failure.load(ordering: .relaxed) == noErr,
               let last = units.last, let scratch, let convertedInput, let convertedOutput,
               let inputConverter, let outputConverter else { return }
@@ -266,6 +363,8 @@ final class VocalBoostTapState {
             failure.store(kAudioUnitErr_TooManyFramesToProcess, ordering: .relaxed)
             return
         }
+        do { try applyRequestedPreset() }
+        catch { failure.store((error as? TapError)?.code ?? kAudio_ParamError, ordering: .relaxed); return }
         if discontinuity {
             for unit in units { AudioUnitReset(unit, kAudioUnitScope_Global, 0) }
             sampleTime = 0

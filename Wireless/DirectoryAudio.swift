@@ -38,6 +38,7 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
     private var hlsVocalBoostTap: HLSVocalBoostTap?
     private var lastProcessedFrames: Int64 = 0
     private var lastProcessedAt = Date.distantPast
+    private var effectStartedAt = Date()
     var onTrackMetadata: ((StreamTrackMetadataEvaluation?) -> Void)?
     var onPlaybackInterval: ((TimeInterval, Date) -> Void)?
     private let player = AVPlayer()
@@ -82,28 +83,28 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
                 self.onPlaybackInterval?(seconds, endedAt)
             }
         }
-        enhancedEngine.onUnsupportedHLS = { [weak self] reason in
+        enhancedEngine.onUnsupportedHLS = { [weak self] playbackID, reason in
             Task { @MainActor in
-                guard let self, self.requested, self.usesEnhancedPlayback,
+                guard let self, self.generation == playbackID, self.requested, self.usesEnhancedPlayback,
                       self.streams.indices.contains(self.index), self.streams[self.index].format == "hls" else { return }
                 self.hlsBoostFailure = reason
                 self.load(preservingVocalBoostFallback: true)
             }
         }
-        enhancedEngine.onStatus = { [weak self] update in
+        enhancedEngine.onStatus = { [weak self] playbackID, update in
             Task { @MainActor in
-                guard let self, self.requested, self.usesEnhancedPlayback else { return }
+                guard let self, self.generation == playbackID, self.requested, self.usesEnhancedPlayback else { return }
                 if update.buffering { self.setAudioEffectState(.preparing) }
                 if update.title == "Playing" { self.lastAdvance = Date(); self.recovery.recordPlayback(at: Date()) }
                 self.onStatus?(PlaybackStatus(active: self.requested, buffering: update.buffering, progress: update.progress, title: update.title, detail: update.detail, measuredDelay: update.measuredDelay), false)
             }
         }
-        enhancedEngine.onPlaybackInterval = { [weak self] seconds, endedAt in
+        enhancedEngine.onPlaybackInterval = { [weak self] playbackID, seconds, endedAt in
             Task { @MainActor in
-                guard let self, self.requested, self.usesEnhancedPlayback else { return }
+                guard let self, self.generation == playbackID, self.requested, self.usesEnhancedPlayback else { return }
                 self.lastAdvance = Date()
                 self.recovery.recordPlayback(at: Date())
-                self.setAudioEffectState(.active)
+                self.setAudioEffectState(self.soundControlsEnabled ? .active : .off)
                 self.onPlaybackInterval?(seconds, endedAt)
             }
         }
@@ -164,6 +165,7 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
         if failure != noErr {
             setAudioEffectState(.unavailable("Audio processing failed for this stream (\(failure)).")); return
         }
+        guard tap.state.hasAppliedPreset else { setAudioEffectState(.preparing); return }
         let frames = tap.state.processedFrames.load(ordering: .relaxed)
         if frames == 0 { lastProcessedAt = .distantPast }
         if frames > 0, frames != lastProcessedFrames {
@@ -172,7 +174,7 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
         }
         if player.timeControlStatus == .playing, Date().timeIntervalSince(lastProcessedAt) < 2 {
             setAudioEffectState(.active)
-        } else if player.timeControlStatus == .playing, Date().timeIntervalSince(started) > 10 {
+        } else if player.timeControlStatus == .playing, Date().timeIntervalSince(effectStartedAt) > 10 {
             setAudioEffectState(.unavailable("This stream or audio route does not allow sound processing."))
         } else { setAudioEffectState(.preparing) }
     }
@@ -279,11 +281,38 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
         guard vocalBoost != level || self.deepBass != deepBass else { return }
         vocalBoost = level
         self.deepBass = deepBass
-        if !syncEnabled, usesEnhancedPlayback, soundControlsEnabled, requested || preparing {
+        // Off is a bypass on the current engine, not a network/backend change.
+        // Keep decoded/queued live audio and avoid repeated HLS startup windows.
+        if !syncEnabled, usesEnhancedPlayback, requested || preparing {
             enhancedEngine.setLevel(level, deepBass: deepBass)
+            updateAudioEffectState()
             return
         }
-        onTrackMetadata?(nil)
+        // Keep one tap and connected graph, including Off. An atomic preset
+        // request is applied by its render callback; AVPlayer keeps its queue,
+        // connection and position without tearing down its processing server.
+        if !syncEnabled, streams.indices.contains(index), streams[index].format == "hls",
+           let item = player.currentItem {
+            if #available(iOS 27.0, *) {
+                lastProcessedFrames = 0; lastProcessedAt = .distantPast
+                effectStartedAt = Date()
+                hlsBoostFailure = nil
+                hlsBoostFallbackAttempted = false
+                if let tap = hlsVocalBoostTap {
+                    tap.setLevel(level, deepBass: deepBass)
+                } else if soundControlsEnabled {
+                    do {
+                        let tap = try HLSVocalBoostTap(level: level, deepBass: deepBass)
+                        tap.attach(to: item)
+                        hlsVocalBoostTap = tap
+                    } catch {
+                        hlsBoostFailure = "The audio processor could not start."
+                    }
+                }
+            }
+            updateAudioEffectState()
+            return
+        }
         if requested || preparing { load() }
         else { updateAudioEffectState() }
     }
@@ -321,6 +350,7 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
         usesEnhancedPlayback = !syncEnabled && soundControlsEnabled && ["mp3", "aac"].contains(stream.format)
         hlsPacketFallbackAttempted = false
         started = Date(); lastAdvance = started; lastTime = -1; pendingDelay = true
+        effectStartedAt = started
         if usesEnhancedPlayback { updateAudioEffectState() }
         let backend = usesPacketBuffer ? "packet-buffer" : (usesEnhancedPlayback ? "audio-engine" : "avplayer")
         diagnose("stream.load", "Loading stream", metadata: [
@@ -341,7 +371,7 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
             return
         }
         if usesEnhancedPlayback {
-            enhancedEngine.configure(stream: stream, level: vocalBoost, deepBass: deepBass)
+            enhancedEngine.configure(stream: stream, level: vocalBoost, deepBass: deepBass, playbackID: generation)
             if requested {
                 enhancedEngine.start()
                 startMetadataSidecar(url: url, stream: stream, token: generation)
@@ -503,7 +533,7 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
            streams.indices.contains(index), streams[index].format == "hls",
            !hlsBoostFallbackAttempted,
            !audioEffectState.isActive, player.timeControlStatus == .playing,
-           Date().timeIntervalSince(started) > 10 {
+           Date().timeIntervalSince(effectStartedAt) > 10 {
             switchHLSIntoVocalBoostFallback()
             return
         }
@@ -631,7 +661,7 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
         started = Date(); lastAdvance = started
         setAudioEffectState(.preparing)
         diagnose("vocalBoost.hlsFallback", "Native tap did not process audio; trying unencrypted packed AAC", metadata: ["streamID": streams[index].id])
-        enhancedEngine.configure(stream: streams[index], level: vocalBoost, deepBass: deepBass)
+        enhancedEngine.configure(stream: streams[index], level: vocalBoost, deepBass: deepBass, playbackID: generation)
         enhancedEngine.start()
         if let url = StreamRequestPolicy.playbackURL(for: streams[index]) {
             startMetadataSidecar(url: url, stream: streams[index], token: generation)

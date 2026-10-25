@@ -11,7 +11,7 @@ Before implementation, the existing tracked changes and new source, tests and pr
 - If native processing does not deliver audio after ten seconds of advancing playback, Wireless tries an unencrypted ADTS AAC-segment fallback adapted from the existing RadioStreamEngine downloader. It follows a bounded master-playlist chain, strips ID3 metadata, preserves request headers and validates segment data. Encryption, fragmented MP4, byte ranges and other containers are rejected by this fallback. Failure returns to ordinary AVPlayer playback and explains that speech processing is unavailable. There can be a short reconnection during the switch.
 - iOS 26 retains direct MP3/AAC processing. HLS displays an explicit iOS 27 requirement. TV Sync suspends Vocal Boost.
 - Audio Controls distinguishes Off, Ready, Waiting, Active and Unavailable. Active requires successful processed-frame telemetry (or the enhanced engine's rendered-buffer callback), rather than a selected preference. Listening Stats uses this confirmed state.
-- Changing Light/Standard/Strong while the enhanced engine is active changes the connected graph in place, as in Autohop. Off returns to ordinary AVPlayer playback.
+- Changing Light/Standard/Strong while the enhanced engine is active changes the connected graph in place, as in Autohop. Off now bypasses the current graph without reconnecting the stream; see SOUND_MODE_SWITCHING_2026-10-25.md for the subsequent stability repair.
 - The in-app Support guide and SUPPORT_GUIDE.md describe support and limitations. Start with Light for broadcasts that already use heavy compression. This feature cannot recover detail absent from a low-bitrate source.
 
 ## Validation
@@ -31,3 +31,5 @@ Physical-device listening, background playback, interruptions, Bluetooth, AirPla
 - [What's new in HLS, 2026](https://developer-rno.apple.com/streaming/Whats-new-HLS.pdf), “MTAudioProcessingTap for HLS”: mixed-output taps and the FairPlay exclusion.
 - Installed iOS 27 SDK, AVAudioMix.h and MTAudioProcessingTap.h: availability, preferred-format requirements, real-time constraints and latency absorption.
 - [Audio Converter Services](https://developer.apple.com/documentation/audiotoolbox/audio-converter-services): same-rate PCM format conversion.
+
+Follow-up: native HLS switching and cleanup have now passed a physical iPhone test on iOS 27.0.1. See [sound mode switching reliability](SOUND_MODE_SWITCHING_2026-10-25.md) for the fixes, evidence and remaining validation limits. The earlier hardware-validation statements above describe the original implementation.

@@ -87,3 +87,7 @@ Implementation and evidence: `Docs/DEEP_BASS_2026-10-25.md`.
 - Check Ready/Waiting/Active/Unavailable, iOS 26 HLS unavailability, TV Sync suspension/resumption, and switching Off during playback. Listening Stats/History should count confirmed bass processing as Deep Bass, rather than Vocal Boost.
 - Compare Off and Deep Bass at matched perceived loudness on rock and other music stations. Check kick/bass weight, transient detail, distortion and unwanted pumping on already compressed broadcasts. Account for the preset's reserved headroom; equal system-volume settings are not a loudness-matched comparison.
 - Repeat on speakers/headphones, Bluetooth and AirPlay, with locked-screen/background playback, interruptions and compatible Mac windows. Test direct MP3/AAC and different HLS containers. Native HLS tap behaviour remains a separate hardware validation requirement.
+
+## Sound mode switching regression
+
+`PlayerTests.testRepeatedSoundChangesKeepLivePlaybackRunning` cycles Vocal Boost, Off and Deep Bass, checks Playing and Active, then checks app survival after Pause. Set `TEST_RUNNER_WIRELESS_TEST_HLS_URL` to select a stream and `TEST_RUNNER_WIRELESS_TEST_STREAM_FORMAT` for direct AAC/MP3. The preview uses isolated listening statistics. Run native HLS on a physical iOS 27 device; simulator fallback does not verify the native tap. See `Docs/SOUND_MODE_SWITCHING_2026-10-25.md` for recorded results.

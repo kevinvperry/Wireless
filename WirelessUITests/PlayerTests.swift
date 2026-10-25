@@ -2,6 +2,51 @@ import XCTest
 
 final class PlayerTests: XCTestCase {
     @MainActor
+    func testRepeatedSoundChangesKeepLivePlaybackRunning() {
+        let app = XCUIApplication()
+        app.launchEnvironment["WIRELESS_PLAYER_PREVIEW"] = "1"
+        app.launchEnvironment["WIRELESS_TEST_HLS_URL"] = ProcessInfo.processInfo.environment["WIRELESS_TEST_HLS_URL"]
+        app.launchEnvironment["WIRELESS_TEST_STREAM_FORMAT"] = ProcessInfo.processInfo.environment["WIRELESS_TEST_STREAM_FORMAT"]
+        app.launchArguments = ["-streamDiagnosticLoggingEnabled", "YES"]
+        app.launch()
+        XCTAssertTrue(app.buttons["Audio Controls"].waitForExistence(timeout: 15))
+        app.buttons["Audio Controls"].tap()
+        let vocal = app.segmentedControls["vocalBoostPicker"]
+        vocal.buttons["Standard"].tap()
+        app.buttons["Close"].tap()
+        app.buttons["Play"].tap()
+        let playing = NSPredicate(format: "label == %@", "Playing")
+        expectation(for: playing, evaluatedWith: app.staticTexts["playbackStatus"])
+        waitForExpectations(timeout: 40)
+        app.buttons["Audio Controls"].tap()
+        let vocalState = app.staticTexts["vocalBoostStatus"]
+        let bassState = app.staticTexts["deepBassStatus"]
+        let bass = app.switches["deepBassToggle"]
+        expectation(for: NSPredicate(format: "label CONTAINS %@", "Active ·"), evaluatedWith: vocalState)
+        waitForExpectations(timeout: 30)
+        for _ in 0..<3 {
+            for level in ["Light", "Strong", "Standard", "Off"] { vocal.buttons[level].tap() }
+            bass.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap()
+            bass.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap()
+            XCTAssertTrue(bassState.label.hasPrefix("Off."))
+            // Turning effects off must not reconnect or stop the current stream.
+            app.buttons["Close"].tap()
+            XCTAssertEqual(app.staticTexts["playbackStatus"].label, "Playing")
+            app.buttons["Audio Controls"].tap()
+        }
+        vocal.buttons["Strong"].tap()
+        // Give a stopped render graph enough time to lose its Active state.
+        Thread.sleep(forTimeInterval: 4)
+        XCTAssertTrue(vocalState.label.contains("Active ·"), vocalState.label)
+        XCTAssertEqual(app.state, .runningForeground)
+        app.buttons["Close"].tap()
+        app.buttons["Pause"].tap()
+        Thread.sleep(forTimeInterval: 2)
+        XCTAssertEqual(app.state, .runningForeground)
+        XCTAssertTrue(app.buttons["Play"].exists)
+    }
+
+    @MainActor
     func testDeepBassAvailabilityAndExclusiveSelection() {
         let app = XCUIApplication()
         app.launchEnvironment["WIRELESS_PLAYER_PREVIEW"] = "1"

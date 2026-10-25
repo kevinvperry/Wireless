@@ -89,7 +89,7 @@ Wireless begins preparing the selected station’s audio as soon as it opens in 
 
 While playback is requested, Wireless keeps trying after a lost connection. It tries the station’s published stream alternatives and repeats in cycles, with waits increasing from one second to a maximum of 15 seconds between cycles. Press Pause to stop reconnection attempts. If iOS suspends the app during a prolonged background outage, reopen Wireless to let recovery continue.
 
-With TV Sync, Vocal Boost and Deep Bass off, Wireless uses Apple's AVPlayer for stable live playback. It allows a short reliability buffer to build where appropriate and does not make TV-delay corrections.
+With TV Sync, Vocal Boost and Deep Bass off, Wireless plays the original broadcast audio. It allows a short reliability buffer to build where appropriate and does not make TV-delay corrections. Turning a sound preset Off bypasses processing on the current connection, without reconnecting the stream.
 
 Open **Audio Controls** to choose another stream offered by the station. Wireless remembers the selected stream variation for that station and restores it the next time the station is opened. Format and bitrate information appear in the Details pane when supplied by the directory.
 
@@ -240,7 +240,7 @@ Broadcasters and rights holders can use the same station-report action to reques
 
 ### Playback pauses or stutters
 
-- Turn TV Sync off to return to normal AVPlayer playback.
+- Turn TV Sync off to return to normal live playback.
 - Try a direct MP3 or AAC stream if the station offers one.
 - Select a lower-bitrate stream when reception is weak.
 - Turn Vocal Boost and Deep Bass off to return compatible streams to standard playback.

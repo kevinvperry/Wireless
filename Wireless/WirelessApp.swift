@@ -22,7 +22,7 @@ struct WirelessApp: App {
                 state: "VIC", cities: ["Melbourne"], tags: [], description: "Layout preview",
                 website_url: "", logo_url: "", preferred_stream_id: DirectoryStation.sen.preferred_stream_id,
                 streams: ProcessInfo.processInfo.environment["WIRELESS_TEST_HLS_URL"].flatMap { URL(string: $0) }.map {
-                    [StationStream(id: "sen-hls", url: $0.absoluteString, label: "HLS test", format: "hls",
+                    [StationStream(id: "sen-hls", url: $0.absoluteString, label: "Playback test", format: ProcessInfo.processInfo.environment["WIRELESS_TEST_STREAM_FORMAT"] ?? "hls",
                                    codec: "aac", bitrate_kbps: nil, request_headers: [:])]
                 } ?? DirectoryStation.sen.streams)
         }
@@ -31,7 +31,10 @@ struct WirelessApp: App {
                           station("layout-second", "Melbourne's Favourite Music Station")]
         defaults.set(try! JSONEncoder().encode(current), forKey: "lastPlayedStation.v1")
         defaults.set(try! JSONEncoder().encode(favourites), forKey: "stationFavourites.v1")
-        return MobilePlayer(defaults: defaults)
+        let previewStatsURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("WirelessPlayerPreview", isDirectory: true)
+            .appendingPathComponent("listening-stats.json")
+        return MobilePlayer(defaults: defaults, statsStore: WirelessListeningStatsStore(fileURL: previewStatsURL))
     }()
     #endif
 
