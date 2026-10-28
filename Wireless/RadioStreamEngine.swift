@@ -14,6 +14,8 @@ struct PlaybackStatus {
     let title: String
     let detail: String
     let measuredDelay: Double?
+    /// Remaining audio to retain, or a deliberate delay-insertion pause. Nil while connecting.
+    var syncBufferRemaining: Double? = nil
 }
 
 private struct RadioPacket {
@@ -350,7 +352,8 @@ final class RadioStreamEngine: NSObject, URLSessionDataDelegate, @unchecked Send
             let remaining = addedPauseUntil - now
             emit(PlaybackStatus(active: true, buffering: true, progress: 1 - remaining / max(0.5, selectedDelay),
                                 title: String(format: "Adding delay: %.1f s", remaining),
-                                detail: "Commentary resumes automatically.", measuredDelay: lastMeasuredDelay))
+                                detail: "Commentary resumes automatically.", measuredDelay: lastMeasuredDelay,
+                                syncBufferRemaining: syncEnabled ? remaining : nil))
         } else if outputStarted {
             let detail = !syncEnabled ? "Live playback · five-second reliability buffer" : now < correctionNoticeUntil
                 ? correctionNotice
@@ -365,7 +368,8 @@ final class RadioStreamEngine: NSObject, URLSessionDataDelegate, @unchecked Send
             let remaining = max(0, target - ready)
             emit(PlaybackStatus(active: true, buffering: true, progress: min(1, ready / target),
                                 title: remaining > 0 ? String(format: "Buffering: %.1f s", remaining) : "Starting audio…",
-                                detail: syncEnabled ? "Waiting for the selected audio delay." : "Building a short buffer for reliable playback.", measuredDelay: nil))
+                                detail: syncEnabled ? "Waiting for the selected audio delay." : "Building a short buffer for reliable playback.", measuredDelay: nil,
+                                syncBufferRemaining: syncEnabled && streamConnected ? remaining : nil))
         }
     }
 

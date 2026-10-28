@@ -30,6 +30,8 @@ xcodebuild -project Wireless.xcodeproj -scheme Wireless \
 - Search and browse stations, select alternatives, save/remove/reorder favourites and relaunch to verify persistence.
 - Check Playing, Details and Sync navigation, the mini-player, Settings and Support on iPhone and iPad.
 - Exercise TV Sync on supported MP3, AAC and HLS streams. Change delay and toggle Sync during playback and while paused.
+- With TV Sync on, select a different station through Discover, Favourites and CarPlay. Confirm Sync turns off, the new station plays live and the saved sound preset resumes. Selecting the same station or reconnecting must retain Sync.
+- Set a long TV delay and start playback. Check the prominent silent-buffer notice, estimated remaining wait, automatic audio return and Return to live audio button. Repeat on direct MP3/AAC and HLS; interrupt reception and confirm the estimate does not falsely count down while no audio arrives.
 - Check Vocal Boost and Sleep Timer, including cancellation and expiry.
 - Verify Dynamic Type, VoiceOver, iPad rotation/multitasking and resizable compatible Mac windows.
 

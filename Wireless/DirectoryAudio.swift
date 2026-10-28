@@ -74,7 +74,7 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
             Task { @MainActor in
                 guard let self, self.requested, self.usesPacketBuffer else { return }
                 if update.title == "Playing" { self.lastAdvance = Date(); self.recovery.recordPlayback(at: Date()) }
-                self.onStatus?(PlaybackStatus(active: self.requested, buffering: update.buffering, progress: update.progress, title: update.title, detail: update.detail, measuredDelay: update.measuredDelay), true)
+                self.onStatus?(PlaybackStatus(active: self.requested, buffering: update.buffering, progress: update.progress, title: update.title, detail: update.detail, measuredDelay: update.measuredDelay, syncBufferRemaining: update.syncBufferRemaining), true)
             }
         }
         packetEngine.onPlaybackInterval = { [weak self] seconds, endedAt in
@@ -366,6 +366,8 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
             "musicPreset": "\(musicPreset)"
         ])
         if usesPacketBuffer {
+            // Show the silent-wait explanation immediately, before the first packet callback.
+            publish(title: "Connecting…", detail: "Preparing audio for TV Sync.", buffering: true, supportsDelay: true)
             packetEngine.selectBufferedStream(stream); packetEngine.setDelay(delay)
             if requested { packetEngine.start() }
             return

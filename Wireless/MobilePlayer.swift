@@ -112,7 +112,10 @@ final class MobilePlayer: ObservableObject {
     }
 
     func playStation(_ value: DirectoryStation) {
+        let changingStation = station.id != value.id
         pause()
+        if changingStation && syncEnabled { syncEnabled = false }
+        syncBufferRemaining = nil
         diagnose("station.selected", "Station selected", metadata: ["stationID": value.id, "stationName": value.name])
         applyTrackMetadata(nil, source: "station-change")
         station = value; supportsDelay = false; measured = nil
@@ -137,6 +140,7 @@ final class MobilePlayer: ObservableObject {
     @Published private(set) var detail = "Choose a station in Discover"
     @Published private(set) var buffering = false
     @Published private(set) var progress = 0.0
+    @Published private(set) var syncBufferRemaining: Double?
     @Published private(set) var measured: Double?
     @Published private(set) var route = "This device"
     let guide = ProgrammeGuide()
@@ -211,6 +215,7 @@ final class MobilePlayer: ObservableObject {
             guard let self else { return }
             self.recordPlaybackStatus(update, supportsDelay: supported)
             self.requested = update.active; self.status = update.title; self.detail = update.detail
+            self.syncBufferRemaining = update.syncBufferRemaining
             self.buffering = update.buffering; self.progress = update.progress; self.measured = update.measuredDelay
             if !update.active { self.companionMetadata.stop() }
             self.supportsDelay = supported; self.updateRecoveryGrace(); self.publishNowPlaying()

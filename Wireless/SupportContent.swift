@@ -121,6 +121,7 @@ enum WirelessSupportGuide {
                 "Use the slider for larger changes or the minus and plus buttons for half-second adjustments until the sound matches the picture."
             ]),
             .paragraph("Wireless shows your saved delay and the delay available from the active stream. Your chosen delay is remembered. Playback remains controlled from the main Playing pane."),
+            .paragraph("Changing stations automatically turns TV Sync off, returns to live playback and restores your saved sound preset. Your saved delay is kept. While TV Sync is buffering, a prominent message explains the silence and shows an estimated wait when available. Weak reception may extend the wait. Sound resumes automatically; choose **Return to live audio** to stop waiting."),
             .paragraph("When TV Sync is first turned on, Wireless may briefly show that it is building an audio buffer. The controls become available automatically when enough audio has been retained. This does not mean the stream is incompatible."),
             .paragraph("Direct MP3 and AAC streams can be retained in Wireless's packet buffer. Compatible AAC HLS may use a seekable live window or retained-packet fallback. Some HLS formats do not expose enough audio history for Sync."),
             .callout(.warning, "HLS arrives in segments, so measured delay can move in small steps. Wireless avoids repeated HLS corrections that would cause micro-stutters. If performance is poor, try another stream in **Audio Controls**.")

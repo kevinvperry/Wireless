@@ -65,6 +65,8 @@ Favourites are stored on the device. iCloud synchronisation is not currently inc
 
 ## TV Sync
 
+Changing stations automatically turns TV Sync off, returns to live playback and restores your saved sound preset. Your saved delay is kept. While TV Sync is buffering, a prominent message explains the silence and shows an estimated wait when available. Weak reception may extend the wait. Sound resumes automatically; choose **Return to live audio** to stop waiting.
+
 TV Sync delays live radio commentary so it can better match television pictures received through another service.
 
 When TV Sync is off, the Sync pane shows only the **Sync audio to picture** tile. Turning it on reveals the **Saved audio delay** tile and its adjustment controls.

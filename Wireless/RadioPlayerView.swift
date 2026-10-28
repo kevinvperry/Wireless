@@ -962,6 +962,31 @@ struct RadioPlayerView: View {
                 .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 20))
 
                 if player.syncEnabled {
+                    if player.requested && player.buffering {
+                        VStack(alignment: .leading, spacing: 14) {
+                            Label("Audio will resume automatically", systemImage: "hourglass")
+                                .font(.headline)
+                            if let remaining = player.syncBufferRemaining {
+                                Text(remaining > 0 ? "About \(Int(ceil(remaining))) seconds to go" : "Starting audio…")
+                                    .font(.title2.bold()).monospacedDigit()
+                                Text("The radio is silent while Wireless builds your TV delay. Leave playback running; the sound will return by itself.")
+                                ProgressView(value: min(1, max(0, player.progress)))
+                                Text("This is an estimate. Weak reception can make the wait longer.")
+                                    .font(.footnote).foregroundStyle(.secondary)
+                            } else {
+                                Text("Connecting and preparing TV audio…").font(.title2.bold())
+                                Text("You may hear silence while Wireless connects and gathers audio for your saved delay. A time estimate will appear when available.")
+                                ProgressView()
+                            }
+                            Button("Return to live audio") { player.syncEnabled = false }
+                                .buttonStyle(.bordered)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(22)
+                        .background(Color.accentColor.opacity(0.18), in: RoundedRectangle(cornerRadius: 20))
+                        .accessibilityElement(children: .contain)
+                        .accessibilityIdentifier("syncBufferNotice")
+                    }
                     VStack(alignment: .leading, spacing: 18) {
                         Text("Saved audio delay").font(.headline)
                         Text(String(format: "%.1f s", player.delay))
@@ -987,7 +1012,7 @@ struct RadioPlayerView: View {
                     .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 20))
                     .accessibilityIdentifier("syncDelayTile")
 
-                    if !player.supportsDelay {
+                    if !player.supportsDelay && !(player.requested && player.buffering) {
                         Text(player.detail.contains("Building an audio buffer")
                              ? player.detail
                              : "TV Sync is not available with this station’s current stream. Open Audio Controls and try another stream.")
@@ -996,7 +1021,7 @@ struct RadioPlayerView: View {
 
                     Text("Tip: Use a clear moment, such as a ball being kicked or someone beginning to speak, then adjust until the sound matches the picture.")
                         .font(.footnote).foregroundStyle(.secondary)
-                    Text("Wireless remembers this delay for the next time you use TV Sync. Wireless speakers and AirPlay may add extra delay.")
+                    Text("Changing stations turns TV Sync off and returns to live audio. Wireless remembers your delay for next time. Wireless speakers and AirPlay may add extra delay.")
                         .font(.footnote).foregroundStyle(.secondary)
                 }
             }.padding(22).frame(maxWidth: 720).frame(maxWidth: .infinity)

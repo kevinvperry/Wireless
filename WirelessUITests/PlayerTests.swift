@@ -12,6 +12,40 @@ final class PlayerTests: XCTestCase {
     }
 
     @MainActor
+    func testChangingStationTurnsTVSyncOff() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-selectedDelaySeconds", "30"]
+        app.launchEnvironment["WIRELESS_PLAYER_PREVIEW"] = "1"
+        app.launch()
+        XCTAssertTrue(app.buttons["Sync"].waitForExistence(timeout: 10))
+        app.buttons["Sync"].tap()
+        let toggle = app.switches["syncEnabled"]
+        XCTAssertTrue(toggle.waitForExistence(timeout: 5))
+        expectation(for: NSPredicate(format: "hittable == true"), evaluatedWith: toggle)
+        waitForExpectations(timeout: 5)
+        if toggle.value as? String != "1" { toggle.tap() }
+        XCTAssertEqual(toggle.value as? String, "1")
+        let savedDelay = app.sliders["Saved audio delay"].value as? String
+        app.buttons["Playing"].tap()
+        let favourite = app.buttons["favouriteShortcut-layout-favourite"]
+        XCTAssertTrue(favourite.waitForExistence(timeout: 5))
+        favourite.tap()
+        app.buttons["Sync"].tap()
+        expectation(for: NSPredicate(format: "value == %@", "0"), evaluatedWith: toggle)
+        waitForExpectations(timeout: 5)
+        XCTAssertFalse(app.descendants(matching: .any)["syncDelayTile"].exists)
+        toggle.tap()
+        XCTAssertEqual(app.sliders["Saved audio delay"].value as? String, savedDelay)
+        let notice = app.buttons["Return to live audio"]
+        XCTAssertTrue(notice.waitForExistence(timeout: 15))
+        XCTAssertTrue(app.buttons["Return to live audio"].exists)
+        let shot = XCTAttachment(screenshot: app.screenshot())
+        shot.name = "TV Sync waiting explanation"; shot.lifetime = .keepAlways; add(shot)
+        app.buttons["Return to live audio"].tap()
+        XCTAssertEqual(toggle.value as? String, "0")
+    }
+
+    @MainActor
     func testAudioControlsCardLayout() {
         XCUIDevice.shared.orientation = .portrait
         let app = XCUIApplication()
