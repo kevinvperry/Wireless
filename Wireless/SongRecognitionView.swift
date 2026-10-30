@@ -40,7 +40,7 @@ struct SongRecognitionView: View {
         }
         .preferredColorScheme(.dark)
         .tint(.purple)
-        .onDisappear { recognition.cancel() }
+        .onDisappear { recognition.cancel(reason: "sheet-dismissed") }
     }
 
     @ViewBuilder private var result: some View {

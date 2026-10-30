@@ -27,6 +27,7 @@
 		22B4604A476E15BE939B98DE /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CCDDE53C4D89A836A68EB050 /* Assets.xcassets */; };
 		23E33CD7E3C09DCF55E53DE1 /* StreamDiagnosticView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29D4ED78062FDB9798BCDE64 /* StreamDiagnosticView.swift */; };
 		2CA43D519A02141C85799CF3 /* SongRecognition.swift in Sources */ = {isa = PBXBuildFile; fileRef = C65D2FFE0DE47E326B3BC1D2 /* SongRecognition.swift */; };
+		2EAC8B9F2FCC56B883045346 /* ShazamDiagnosticsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8476ADB8F678B631479EC8FE /* ShazamDiagnosticsTests.swift */; };
 		34DD8193B4205D3E2AA6F797 /* CarPlayCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 660E395F79C005C6A04D90BD /* CarPlayCoordinator.swift */; };
 		358967CA5B027BE2CE6A8AB6 /* StationDirectoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76EECFE6B7E52C2FE1E8A08B /* StationDirectoryTests.swift */; };
 		3C1B7C212FFFA7DE0C326B31 /* WirelessListeningStatsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DB035AE0DBE09DD1962C935 /* WirelessListeningStatsStore.swift */; };
@@ -51,11 +52,13 @@
 		6B3A8C68F3F45E516032FCAB /* ABCProgrammeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B66A150E5FB7C840D3E237B6 /* ABCProgrammeTests.swift */; };
 		6D6CFE9790748573D20D6594 /* HLSSongSample.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CD8ED6742914723795B25AB /* HLSSongSample.swift */; };
 		73E1D0864EB74C991822F99F /* CompanionMetadataProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8800F6E720F2C3333B59800D /* CompanionMetadataProvider.swift */; };
+		752F31C1110E8EF86B9119BD /* ShazamDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = E535C18E2A30A6C42FD10977 /* ShazamDiagnostics.swift */; };
 		7A4F01B052D09AED0D492AD7 /* HLSSongSample.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CD8ED6742914723795B25AB /* HLSSongSample.swift */; };
 		7CA4F8F83D57C89DAD394095 /* CarPlaySceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC86E444D35081690AAF4613 /* CarPlaySceneDelegate.swift */; };
 		7D26F509B3DA4B458D000344 /* WirelessStationsWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA576000F2FE961E98D369FF /* WirelessStationsWidget.swift */; };
 		7E77D8A392CA421540FD8661 /* StationPlaybackIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB08B7E6102E1180557AC742 /* StationPlaybackIntent.swift */; };
 		86957CB1D807DBCED53ABFA6 /* AcknowledgementsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B93FC87D9BD4E8BACD869C22 /* AcknowledgementsView.swift */; };
+		86CCA67A6822B4FFC3C4927D /* ShazamDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = E535C18E2A30A6C42FD10977 /* ShazamDiagnostics.swift */; };
 		87B4B8F400922775A4CF6495 /* RadioStreamEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06E77E689E1033689FB1A219 /* RadioStreamEngine.swift */; };
 		8DA253E234BFDF0611425715 /* WidgetSnapshotCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3EDF13A92E9C47AB441A9BF /* WidgetSnapshotCoordinator.swift */; };
 		8E173D4B74CBCB45947A3036 /* PlayerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E1D262786C716DAE7D8E2FA /* PlayerTests.swift */; };
@@ -193,6 +196,7 @@
 		7E1D262786C716DAE7D8E2FA /* PlayerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerTests.swift; sourceTree = "<group>"; };
 		7F70847912CBE75BB5C5C2D6 /* EnhancedLiveStreamEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnhancedLiveStreamEngine.swift; sourceTree = "<group>"; };
 		81ED0C6EA381C06DF5A478BD /* StreamTrackMetadataTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamTrackMetadataTests.swift; sourceTree = "<group>"; };
+		8476ADB8F678B631479EC8FE /* ShazamDiagnosticsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShazamDiagnosticsTests.swift; sourceTree = "<group>"; };
 		8543212D37AF30202BD33BBC /* WirelessListeningStats.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WirelessListeningStats.swift; sourceTree = "<group>"; };
 		8800F6E720F2C3333B59800D /* CompanionMetadataProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompanionMetadataProvider.swift; sourceTree = "<group>"; };
 		88790567F035940004B0EBAA /* StreamDiagnosticLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamDiagnosticLogger.swift; sourceTree = "<group>"; };
@@ -216,6 +220,7 @@
 		D51112AD6E39CF8C6BB5DA5E /* SleepScheduleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepScheduleView.swift; sourceTree = "<group>"; };
 		DE5F0B6C67EEBCF54CBB0BF9 /* AudioRoutePickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRoutePickerView.swift; sourceTree = "<group>"; };
 		E2DF93E69BA58ED5894962B2 /* SupportContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupportContent.swift; sourceTree = "<group>"; };
+		E535C18E2A30A6C42FD10977 /* ShazamDiagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShazamDiagnostics.swift; sourceTree = "<group>"; };
 		E7FC085BFCB891F1D4F38FEF /* MetadataTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetadataTests.swift; sourceTree = "<group>"; };
 		EF9C697E6C4C0DD926B4B23E /* WidgetSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetSnapshot.swift; sourceTree = "<group>"; };
 		F137CB8302F4CCFFB5D3A867 /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
@@ -357,6 +362,7 @@
 				AA29A1EC84D04AB7DC690374 /* ProgrammeGuide.swift */,
 				6630D03B5125433D04BF5126 /* RadioPlayerView.swift */,
 				06E77E689E1033689FB1A219 /* RadioStreamEngine.swift */,
+				E535C18E2A30A6C42FD10977 /* ShazamDiagnostics.swift */,
 				ACA583DD67F921EB96066384 /* SleepScheduleService.swift */,
 				D51112AD6E39CF8C6BB5DA5E /* SleepScheduleView.swift */,
 				776676EA121CB50213E02B4F /* SleepTimerService.swift */,
@@ -403,6 +409,7 @@
 				B66A150E5FB7C840D3E237B6 /* ABCProgrammeTests.swift */,
 				34B1977BE352BBA9A863FDE9 /* DelayCorrectionTests.swift */,
 				371505EBCA27460B2E88F9E7 /* PackedAudioHLSTests.swift */,
+				8476ADB8F678B631479EC8FE /* ShazamDiagnosticsTests.swift */,
 				91FFC7D91231CDB151A40688 /* SleepScheduleServiceTests.swift */,
 				4C406508E41B10BF21F36FA3 /* SongRecognitionTests.swift */,
 				76EECFE6B7E52C2FE1E8A08B /* StationDirectoryTests.swift */,
@@ -578,6 +585,7 @@
 				0D7808193B88750064978753 /* ProgrammeGuide.swift in Sources */,
 				1274C83EFCDCD8DB757457B0 /* RadioPlayerView.swift in Sources */,
 				87B4B8F400922775A4CF6495 /* RadioStreamEngine.swift in Sources */,
+				86CCA67A6822B4FFC3C4927D /* ShazamDiagnostics.swift in Sources */,
 				3DDF2F5DDA8C96B73598FB06 /* SleepScheduleService.swift in Sources */,
 				AFA8D78BF4471B2C01D353CD /* SleepScheduleView.swift in Sources */,
 				4228DA29F63E7152486959CE /* SleepTimerService.swift in Sources */,
@@ -621,6 +629,8 @@
 				BA72BF78F64584EAE7CFF968 /* PackedAudioHLS.swift in Sources */,
 				F0964775B74D5464DB6068E6 /* PackedAudioHLSTests.swift in Sources */,
 				21CC75C02ADBE6B253B2C5AC /* ProgrammeGuide.swift in Sources */,
+				752F31C1110E8EF86B9119BD /* ShazamDiagnostics.swift in Sources */,
+				2EAC8B9F2FCC56B883045346 /* ShazamDiagnosticsTests.swift in Sources */,
 				3D8FF267AA6E72161211EC8A /* SleepScheduleService.swift in Sources */,
 				A22D696E51B5C4358CC15B98 /* SleepScheduleServiceTests.swift in Sources */,
 				2CA43D519A02141C85799CF3 /* SongRecognition.swift in Sources */,

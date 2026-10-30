@@ -49,3 +49,39 @@ Run `python3 Scripts/shazamkit-fixture.py` on the Mac before the optional playba
 - https://developer.apple.com/documentation/shazamkit/shlibrary/additems(_:)
 - https://developer.apple.com/design/human-interface-guidelines/shazamkit
 - https://developer.apple.com/help/account/services/shazamkit/
+
+## Physical-device failure diagnostics
+
+The opt-in Stream Diagnostic Log now gives every identification attempt a shared
+`attemptID` across the controller, PCM capture, decoder and Shazam delegate. It
+records app/OS and station/stream configuration, generic output route types,
+network state and changes, audio interruptions, capture backend selection,
+requested/actual PCM format, buffer/frame counts, captured duration, bounded
+peak/RMS silence indicators, HLS empty/stale/future-buffer counts and player
+errors. Decoder HTTP responses and parser/converter OSStatus values are included.
+Fingerprint duration and byte count are recorded, followed by submission,
+matching/no-match/error callbacks, late-result rejection, timeout phase and
+cancellation reason. Library-save attempts have separate outcome/error events.
+
+Apple error domains, codes, descriptions, recovery suggestions and bounded
+underlying error chains are preserved. Arbitrary error userInfo, raw audio,
+fingerprint bytes, request headers, URL credentials/paths/queries and personal
+output-device names are excluded from Shazam events. Service enablement on the
+Apple Developer App ID cannot be confirmed by this runtime log. Recording remains
+opt-in, with the existing capped/rotated storage and complete export.
+
+Enable **Record Stream Diagnostics** before reproducing on the iPhone. Select
+**Shazam**, then refresh after the result and share the complete log. The selected
+filter only changes the viewer; export also includes playback/network context.
+This instrumentation does not establish the cause of a physical-device failure.
+
+Diagnostic validation: the full unit suite passed 100 tests (one existing skip,
+zero failures). Six new diagnostic tests cover nested/bounded Apple errors,
+redaction, attempt correlation, silent PCM/format failure, timeouts and the
+recording switch/export. The generated rolling-HLS UI integration passed and its
+actual app log showed correlated capture, fingerprint generation, submission,
+error, shutdown and retry events. Its simulator callback reported Shazam error
+202 with debug description `Missing entitlements`, plus AMSErrorDomain 306.
+That simulator result is not evidence of the failure on the user's iPhone;
+the updated physical-device log is still needed. Unsigned device Release builds
+also passed; no installation, archive or upload was performed for this change.

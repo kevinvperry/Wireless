@@ -4,6 +4,7 @@ struct StreamDiagnosticView: View {
     private enum Focus: String, CaseIterable, Identifiable {
         case metadata = "Metadata"
         case playback = "Playback"
+        case shazam = "Shazam"
         case all = "All"
         var id: Self { self }
     }
@@ -27,10 +28,10 @@ struct StreamDiagnosticView: View {
                         refresh()
                     }
             } footer: {
-                Text("Records playback, stream and metadata decisions. Broadcast song titles, artists, advertisements, programme labels and technical markers are included so display issues can be diagnosed. Authentication values and device names are excluded.")
+                Text("Records playback, stream, metadata and Shazam identification details. Broadcast song titles, artists, advertisements, programme labels and technical markers are included so display issues can be diagnosed. Authentication values and device names are excluded.")
             }
 
-            metadataSummarySection
+            if focus != .shazam { metadataSummarySection }
 
             Section {
                 Picker("Diagnostic focus", selection: focusBinding) {
@@ -98,7 +99,7 @@ struct StreamDiagnosticView: View {
     }
 
     private func refresh() {
-        lines = StreamDiagnosticLogger.shared.recentLines()
+        lines = StreamDiagnosticLogger.shared.recentLines(limit: 2000)
         do {
             let url = FileManager.default.temporaryDirectory.appendingPathComponent("wireless-stream-diagnostics.log")
             try StreamDiagnosticLogger.shared.writeRedactedExport(to: url)
@@ -138,7 +139,8 @@ struct StreamDiagnosticView: View {
         lines.filter { line in
             let matchesFocus = switch focus {
             case .metadata: line.contains(" metadata.")
-            case .playback: !line.contains(" metadata.")
+            case .playback: !line.contains(" metadata.") && !line.contains(" recognition.")
+            case .shazam: line.contains(" recognition.")
             case .all: true
             }
             return matchesFocus && (searchText.isEmpty || line.localizedCaseInsensitiveContains(searchText))
@@ -176,6 +178,9 @@ struct StreamDiagnosticView: View {
     }
 
     private func icon(for line: String) -> String {
+        if line.contains("recognition.") {
+            return line.contains("failed") || line.contains("timeout") || line.contains("rejected") ? "exclamationmark.triangle.fill" : "shazam.logo"
+        }
         if line.contains("providerFailed") || line.contains("metadata.silence") || line.contains("metadata.stale") || line.contains("rejected.") { return "exclamationmark.triangle.fill" }
         if line.contains("displayed") || line.contains("providerRecovered") || line.contains("providerHeartbeat") { return "checkmark.circle.fill" }
         if line.contains("displayCleared") || line.contains("providerStopped") { return "minus.circle.fill" }
@@ -183,6 +188,7 @@ struct StreamDiagnosticView: View {
     }
 
     private func colour(for line: String) -> Color {
+        if line.contains("recognition.") { return line.contains("failed") || line.contains("timeout") || line.contains("rejected") ? .orange : .purple }
         if line.contains("providerFailed") || line.contains("metadata.silence") || line.contains("metadata.stale") || line.contains("rejected.") { return .orange }
         if line.contains("displayed") || line.contains("providerRecovered") || line.contains("providerHeartbeat") { return .green }
         return .secondary

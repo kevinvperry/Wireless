@@ -83,13 +83,23 @@ final class MobilePlayer: ObservableObject {
     let songRecognition = SongRecognition()
 
     func identifySong() {
+        let audioSession = AVAudioSession.sharedInstance()
+        let fields = directoryAudio.songDiagnosticFields.merging([
+            "requested": String(requested), "buffering": String(buffering),
+            "routeTypes": audioSession.currentRoute.outputs.map { $0.portType.rawValue }.joined(separator: ","),
+            "audioSessionCategory": audioSession.category.rawValue, "audioSessionMode": audioSession.mode.rawValue,
+            "audioSessionSampleRate": String(audioSession.sampleRate), "audioSessionOutputChannels": String(audioSession.outputNumberOfChannels),
+            "networkPath": String(describing: monitor.currentPath.status), "networkExpensive": String(monitor.currentPath.isExpensive),
+            "networkConstrained": String(monitor.currentPath.isConstrained), "compatibleMac": String(ProcessInfo.processInfo.isiOSAppOnMac),
+            "deviceModel": UIDevice.current.model
+        ]) { _, new in new }
         guard requested, !buffering else {
-            songRecognition.unavailable("Play a station and wait for the audio to start, then try again."); return
+            songRecognition.reject("Play a station and wait for the audio to start, then try again.", fields: fields); return
         }
         guard !syncEnabled else {
-            songRecognition.unavailable("Turn off TV Sync to identify a song from the live broadcast."); return
+            songRecognition.reject("Turn off TV Sync to identify a song from the live broadcast.", fields: fields); return
         }
-        let worker = songRecognition.start(explanation: directoryAudio.songSampleExplanation)
+        let worker = songRecognition.start(explanation: directoryAudio.songSampleExplanation, diagnosticFields: fields, privateNames: audioSession.currentRoute.outputs.map(\.portName))
         if let error = directoryAudio.startSongSample(worker, failure: { [weak self] in
             self?.songRecognition.unavailable("This stream could not supply audio for identification. Try another stream in Audio Controls.")
         }) { songRecognition.unavailable(error) }
@@ -234,7 +244,7 @@ final class MobilePlayer: ObservableObject {
             ?? selected.preferredStream?.id ?? ""
         delay = min(30, max(0, (delay * 2).rounded() / 2))
         songRecognition.stopAudio = { [weak self] in self?.directoryAudio.stopSongSample() }
-        directoryAudio.onRecognitionInvalidated = { [weak self] in self?.songRecognition.cancel() }
+        directoryAudio.onRecognitionInvalidated = { [weak self] reason in self?.songRecognition.cancel(reason: reason) }
         directoryAudio.onStatus = { [weak self] update, supported in
             guard let self else { return }
             self.recordPlaybackStatus(update, supportsDelay: supported)
@@ -320,6 +330,7 @@ final class MobilePlayer: ObservableObject {
                 guard let self else { return }
                 let reason = note.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt
                 self.diagnose("audio.routeChanged", "Audio route changed", metadata: ["reason": reason.map(String.init) ?? "unknown"])
+                self.songRecognition.recordEnvironmentChange("audio.routeChanged", ["reason": reason.map(String.init) ?? "unknown", "routeTypes": AVAudioSession.sharedInstance().currentRoute.outputs.map { $0.portType.rawValue }.joined(separator: ",")])
                 if reason == AVAudioSession.RouteChangeReason.oldDeviceUnavailable.rawValue { self.pause() }
                 self.refreshRoute()
                 Task { @MainActor [weak self] in
@@ -359,6 +370,7 @@ final class MobilePlayer: ObservableObject {
             let connected = path.status == .satisfied
             Task { @MainActor in
                 guard let self else { return }
+                self.songRecognition.recordEnvironmentChange("network.pathChanged", ["status": String(describing: path.status), "expensive": String(path.isExpensive), "constrained": String(path.isConstrained)])
                 if connected != self.hadConnection {
                     self.diagnose("network.path", connected ? "Network connection restored" : "Network connection lost", metadata: ["playing": "\(self.requested)"])
                 }
@@ -437,6 +449,7 @@ final class MobilePlayer: ObservableObject {
 
     private func handleInterruptionBegan() {
         diagnose("audio.interrupted", "System audio interruption began", metadata: ["wasPlaying": "\(requested)"])
+        songRecognition.recordEnvironmentChange("audio.interrupted", ["wasPlaying": String(requested)])
         let wasRequested = requested
         pause()
         resumeAfterInterruption = wasRequested
@@ -553,7 +566,7 @@ final class MobilePlayer: ObservableObject {
     func adjust(_ amount: Double) { delay = min(30, max(0, delay + amount)) }
     func sceneChanged(_ phase: ScenePhase) {
         diagnose("app.scene", "Scene phase changed", metadata: ["phase": String(describing: phase), "playing": "\(requested)", "buffering": "\(buffering)"])
-        if phase != .active, songRecognition.state.isWorking { songRecognition.cancel() }
+        if phase != .active, songRecognition.state.isWorking { songRecognition.cancel(reason: "scene-" + String(describing: phase)) }
         isForeground = phase == .active
         if isForeground { recoveryGraceUsed = false; endRecoveryGrace() }
         if phase == .active {

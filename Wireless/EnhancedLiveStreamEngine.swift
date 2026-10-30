@@ -11,23 +11,32 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
 
     // Sampling mode reuses the stream parser/decoder without creating or starting
     // an audio engine. Its owner supplies a deadline and stops after one sample.
+    private var sampleDiagnostics: ShazamDiagnosticContext?
+    private var networkBytes = 0
+    private var networkChunks = 0
+    private var nextNetworkReport = 0.0
     private var sampleOnly = false
     private var sampledSeconds = 0.0
     private var sampleConsumer: (@Sendable (AVAudioPCMBuffer) -> Void)?
     private var sampleFailure: (@Sendable () -> Void)?
 
-    func sample(stream: StationStream, receive: @escaping @Sendable (AVAudioPCMBuffer) -> Void,
+    func sample(stream: StationStream, diagnostics: ShazamDiagnosticContext? = nil, receive: @escaping @Sendable (AVAudioPCMBuffer) -> Void,
                 failure: @escaping @Sendable () -> Void) {
         work.async {
             self.close()
+            self.sampleDiagnostics = diagnostics
             self.stream = stream; self.sampleOnly = true
             self.sampleConsumer = receive; self.sampleFailure = failure
             self.requested = true; self.connect()
         }
     }
 
-    func observeSamples(_ receive: (@Sendable (AVAudioPCMBuffer) -> Void)?) {
-        work.async { self.sampleConsumer = receive }
+    func observeSamples(_ receive: (@Sendable (AVAudioPCMBuffer) -> Void)?, diagnostics: ShazamDiagnosticContext? = nil) {
+        work.async {
+            self.sampleConsumer = receive
+            self.sampleDiagnostics = diagnostics
+            diagnostics?.record("decoder.observer", "Observing existing playback decoder", ["started": String(self.started), "formatReady": String(self.formatReady), "scheduledSeconds": String(self.scheduledSeconds)])
+        }
     }
 
     private let work = DispatchQueue(label: "au.com.kevmarl.Wireless.vocalBoost")
@@ -63,7 +72,7 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
     func configure(stream: StationStream, level: VocalBoostLevel, musicPreset: MusicPreset = .off, playbackID: UUID) {
         work.async {
             self.close()
-            self.sampleOnly = false; self.sampleConsumer = nil; self.sampleFailure = nil
+            self.sampleOnly = false; self.sampleConsumer = nil; self.sampleFailure = nil; self.sampleDiagnostics = nil
             self.playbackID = playbackID
             self.stream = stream
             self.level = level
@@ -96,7 +105,7 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
         work.async {
             self.requested = false
             self.close()
-            self.sampleConsumer = nil; self.sampleFailure = nil; self.sampleOnly = false
+            self.sampleConsumer = nil; self.sampleFailure = nil; self.sampleOnly = false; self.sampleDiagnostics = nil
         }
     }
 
@@ -123,9 +132,13 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
     private func connect() {
         guard requested || preparing, let stream, let url = stream.playableURL else { return }
         close(keepRequest: true)
+        networkBytes = 0; networkChunks = 0; nextNetworkReport = ProcessInfo.processInfo.systemUptime + 2
+        sampleDiagnostics?.record("decoder.connect", "Connecting recognition sample decoder", ["streamOrigin": url.host ?? "unknown", "format": stream.format, "sampleOnly": String(sampleOnly), "requestHeaderCount": String(stream.request_headers.count)])
         let hint: AudioFileTypeID = stream.format != "mp3" ? kAudioFileAAC_ADTSType : kAudioFileMP3Type
-        guard AudioFileStreamOpen(Unmanaged.passUnretained(self).toOpaque(), enhancedPropertyCallback,
-                                  enhancedPacketsCallback, hint, &parser) == noErr else {
+        let openStatus = AudioFileStreamOpen(Unmanaged.passUnretained(self).toOpaque(), enhancedPropertyCallback,
+                                  enhancedPacketsCallback, hint, &parser)
+        sampleDiagnostics?.record("decoder.parserOpened", "AudioFileStream initialised", ["OSStatus": String(openStatus), "fileTypeHint": String(hint)])
+        guard openStatus == noErr else {
             fail("Could not prepare sound processing.")
             return
         }
@@ -150,6 +163,9 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
     }
 
     private func close(keepRequest: Bool = false) {
+        if sampleConsumer != nil {
+            sampleDiagnostics?.record("decoder.stopped", "Sample decoder connection stopped", ["sampledSeconds": String(sampledSeconds), "networkBytes": String(networkBytes), "networkChunks": String(networkChunks), "keepRequest": String(keepRequest)])
+        }
         generation += 1
         pendingFailure = false
         playlistTask?.cancel(); playlistTask = nil
@@ -194,6 +210,7 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
         do {
             let processor = sampleOnly ? nil : try VocalBoostProcessor(format: output, level: level, musicPreset: musicPreset)
             processor?.setVolume(outputVolume)
+            sampleDiagnostics?.record("decoder.format", "Decoder PCM format prepared", ShazamDiagnosticContext.audioFormat(output).merging(["compressedFormatID": String(description.mFormatID)]) { _, new in new })
             self.compressedFormat = source
             self.pcmFormat = output
             self.converter = converter
@@ -252,6 +269,7 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
             return compressed
         }
         guard conversionError == nil, status != .error, pcm.frameLength > 0 else {
+            if let conversionError { sampleDiagnostics?.error("decoder.conversionFailed", "PCM conversion failed", conversionError, details: ["status": String(status.rawValue), "frames": String(pcm.frameLength)]) }
             fail("This stream could not be decoded for sound processing.")
             return
         }
@@ -297,6 +315,7 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
 
     private func fail(_ message: String) {
         guard !pendingFailure else { return }
+        sampleDiagnostics?.record("decoder.failed", "Sample parser/decoder failed", ["reason": message, "networkBytes": String(networkBytes), "sampledSeconds": String(sampledSeconds)])
         pendingFailure = true
         let token = generation
         // AudioFileStream invokes parser callbacks synchronously. Never close
@@ -348,6 +367,7 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
             guard let self else { return }
             self.work.async {
                 guard self.generation == token else { return }
+                self.logSampleResponse("playlist", response: response, error: error, bytes: data?.count ?? 0)
                 guard error == nil, (response as? HTTPURLResponse)?.statusCode == 200,
                       let data, let text = String(data: data, encoding: .utf8) else {
                     self.fail("The HLS playlist could not be loaded for sound processing."); return
@@ -384,6 +404,7 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
             self.work.async {
                 guard self.generation == token else { return }
                 self.fetchingSegment = false
+                self.logSampleResponse("segment", response: response, error: error, bytes: data?.count ?? 0)
                 guard error == nil, (response as? HTTPURLResponse)?.statusCode == 200,
                       let data, let audio = PackedAudioHLS.audio(in: data), let parser = self.parser else {
                     self.fail("This HLS stream does not supply compatible unencrypted AAC segments."); return
@@ -392,6 +413,7 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
                     guard let base = bytes.baseAddress else { return kAudio_ParamError }
                     return AudioFileStreamParseBytes(parser, UInt32(bytes.count), base, [])
                 }
+                if result != noErr { self.sampleDiagnostics?.record("decoder.parseFailed", "HLS segment parser failed", ["OSStatus": String(result), "sequence": String(next)]) }
                 guard result == noErr, !self.pendingFailure, self.generation == token, next < Int.max else {
                     if self.generation == token { self.fail("The HLS audio could not be decoded for sound processing.") }
                     return
@@ -403,20 +425,45 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
         segmentTask?.resume()
     }
 
+    private func logSampleResponse(_ stage: String, response: URLResponse?, error: Error?, bytes: Int) {
+        guard let trace = sampleDiagnostics else { return }
+        let details = ["stage": stage, "HTTPStatus": (response as? HTTPURLResponse).map { String($0.statusCode) } ?? "none",
+            "MIMEType": response?.mimeType ?? "none", "bytes": String(bytes), "origin": response?.url?.host ?? "none"]
+        if let error { trace.error("network.failed", "Sample network request failed", error, details: details) }
+        else { trace.record("network.response", "Sample network response", details) }
+    }
+
+    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse,
+                    completionHandler: @escaping @Sendable (URLSession.ResponseDisposition) -> Void) {
+        work.async { [self] in
+            if self.session === session { logSampleResponse("response-headers", response: response, error: nil, bytes: 0) }
+            completionHandler(.allow)
+        }
+    }
+
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
         work.async {
             guard !self.pendingFailure, self.session === session, let parser = self.parser else { return }
+            self.networkBytes += data.count; self.networkChunks += 1
+            if ProcessInfo.processInfo.systemUptime >= self.nextNetworkReport {
+                self.nextNetworkReport = ProcessInfo.processInfo.systemUptime + 2
+                self.sampleDiagnostics?.record("network.progress", "Sample connection received data", ["bytes": String(self.networkBytes), "chunks": String(self.networkChunks)])
+            }
             let result = data.withUnsafeBytes { bytes -> OSStatus in
                 guard let base = bytes.baseAddress else { return noErr }
                 return AudioFileStreamParseBytes(parser, UInt32(bytes.count), base, [])
             }
-            if result != noErr { self.fail("The direct stream could not be decoded.") }
+            if result != noErr {
+                self.sampleDiagnostics?.record("decoder.parseFailed", "AudioFileStream rejected network bytes", ["OSStatus": String(result)])
+                self.fail("The direct stream could not be decoded.")
+            }
         }
     }
 
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
         work.async {
             guard self.session === session else { return }
+            self.logSampleResponse("connection-completed", response: task.response, error: error, bytes: self.networkBytes)
             if !self.requested { self.close(); return }
             self.fail(error == nil ? "The stream ended." : "The stream connection was lost.")
         }

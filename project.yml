@@ -131,6 +131,7 @@ targets:
       - path: Shared/StationListOrganisation.swift
       - path: Shared/WirelessContact.swift
       - path: Wireless/HLSSongSample.swift
+      - path: Wireless/ShazamDiagnostics.swift
       - path: Wireless/SongRecognition.swift
       - path: Wireless/VocalBoost.swift
       - path: Wireless/HLSVocalBoostTap.swift

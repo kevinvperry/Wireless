@@ -8,7 +8,8 @@ final class StreamDiagnosticLogger: @unchecked Sendable {
     static let shared = StreamDiagnosticLogger()
 
     private let queue = DispatchQueue(label: "au.com.kevmarl.Wireless.stream-diagnostics")
-    private let defaults = UserDefaults.standard
+    private let defaults: UserDefaults
+    private let customDirectory: URL?
     private let enabledKey = "streamDiagnosticLoggingEnabled"
     private let maximumBytes = 2 * 1_024 * 1_024
     private let fileManager = FileManager.default
@@ -28,7 +29,9 @@ final class StreamDiagnosticLogger: @unchecked Sendable {
         }
     }
 
-    private init() {}
+    init(defaults: UserDefaults = .standard, directory: URL? = nil) {
+        self.defaults = defaults; self.customDirectory = directory
+    }
 
     func record(
         _ event: String,
@@ -64,7 +67,7 @@ final class StreamDiagnosticLogger: @unchecked Sendable {
             var output = "Wireless Stream Diagnostic Log\n"
             output += "Version: \(Self.appVersion)\n"
             output += "Created: \(formatter.string(from: Date()))\n"
-            output += "Privacy: stream URLs and broadcaster-supplied metadata are recorded; authentication values and device names are excluded.\n\n"
+            output += "Privacy: stream URLs, broadcaster metadata and correlated Shazam diagnostics are recorded; raw audio, fingerprints, authentication values and device names are excluded.\n\n"
             if let previous = try? String(contentsOf: rotatedURL, encoding: .utf8) { output += previous }
             if let current = try? String(contentsOf: logURL, encoding: .utf8) { output += current }
             try output.write(to: destination, atomically: true, encoding: .utf8)
@@ -100,6 +103,7 @@ final class StreamDiagnosticLogger: @unchecked Sendable {
     }
 
     private var directoryURL: URL {
+        if let customDirectory { return customDirectory }
         let root = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return root.appendingPathComponent("Wireless", isDirectory: true)
     }
