@@ -146,6 +146,13 @@ final class MobilePlayer: ObservableObject {
     let guide = ProgrammeGuide()
     private let monitor = NWPathMonitor()
     private var subscriptions = Set<AnyCancellable>()
+    private var widgetCoordinator: WidgetSnapshotCoordinator?
+
+    func publishWidgetSnapshot() {
+        if widgetCoordinator == nil { widgetCoordinator = WidgetSnapshotCoordinator(player: self) }
+        else { widgetCoordinator?.publish(player: self) }
+    }
+
     private var resumeAfterInterruption = false
     private var hadConnection = true
     private var isForeground = true

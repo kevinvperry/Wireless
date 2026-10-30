@@ -257,3 +257,14 @@ Broadcasters and rights holders can use the same station-report action to reques
 ### Station information is missing
 
 Station descriptions, contact details, artwork, programme guides and song metadata depend on information supplied by the directory or broadcaster. Missing information does not prevent playback. Directory corrections and artwork updates can appear without requiring a new app version after the app refreshes its station data.
+
+
+## Home & Lock Screen Widgets
+
+Add **Wireless Stations** from the Home Screen widget gallery. Home Screen widgets use a charcoal glass background, larger selected-station artwork, purple playback headings and glass-style play/pause buttons. Small shows the selected station; medium adds two favourites, large adds four and extra-large on iPad adds up to six. Favourites follow **Favourites → Reorder**, excluding the station already shown at the top. If no station is selected, the first favourite is shown.
+
+Tap play beside a station to start it or switch to it. Pause stops the active station. Widget controls use the normal playback settings and audio output.
+
+Circular and rectangular Lock Screen widgets control the selected station. The inline Lock Screen widget shows the station name and opens Wireless when tapped.
+
+Open Wireless once after installing and select a station or add favourites. Live radio needs internet access. The system schedules widget updates, so artwork and playback state may take a moment to refresh. After a device restart, unlock it once to make widget data available.

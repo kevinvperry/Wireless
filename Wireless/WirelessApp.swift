@@ -8,6 +8,7 @@ struct WirelessApp: App {
         // Install the notification delegate before launch completes so a Sleep
         // Schedule "Still Listening" tap that wakes the app is delivered.
         NotificationService.shared.configure()
+        MobilePlayer.shared.publishWidgetSnapshot()
     }
 
     #if DEBUG

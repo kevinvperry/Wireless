@@ -40,8 +40,19 @@ struct WirelessSupportSection: Identifiable {
 enum WirelessSupportGuide {
     static let sections: [WirelessSupportSection] = [
         gettingStarted, discover, player, favourites, sync, streams,
-        vocalBoost, deepBass, sleepTimer, sleepSchedule, systemPlayback, carPlay, listeningStats, listeningHistory, settings, contact, troubleshooting
+        vocalBoost, deepBass, sleepTimer, sleepSchedule, systemPlayback, widgets, carPlay, listeningStats, listeningHistory, settings, contact, troubleshooting
     ]
+
+    private static let widgets = WirelessSupportSection(
+        id: "widgets", icon: "square.grid.2x2", title: "Home & Lock Screen Widgets",
+        summary: "Play your selected station and highest-ranked favourites",
+        blocks: [
+            .paragraph("Add **Wireless Stations** from the Home Screen widget gallery. Home Screen widgets use a charcoal glass background, larger selected-station artwork, purple playback headings and glass-style play/pause buttons. Small shows the selected station, medium adds two favourites, large adds four and extra-large on iPad adds up to six. Favourites follow the order in **Favourites → Reorder**, excluding the station already shown at the top."),
+            .paragraph("Tap a station’s play button to start it. Playing another station switches the current station; pause stops the active station. These controls use Wireless’s normal playback settings and audio output."),
+            .paragraph("Add circular or rectangular Wireless widgets when customising the Lock Screen for selected-station play/pause. The inline widget shows the station name and opens Wireless when tapped. If no station is selected, widgets use the first favourite."),
+            .callout(.note, "Open Wireless once after installing, then select a station or add favourites. Widgets need an internet connection to start live radio. Artwork and playback state may take a moment to refresh because the system schedules widget updates. After restarting the device, unlock it once to make shared widget data available.")
+        ]
+    )
 
     private static let gettingStarted = WirelessSupportSection(
         id: "getting-started", icon: "sparkles", title: "Getting Started",

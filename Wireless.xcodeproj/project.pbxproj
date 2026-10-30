@@ -11,13 +11,18 @@
 		08DAD67874CBEB2500A172D1 /* SleepTimerSheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46E14DACD66F8DAD68FBCE55 /* SleepTimerSheetView.swift */; };
 		0D7808193B88750064978753 /* ProgrammeGuide.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA29A1EC84D04AB7DC690374 /* ProgrammeGuide.swift */; };
 		0D78887AA33D15E59DD98787 /* StreamTrackMetadataTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81ED0C6EA381C06DF5A478BD /* StreamTrackMetadataTests.swift */; };
+		0D8712172736E69B915B5826 /* AppIntents.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 761BC20B81D99D68D12AEA78 /* AppIntents.framework */; };
+		0DDDF9B6DC5163BDA52487E6 /* StationPlaybackIntent+Widget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 784516A2B4624F12C07B4312 /* StationPlaybackIntent+Widget.swift */; };
 		0E1BE1AF5844D7913660C972 /* WirelessApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C8DF2AC33887409191F2781 /* WirelessApp.swift */; };
 		1274C83EFCDCD8DB757457B0 /* RadioPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6630D03B5125433D04BF5126 /* RadioPlayerView.swift */; };
 		1A550EFD3663A227D9535BDE /* CarPlayStationPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47A2A61AFBF289006DDAA5D2 /* CarPlayStationPresenter.swift */; };
 		1AB81CB4588920248D4C2095 /* WirelessContact.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3717973812D13753B64AA286 /* WirelessContact.swift */; };
+		1CB256F96578ECBF511E07B0 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B73DF9060161A9AE8043FAAB /* WidgetKit.framework */; };
 		1F07BD3BF33F2F59C35FFC53 /* StreamRecoveryPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5345DD72CF65E9CFDB358002 /* StreamRecoveryPolicyTests.swift */; };
 		1FC47233BE7FFDEA69C06427 /* DelayCorrectionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34B1977BE352BBA9A863FDE9 /* DelayCorrectionTests.swift */; };
+		211553971FC9D3C9942089CD /* StationPlaybackIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB08B7E6102E1180557AC742 /* StationPlaybackIntent.swift */; };
 		21CC75C02ADBE6B253B2C5AC /* ProgrammeGuide.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA29A1EC84D04AB7DC690374 /* ProgrammeGuide.swift */; };
+		220A482813F616386E6904BD /* WirelessWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 7C1C18D8E0FE619A3AED568E /* WirelessWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		22B4604A476E15BE939B98DE /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CCDDE53C4D89A836A68EB050 /* Assets.xcassets */; };
 		23E33CD7E3C09DCF55E53DE1 /* StreamDiagnosticView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29D4ED78062FDB9798BCDE64 /* StreamDiagnosticView.swift */; };
 		34DD8193B4205D3E2AA6F797 /* CarPlayCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 660E395F79C005C6A04D90BD /* CarPlayCoordinator.swift */; };
@@ -27,6 +32,7 @@
 		3D8FF267AA6E72161211EC8A /* SleepScheduleService.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACA583DD67F921EB96066384 /* SleepScheduleService.swift */; };
 		3DDF2F5DDA8C96B73598FB06 /* SleepScheduleService.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACA583DD67F921EB96066384 /* SleepScheduleService.swift */; };
 		3E1C5920D6BC65F88D03A8E6 /* WirelessListeningStatsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DB035AE0DBE09DD1962C935 /* WirelessListeningStatsStore.swift */; };
+		3EE6E07B346FBBD8AC6E74D0 /* AppIntents.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 761BC20B81D99D68D12AEA78 /* AppIntents.framework */; };
 		412F25FAC85D50C1022B90C2 /* WirelessContactTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15C674C8AE307BA75136D01F /* WirelessContactTests.swift */; };
 		4228DA29F63E7152486959CE /* SleepTimerService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 776676EA121CB50213E02B4F /* SleepTimerService.swift */; };
 		4588990CBB470EAB42A2D669 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F137CB8302F4CCFFB5D3A867 /* NotificationService.swift */; };
@@ -38,19 +44,28 @@
 		5159695192C19A96DADBAC1A /* CarPlayArtworkProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4B565D9CE0CF8E403FFE1AF /* CarPlayArtworkProvider.swift */; };
 		55FD82A995E07EB83D1EF85D /* WirelessLayoutMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C4C5FB32A97D0A7967DB3B7 /* WirelessLayoutMetrics.swift */; };
 		590F0BDA4B946413726899F6 /* WirelessStatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3884AC1AE2B969BCC399EC85 /* WirelessStatsView.swift */; };
+		5B177F72636C152AF4AB4432 /* WidgetSharedStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DF558FAB27BA315EB64422C /* WidgetSharedStorage.swift */; };
 		6B3A8C68F3F45E516032FCAB /* ABCProgrammeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B66A150E5FB7C840D3E237B6 /* ABCProgrammeTests.swift */; };
 		73E1D0864EB74C991822F99F /* CompanionMetadataProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8800F6E720F2C3333B59800D /* CompanionMetadataProvider.swift */; };
 		7CA4F8F83D57C89DAD394095 /* CarPlaySceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC86E444D35081690AAF4613 /* CarPlaySceneDelegate.swift */; };
+		7D26F509B3DA4B458D000344 /* WirelessStationsWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA576000F2FE961E98D369FF /* WirelessStationsWidget.swift */; };
+		7E77D8A392CA421540FD8661 /* StationPlaybackIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB08B7E6102E1180557AC742 /* StationPlaybackIntent.swift */; };
 		86957CB1D807DBCED53ABFA6 /* AcknowledgementsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B93FC87D9BD4E8BACD869C22 /* AcknowledgementsView.swift */; };
 		87B4B8F400922775A4CF6495 /* RadioStreamEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06E77E689E1033689FB1A219 /* RadioStreamEngine.swift */; };
+		8DA253E234BFDF0611425715 /* WidgetSnapshotCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3EDF13A92E9C47AB441A9BF /* WidgetSnapshotCoordinator.swift */; };
 		8E173D4B74CBCB45947A3036 /* PlayerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E1D262786C716DAE7D8E2FA /* PlayerTests.swift */; };
 		95740333BD9D9B2F2C99148B /* CompanionMetadataProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8800F6E720F2C3333B59800D /* CompanionMetadataProvider.swift */; };
 		96A4BF33FDE022CC08ED3BAC /* PlayerMetadataText.swift in Sources */ = {isa = PBXBuildFile; fileRef = 556152EC26B1D066815D33FA /* PlayerMetadataText.swift */; };
 		9AE1A4D2D0BDB13104A385EC /* StationListOrganisation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 099593907025706B72796BE6 /* StationListOrganisation.swift */; };
 		9B71D4835E4A77EC17C37E84 /* DelayCorrection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25D222B4D6107093651B654D /* DelayCorrection.swift */; };
+		9BBF428FD288925338CE5C7F /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B73DF9060161A9AE8043FAAB /* WidgetKit.framework */; };
 		9D042C3E12E26AE28D1BDACD /* MetadataTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7FC085BFCB891F1D4F38FEF /* MetadataTests.swift */; };
 		9E9A282431B79EC5423B2A0A /* DelayCorrection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25D222B4D6107093651B654D /* DelayCorrection.swift */; };
+		A04FE92DF27BB7C03F8CDD0B /* WidgetSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF9C697E6C4C0DD926B4B23E /* WidgetSnapshot.swift */; };
+		A14F65A4FCDF4EB2D10B7963 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BA72FAA2C094B89B91EDDB0A /* SwiftUI.framework */; };
 		A22D696E51B5C4358CC15B98 /* SleepScheduleServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91FFC7D91231CDB151A40688 /* SleepScheduleServiceTests.swift */; };
+		A2C178BCD29215CED07583B2 /* StationPlaybackIntent+Widget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 784516A2B4624F12C07B4312 /* StationPlaybackIntent+Widget.swift */; };
+		A4FCDC93435FF8EEDC612AD2 /* WirelessWidgetsBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13148A127378BEBB2D0C7CCC /* WirelessWidgetsBundle.swift */; };
 		A7781DD1F617CE35AD240EDD /* MobilePlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 570A0F3D564007C7DEDEFA92 /* MobilePlayer.swift */; };
 		A7B4F7A8D3177BF992434FF6 /* VocalBoost.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E4068851564EEABF96B4AAD /* VocalBoost.swift */; };
 		A913DE396DD4F3C2C7C7D061 /* HLSVocalBoostTap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D2ECB518B3459B678D37A00 /* HLSVocalBoostTap.swift */; };
@@ -59,13 +74,19 @@
 		B5E7DAD5A8EBF39FF51D1A61 /* StreamDiagnosticLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88790567F035940004B0EBAA /* StreamDiagnosticLogger.swift */; };
 		B9B9F6008DA6F9E44BD47CE0 /* DiscoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C493F3E1378AB649558A420 /* DiscoverView.swift */; };
 		BA72BF78F64584EAE7CFF968 /* PackedAudioHLS.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2ACAC459114DA6CC09A62240 /* PackedAudioHLS.swift */; };
+		BCB650620904D0F1637B2869 /* WirelessStationsWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA576000F2FE961E98D369FF /* WirelessStationsWidget.swift */; };
 		BF7F85E69DFC81D5E973DFD1 /* VocalBoostTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F54BA784B105471D8B05AE25 /* VocalBoostTests.swift */; };
+		C5792F9E9B524F4407F92F3C /* WidgetSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF9C697E6C4C0DD926B4B23E /* WidgetSnapshot.swift */; };
+		C5E091140EA632F066A41267 /* WidgetSharedStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DF558FAB27BA315EB64422C /* WidgetSharedStorage.swift */; };
 		C89F04449FBB07EC59415E59 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BA72FAA2C094B89B91EDDB0A /* SwiftUI.framework */; };
 		C8E710ADFE49E904E1AEDDB7 /* StreamDiagnosticLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88790567F035940004B0EBAA /* StreamDiagnosticLogger.swift */; };
 		CA7BF2C861CB4E04B35CF97F /* StationDirectory.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9002A99CCA693E52ACD1413 /* StationDirectory.swift */; };
+		CCB909B9B7CBABB725F50313 /* WidgetSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF9C697E6C4C0DD926B4B23E /* WidgetSnapshot.swift */; };
 		CF0E6C004B84FD3ED8FDDBD2 /* HLSVocalBoostTap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D2ECB518B3459B678D37A00 /* HLSVocalBoostTap.swift */; };
 		D46C9703D6C56A9551DB03E7 /* StreamRecoveryPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D3048423531FE7F443A0CBE /* StreamRecoveryPolicy.swift */; };
 		D565155980B3FA013496C850 /* StreamRecoveryPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D3048423531FE7F443A0CBE /* StreamRecoveryPolicy.swift */; };
+		D7B616D2CEBD11B9AAF5841C /* StationPlaybackIntent+App.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63936943A4B3FD2BB6BDC477 /* StationPlaybackIntent+App.swift */; };
+		D9AEE5CE62AAF6B3028F5B31 /* WidgetSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52653292C3A03A61E7DA000F /* WidgetSnapshotTests.swift */; };
 		DE659AB256BFE3DCA18317DD /* DirectoryAudio.swift in Sources */ = {isa = PBXBuildFile; fileRef = 356B5F063701F0E28EDEFEA3 /* DirectoryAudio.swift */; };
 		E1AF39BD2B6BFE81EDAA2C26 /* WirelessContact.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3717973812D13753B64AA286 /* WirelessContact.swift */; };
 		E28F9FFAAAB0C2668D4C823F /* WirelessListeningStats.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8543212D37AF30202BD33BBC /* WirelessListeningStats.swift */; };
@@ -73,8 +94,11 @@
 		E51D3E997F900F74F15CC0ED /* FavouritesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F24F4BD9ABA74A114F3157D6 /* FavouritesView.swift */; };
 		E8875F45240769037878240A /* WirelessListeningHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 509C5AC7230E3614C5D34982 /* WirelessListeningHistoryView.swift */; };
 		E9D7118009B5E543896324EB /* StationListOrganisation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 099593907025706B72796BE6 /* StationListOrganisation.swift */; };
+		ECFA4DDD9468729875A7E521 /* WidgetLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13F6BBECC5B47503C8C409E2 /* WidgetLayoutTests.swift */; };
 		EDF8494D2E64C5631BAEA82A /* CarPlay.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 45AF71D0E042FF2350372216 /* CarPlay.framework */; };
 		F0964775B74D5464DB6068E6 /* PackedAudioHLSTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 371505EBCA27460B2E88F9E7 /* PackedAudioHLSTests.swift */; };
+		F1535BA208BDB0FB8D3F1AFA /* WidgetSharedStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DF558FAB27BA315EB64422C /* WidgetSharedStorage.swift */; };
+		F4A1138C7519D6D704BBB887 /* StationPlaybackIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB08B7E6102E1180557AC742 /* StationPlaybackIntent.swift */; };
 		FA8EF1F9D94D77C3276678A5 /* WirelessListeningStats.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8543212D37AF30202BD33BBC /* WirelessListeningStats.swift */; };
 		FC8F2BEDAB3CA8A742CA7A26 /* PackedAudioHLS.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2ACAC459114DA6CC09A62240 /* PackedAudioHLS.swift */; };
 		FD74FF32174FAD10B063DC71 /* EnhancedLiveStreamEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F70847912CBE75BB5C5C2D6 /* EnhancedLiveStreamEngine.swift */; };
@@ -88,13 +112,36 @@
 			remoteGlobalIDString = BA921306524224B290A4AA8F;
 			remoteInfo = Wireless;
 		};
+		B83C83120661DC4995E40AF8 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = FC4E286210C214DD22DF33B5 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = E3C52B4C560140056CB088B4;
+			remoteInfo = WirelessWidgets;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		2366CE4E140B47FC6A989FC0 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				220A482813F616386E6904BD /* WirelessWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		049BFE9328AA0F2618AFA984 /* WirelessTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = WirelessTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		06E77E689E1033689FB1A219 /* RadioStreamEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RadioStreamEngine.swift; sourceTree = "<group>"; };
 		099593907025706B72796BE6 /* StationListOrganisation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationListOrganisation.swift; sourceTree = "<group>"; };
 		0E4068851564EEABF96B4AAD /* VocalBoost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VocalBoost.swift; sourceTree = "<group>"; };
+		13148A127378BEBB2D0C7CCC /* WirelessWidgetsBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WirelessWidgetsBundle.swift; sourceTree = "<group>"; };
+		13F6BBECC5B47503C8C409E2 /* WidgetLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetLayoutTests.swift; sourceTree = "<group>"; };
 		15C674C8AE307BA75136D01F /* WirelessContactTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WirelessContactTests.swift; sourceTree = "<group>"; };
 		1DB035AE0DBE09DD1962C935 /* WirelessListeningStatsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WirelessListeningStatsStore.swift; sourceTree = "<group>"; };
 		25D222B4D6107093651B654D /* DelayCorrection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DelayCorrection.swift; sourceTree = "<group>"; };
@@ -113,18 +160,24 @@
 		45AF71D0E042FF2350372216 /* CarPlay.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CarPlay.framework; path = System/Library/Frameworks/CarPlay.framework; sourceTree = SDKROOT; };
 		46E14DACD66F8DAD68FBCE55 /* SleepTimerSheetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepTimerSheetView.swift; sourceTree = "<group>"; };
 		47A2A61AFBF289006DDAA5D2 /* CarPlayStationPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarPlayStationPresenter.swift; sourceTree = "<group>"; };
+		4DF558FAB27BA315EB64422C /* WidgetSharedStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetSharedStorage.swift; sourceTree = "<group>"; };
 		509C5AC7230E3614C5D34982 /* WirelessListeningHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WirelessListeningHistoryView.swift; sourceTree = "<group>"; };
+		52653292C3A03A61E7DA000F /* WidgetSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetSnapshotTests.swift; sourceTree = "<group>"; };
 		5345DD72CF65E9CFDB358002 /* StreamRecoveryPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamRecoveryPolicyTests.swift; sourceTree = "<group>"; };
 		556152EC26B1D066815D33FA /* PlayerMetadataText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerMetadataText.swift; sourceTree = "<group>"; };
 		570A0F3D564007C7DEDEFA92 /* MobilePlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MobilePlayer.swift; sourceTree = "<group>"; };
 		58BFE7BF60266E86CADBF19A /* Wireless.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Wireless.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		591B7217A9AFB466BB7BCB52 /* SupportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupportView.swift; sourceTree = "<group>"; };
+		63936943A4B3FD2BB6BDC477 /* StationPlaybackIntent+App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StationPlaybackIntent+App.swift"; sourceTree = "<group>"; };
 		660E395F79C005C6A04D90BD /* CarPlayCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarPlayCoordinator.swift; sourceTree = "<group>"; };
 		6630D03B5125433D04BF5126 /* RadioPlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RadioPlayerView.swift; sourceTree = "<group>"; };
 		6BFD4212FFDC5CC34E34973C /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		6D3048423531FE7F443A0CBE /* StreamRecoveryPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamRecoveryPolicy.swift; sourceTree = "<group>"; };
+		761BC20B81D99D68D12AEA78 /* AppIntents.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppIntents.framework; path = System/Library/Frameworks/AppIntents.framework; sourceTree = SDKROOT; };
 		76EECFE6B7E52C2FE1E8A08B /* StationDirectoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationDirectoryTests.swift; sourceTree = "<group>"; };
 		776676EA121CB50213E02B4F /* SleepTimerService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepTimerService.swift; sourceTree = "<group>"; };
+		784516A2B4624F12C07B4312 /* StationPlaybackIntent+Widget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StationPlaybackIntent+Widget.swift"; sourceTree = "<group>"; };
+		7C1C18D8E0FE619A3AED568E /* WirelessWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = WirelessWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		7C4C5FB32A97D0A7967DB3B7 /* WirelessLayoutMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WirelessLayoutMetrics.swift; sourceTree = "<group>"; };
 		7E1D262786C716DAE7D8E2FA /* PlayerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerTests.swift; sourceTree = "<group>"; };
 		7F70847912CBE75BB5C5C2D6 /* EnhancedLiveStreamEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnhancedLiveStreamEngine.swift; sourceTree = "<group>"; };
@@ -137,20 +190,25 @@
 		AA29A1EC84D04AB7DC690374 /* ProgrammeGuide.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgrammeGuide.swift; sourceTree = "<group>"; };
 		ACA583DD67F921EB96066384 /* SleepScheduleService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepScheduleService.swift; sourceTree = "<group>"; };
 		AE1362AA3B04385625EA8C94 /* StreamTrackMetadata.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamTrackMetadata.swift; sourceTree = "<group>"; };
+		B3EDF13A92E9C47AB441A9BF /* WidgetSnapshotCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetSnapshotCoordinator.swift; sourceTree = "<group>"; };
 		B66A150E5FB7C840D3E237B6 /* ABCProgrammeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ABCProgrammeTests.swift; sourceTree = "<group>"; };
+		B73DF9060161A9AE8043FAAB /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		B9002A99CCA693E52ACD1413 /* StationDirectory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationDirectory.swift; sourceTree = "<group>"; };
 		B93FC87D9BD4E8BACD869C22 /* AcknowledgementsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AcknowledgementsView.swift; sourceTree = "<group>"; };
 		BA72FAA2C094B89B91EDDB0A /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		BB08B7E6102E1180557AC742 /* StationPlaybackIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationPlaybackIntent.swift; sourceTree = "<group>"; };
 		C3C4D01D0CF104193A7543DC /* Wireless.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Wireless.entitlements; sourceTree = "<group>"; };
 		CCDDE53C4D89A836A68EB050 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		D51112AD6E39CF8C6BB5DA5E /* SleepScheduleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepScheduleView.swift; sourceTree = "<group>"; };
 		DE5F0B6C67EEBCF54CBB0BF9 /* AudioRoutePickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRoutePickerView.swift; sourceTree = "<group>"; };
 		E2DF93E69BA58ED5894962B2 /* SupportContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupportContent.swift; sourceTree = "<group>"; };
 		E7FC085BFCB891F1D4F38FEF /* MetadataTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetadataTests.swift; sourceTree = "<group>"; };
+		EF9C697E6C4C0DD926B4B23E /* WidgetSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetSnapshot.swift; sourceTree = "<group>"; };
 		F137CB8302F4CCFFB5D3A867 /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
 		F24F4BD9ABA74A114F3157D6 /* FavouritesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FavouritesView.swift; sourceTree = "<group>"; };
 		F2CED56748D25A16D042A988 /* DiscoverRegions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoverRegions.swift; sourceTree = "<group>"; };
 		F54BA784B105471D8B05AE25 /* VocalBoostTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VocalBoostTests.swift; sourceTree = "<group>"; };
+		FA576000F2FE961E98D369FF /* WirelessStationsWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WirelessStationsWidget.swift; sourceTree = "<group>"; };
 		FC86E444D35081690AAF4613 /* CarPlaySceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarPlaySceneDelegate.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -159,6 +217,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				3EE6E07B346FBBD8AC6E74D0 /* AppIntents.framework in Frameworks */,
+				1CB256F96578ECBF511E07B0 /* WidgetKit.framework in Frameworks */,
 				EDF8494D2E64C5631BAEA82A /* CarPlay.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -168,6 +228,16 @@
 			buildActionMask = 2147483647;
 			files = (
 				C89F04449FBB07EC59415E59 /* SwiftUI.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		988EDF29D12523A97F233520 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				9BBF428FD288925338CE5C7F /* WidgetKit.framework in Frameworks */,
+				A14F65A4FCDF4EB2D10B7963 /* SwiftUI.framework in Frameworks */,
+				0D8712172736E69B915B5826 /* AppIntents.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -186,8 +256,10 @@
 		4511FD52EC2EE189E045C99B /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				761BC20B81D99D68D12AEA78 /* AppIntents.framework */,
 				45AF71D0E042FF2350372216 /* CarPlay.framework */,
 				BA72FAA2C094B89B91EDDB0A /* SwiftUI.framework */,
+				B73DF9060161A9AE8043FAAB /* WidgetKit.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -209,6 +281,7 @@
 				58BFE7BF60266E86CADBF19A /* Wireless.app */,
 				049BFE9328AA0F2618AFA984 /* WirelessTests.xctest */,
 				2C2D848CD9841149DDB80F8A /* WirelessUITests.xctest */,
+				7C1C18D8E0FE619A3AED568E /* WirelessWidgets.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -221,6 +294,27 @@
 				3717973812D13753B64AA286 /* WirelessContact.swift */,
 			);
 			path = Shared;
+			sourceTree = "<group>";
+		};
+		7E9F9E17676F58EBC45B7021 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				BB08B7E6102E1180557AC742 /* StationPlaybackIntent.swift */,
+				4DF558FAB27BA315EB64422C /* WidgetSharedStorage.swift */,
+				EF9C697E6C4C0DD926B4B23E /* WidgetSnapshot.swift */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		974545EBBF06E6CD8A8CE459 /* Widgets */ = {
+			isa = PBXGroup;
+			children = (
+				784516A2B4624F12C07B4312 /* StationPlaybackIntent+Widget.swift */,
+				FA576000F2FE961E98D369FF /* WirelessStationsWidget.swift */,
+				13148A127378BEBB2D0C7CCC /* WirelessWidgetsBundle.swift */,
+				7E9F9E17676F58EBC45B7021 /* Shared */,
+			);
+			path = Widgets;
 			sourceTree = "<group>";
 		};
 		AFDA54A1C1DBF065306DD30B /* Wireless */ = {
@@ -249,6 +343,7 @@
 				D51112AD6E39CF8C6BB5DA5E /* SleepScheduleView.swift */,
 				776676EA121CB50213E02B4F /* SleepTimerService.swift */,
 				46E14DACD66F8DAD68FBCE55 /* SleepTimerSheetView.swift */,
+				63936943A4B3FD2BB6BDC477 /* StationPlaybackIntent+App.swift */,
 				88790567F035940004B0EBAA /* StreamDiagnosticLogger.swift */,
 				29D4ED78062FDB9798BCDE64 /* StreamDiagnosticView.swift */,
 				6D3048423531FE7F443A0CBE /* StreamRecoveryPolicy.swift */,
@@ -256,6 +351,7 @@
 				E2DF93E69BA58ED5894962B2 /* SupportContent.swift */,
 				591B7217A9AFB466BB7BCB52 /* SupportView.swift */,
 				0E4068851564EEABF96B4AAD /* VocalBoost.swift */,
+				B3EDF13A92E9C47AB441A9BF /* WidgetSnapshotCoordinator.swift */,
 				C3C4D01D0CF104193A7543DC /* Wireless.entitlements */,
 				3C8DF2AC33887409191F2781 /* WirelessApp.swift */,
 				7C4C5FB32A97D0A7967DB3B7 /* WirelessLayoutMetrics.swift */,
@@ -272,6 +368,7 @@
 			isa = PBXGroup;
 			children = (
 				7955BE308CF5491DD4E5A747 /* Shared */,
+				974545EBBF06E6CD8A8CE459 /* Widgets */,
 				AFDA54A1C1DBF065306DD30B /* Wireless */,
 				E142FE54ADD958E04CDEC72F /* WirelessTests */,
 				4465AB455E6A1207C3D9EEBA /* WirelessUITests */,
@@ -291,6 +388,8 @@
 				5345DD72CF65E9CFDB358002 /* StreamRecoveryPolicyTests.swift */,
 				81ED0C6EA381C06DF5A478BD /* StreamTrackMetadataTests.swift */,
 				F54BA784B105471D8B05AE25 /* VocalBoostTests.swift */,
+				13F6BBECC5B47503C8C409E2 /* WidgetLayoutTests.swift */,
+				52653292C3A03A61E7DA000F /* WidgetSnapshotTests.swift */,
 				15C674C8AE307BA75136D01F /* WirelessContactTests.swift */,
 				2DD436D04A71FF86FB8E7354 /* WirelessListeningStatsTests.swift */,
 			);
@@ -325,10 +424,12 @@
 				3C5960F2BDBCBB7372B3C781 /* Sources */,
 				D7C3FB883870E9E9D549CD85 /* Resources */,
 				1579F13FD5E8EA1DBAE1211E /* Frameworks */,
+				2366CE4E140B47FC6A989FC0 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				AC01B7C73964F64D907C2085 /* PBXTargetDependency */,
 			);
 			name = Wireless;
 			packageProductDependencies = (
@@ -355,6 +456,24 @@
 			productReference = 2C2D848CD9841149DDB80F8A /* WirelessUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		E3C52B4C560140056CB088B4 /* WirelessWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 5CC67D98ECC7A0AA90A30420 /* Build configuration list for PBXNativeTarget "WirelessWidgets" */;
+			buildPhases = (
+				C709C01EFF948FDBE40BD71F /* Sources */,
+				988EDF29D12523A97F233520 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = WirelessWidgets;
+			packageProductDependencies = (
+			);
+			productName = WirelessWidgets;
+			productReference = 7C1C18D8E0FE619A3AED568E /* WirelessWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -371,6 +490,10 @@
 					DA5E885382DE2B157A9D073C = {
 						ProvisioningStyle = Automatic;
 						TestTargetID = BA921306524224B290A4AA8F;
+					};
+					E3C52B4C560140056CB088B4 = {
+						DevelopmentTeam = QT3N6256FG;
+						ProvisioningStyle = Automatic;
 					};
 				};
 			};
@@ -391,6 +514,7 @@
 				BA921306524224B290A4AA8F /* Wireless */,
 				B17236526130BA35A02DF5E2 /* WirelessTests */,
 				DA5E885382DE2B157A9D073C /* WirelessUITests */,
+				E3C52B4C560140056CB088B4 /* WirelessWidgets */,
 			);
 		};
 /* End PBXProject section */
@@ -438,6 +562,8 @@
 				08DAD67874CBEB2500A172D1 /* SleepTimerSheetView.swift in Sources */,
 				4C6AE6F326DEEA248EFAE274 /* StationDirectory.swift in Sources */,
 				9AE1A4D2D0BDB13104A385EC /* StationListOrganisation.swift in Sources */,
+				D7B616D2CEBD11B9AAF5841C /* StationPlaybackIntent+App.swift in Sources */,
+				211553971FC9D3C9942089CD /* StationPlaybackIntent.swift in Sources */,
 				B5E7DAD5A8EBF39FF51D1A61 /* StreamDiagnosticLogger.swift in Sources */,
 				23E33CD7E3C09DCF55E53DE1 /* StreamDiagnosticView.swift in Sources */,
 				D565155980B3FA013496C850 /* StreamRecoveryPolicy.swift in Sources */,
@@ -445,6 +571,9 @@
 				4AEAB1BE50069C484DBB86AC /* SupportContent.swift in Sources */,
 				E396F8FA9F67C6D9C77168E6 /* SupportView.swift in Sources */,
 				4AEACEEDD6D487B421DB780F /* VocalBoost.swift in Sources */,
+				5B177F72636C152AF4AB4432 /* WidgetSharedStorage.swift in Sources */,
+				CCB909B9B7CBABB725F50313 /* WidgetSnapshot.swift in Sources */,
+				8DA253E234BFDF0611425715 /* WidgetSnapshotCoordinator.swift in Sources */,
 				0E1BE1AF5844D7913660C972 /* WirelessApp.swift in Sources */,
 				1AB81CB4588920248D4C2095 /* WirelessContact.swift in Sources */,
 				55FD82A995E07EB83D1EF85D /* WirelessLayoutMetrics.swift in Sources */,
@@ -472,6 +601,8 @@
 				CA7BF2C861CB4E04B35CF97F /* StationDirectory.swift in Sources */,
 				358967CA5B027BE2CE6A8AB6 /* StationDirectoryTests.swift in Sources */,
 				E9D7118009B5E543896324EB /* StationListOrganisation.swift in Sources */,
+				A2C178BCD29215CED07583B2 /* StationPlaybackIntent+Widget.swift in Sources */,
+				F4A1138C7519D6D704BBB887 /* StationPlaybackIntent.swift in Sources */,
 				C8E710ADFE49E904E1AEDDB7 /* StreamDiagnosticLogger.swift in Sources */,
 				D46C9703D6C56A9551DB03E7 /* StreamRecoveryPolicy.swift in Sources */,
 				1F07BD3BF33F2F59C35FFC53 /* StreamRecoveryPolicyTests.swift in Sources */,
@@ -479,11 +610,29 @@
 				0D78887AA33D15E59DD98787 /* StreamTrackMetadataTests.swift in Sources */,
 				A7B4F7A8D3177BF992434FF6 /* VocalBoost.swift in Sources */,
 				BF7F85E69DFC81D5E973DFD1 /* VocalBoostTests.swift in Sources */,
+				ECFA4DDD9468729875A7E521 /* WidgetLayoutTests.swift in Sources */,
+				F1535BA208BDB0FB8D3F1AFA /* WidgetSharedStorage.swift in Sources */,
+				A04FE92DF27BB7C03F8CDD0B /* WidgetSnapshot.swift in Sources */,
+				D9AEE5CE62AAF6B3028F5B31 /* WidgetSnapshotTests.swift in Sources */,
 				E1AF39BD2B6BFE81EDAA2C26 /* WirelessContact.swift in Sources */,
 				412F25FAC85D50C1022B90C2 /* WirelessContactTests.swift in Sources */,
 				FA8EF1F9D94D77C3276678A5 /* WirelessListeningStats.swift in Sources */,
 				3E1C5920D6BC65F88D03A8E6 /* WirelessListeningStatsStore.swift in Sources */,
 				476CC9527C3923C22B69A95D /* WirelessListeningStatsTests.swift in Sources */,
+				7D26F509B3DA4B458D000344 /* WirelessStationsWidget.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C709C01EFF948FDBE40BD71F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0DDDF9B6DC5163BDA52487E6 /* StationPlaybackIntent+Widget.swift in Sources */,
+				7E77D8A392CA421540FD8661 /* StationPlaybackIntent.swift in Sources */,
+				C5E091140EA632F066A41267 /* WidgetSharedStorage.swift in Sources */,
+				C5792F9E9B524F4407F92F3C /* WidgetSnapshot.swift in Sources */,
+				BCB650620904D0F1637B2869 /* WirelessStationsWidget.swift in Sources */,
+				A4FCDC93435FF8EEDC612AD2 /* WirelessWidgetsBundle.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -503,6 +652,11 @@
 			isa = PBXTargetDependency;
 			target = BA921306524224B290A4AA8F /* Wireless */;
 			targetProxy = 197AB86590FC06260BF1C855 /* PBXContainerItemProxy */;
+		};
+		AC01B7C73964F64D907C2085 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = E3C52B4C560140056CB088B4 /* WirelessWidgets */;
+			targetProxy = B83C83120661DC4995E40AF8 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -625,6 +779,31 @@
 			};
 			name = Debug;
 		};
+		8C0FA87256DF630C3C539188 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = Widgets/WirelessWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 13;
+				DEVELOPMENT_TEAM = QT3N6256FG;
+				INFOPLIST_FILE = Widgets/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = au.com.kevmarl.Wireless.widgets;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
 		90B09FC9416740E23894E320 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -667,6 +846,31 @@
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_TARGET_NAME = Wireless;
+			};
+			name = Release;
+		};
+		A98F2374677A24697F68EC47 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = Widgets/WirelessWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 13;
+				DEVELOPMENT_TEAM = QT3N6256FG;
+				INFOPLIST_FILE = Widgets/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = au.com.kevmarl.Wireless.widgets;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};
@@ -776,6 +980,15 @@
 			buildConfigurations = (
 				AC8E3D215F59C8192F5AD1EE /* Debug */,
 				464AEDBFE403950B8DCD1F3D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		5CC67D98ECC7A0AA90A30420 /* Build configuration list for PBXNativeTarget "WirelessWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8C0FA87256DF630C3C539188 /* Debug */,
+				A98F2374677A24697F68EC47 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
