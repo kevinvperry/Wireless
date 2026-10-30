@@ -74,6 +74,7 @@ final class HLSVocalBoostTap {
 /// callback only tries the lifecycle lock: it passes through original audio
 /// rather than waiting. Preparation/cleanup may wait for an in-flight render.
 final class VocalBoostTapState {
+    let songSamples = TapSongSamples()
     private let lifecycleLock = NSLock()
     let prepareCount = Atomic<Int>(0)
     let failure = Atomic<OSStatus>(noErr)
@@ -151,6 +152,7 @@ final class VocalBoostTapState {
             failure.store(kAudio_MemFullError, ordering: .relaxed)
             return
         }
+        songSamples.prepare(format: audioFormat, maximumFrames: capacity)
         self.delivery = delivery
         tapBytesPerFrame = format.mBytesPerFrame
         convertedInput = input
@@ -349,6 +351,8 @@ final class VocalBoostTapState {
                 destination[index].mDataByteSize = written * tapBytesPerFrame
             }
         }
+        delivery.frameLength = written
+        songSamples.offer(delivery, discontinuity: ((flags | flagsOut.pointee) & kMTAudioProcessingTapFlag_StartOfStream) != 0)
         framesOut.pointee = CMItemCount(written)
     }
 

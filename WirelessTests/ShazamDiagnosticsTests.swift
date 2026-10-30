@@ -100,6 +100,31 @@ final class ShazamDiagnosticsTests: XCTestCase {
         XCTAssertTrue(records.allSatisfy { $0.1["captureBackend"] == "avplayer-hls-output" })
     }
 
+    func testFallbackDiscardsOldFingerprintAndAcceptsNewSourceFormat() async {
+        let events = DiagnosticEvents()
+        let summary = expectation(description: "fallback capture summary")
+        let context = ShazamDiagnosticContext(sink: { event, message, fields in
+            events.append(event, message, fields)
+            if event == "recognition.audio.summary" { summary.fulfill() }
+        })
+        let worker = SongRecognitionWorker(diagnostics: context) { _ in XCTFail("Partial samples must not submit or fail") }
+        for (index, rate) in [44_100.0, 48_000.0].enumerated() {
+            if index == 1 { worker.resetCaptureForFallback() }
+            let format = AVAudioFormat(standardFormatWithSampleRate: rate, channels: 1)!
+            let pcm = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 1024)!
+            pcm.frameLength = 1024
+            memset(pcm.floatChannelData![0], 0, 4096)
+            worker.append(pcm)
+        }
+        worker.cancel()
+        await fulfillment(of: [summary], timeout: 3)
+        let records = events.snapshot
+        XCTAssertEqual(records.filter { $0.0 == "recognition.audio.firstBuffer" }.count, 2)
+        XCTAssertTrue(records.contains { $0.0 == "recognition.capture.reset" })
+        XCTAssertFalse(records.contains { $0.0 == "recognition.audio.formatChanged" })
+        XCTAssertTrue(records.contains { $0.0 == "recognition.audio.summary" && $0.1["frames"] == "1024" })
+    }
+
     func testPCMProgressReportsSilenceAndFormatFailure() async {
         let events = DiagnosticEvents()
         let failure = expectation(description: "format failure")

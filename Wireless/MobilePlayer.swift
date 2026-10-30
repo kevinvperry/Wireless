@@ -100,7 +100,9 @@ final class MobilePlayer: ObservableObject {
             songRecognition.reject("Turn off TV Sync to identify a song from the live broadcast.", fields: fields); return
         }
         let worker = songRecognition.start(explanation: directoryAudio.songSampleExplanation, diagnosticFields: fields, privateNames: audioSession.currentRoute.outputs.map(\.portName))
-        if let error = directoryAudio.startSongSample(worker, failure: { [weak self] in
+        if let error = directoryAudio.startSongSample(worker, sourceChanged: { [weak self] explanation in
+            self?.songRecognition.updateSourceExplanation(explanation)
+        }, failure: { [weak self] in
             self?.songRecognition.unavailable("This stream could not supply audio for identification. Try another stream in Audio Controls.")
         }) { songRecognition.unavailable(error) }
     }

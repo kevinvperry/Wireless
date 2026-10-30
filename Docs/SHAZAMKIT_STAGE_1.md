@@ -85,3 +85,55 @@ error, shutdown and retry events. Its simulator callback reported Shazam error
 That simulator result is not evidence of the failure on the user's iPhone;
 the updated physical-device log is still needed. Unsigned device Release builds
 also passed; no installation, archive or upload was performed for this change.
+
+## HLS tap capture and bounded fallback
+
+The physical-device log dated 30 October showed three attempts with zero PCM
+buffers from AVPlayerItemSampleBufferOutput, despite continuing playback. Deep
+Bass's mixed-track audio tap had processed audio. HLS recognition now prefers
+that existing tap when present, avoiding a second output on the same player item.
+It preserves the existing native output when no processing tap exists and the
+existing enhanced decoder when that is the audible playback backend.
+
+`TapSongSamples` hands off rendered PCM through two prepared pools of 16 buffers.
+The audio callback only tries a lock and copies into existing storage. A single
+consumer drains every 50 ms and creates independently owned buffers outside the
+render callback and outside the pool lock. Overflow, contention and source
+restarts are treated as discontinuities rather than silently stitching audio.
+Capture is disabled and detached when the attempt stops; playback is retained.
+
+A three-second period without new PCM, or an explicit capture discontinuity,
+permits one fallback to the existing sample-only decoder for the selected stream.
+The partial fingerprint is discarded before new-source audio is appended. The
+sheet explains the extra connection and possible timing/personalised-advert
+variation. A further three-second no-audio period fails promptly. The overall
+30-second deadline remains. Station changes, dismissal and playback teardown
+still cancel capture. Diagnostic events identify the initial source, selected
+source, fallback reason, fingerprint reset and no-audio deadline.
+
+Autohop's PlaybackEngine was inspected for equivalent bounded PCM handling. It
+uses a background reader with bounded backpressure for its local-file engine;
+there is no equivalent Shazam/HLS-tap consumer to copy. Wireless retains its
+Autohop-derived DSP graph and adds a non-waiting hand-off for the native callback.
+
+Validation of this repair:
+
+- The final full unit suite passed 105 tests, with one existing skip and zero
+  failures. Tests exercise the actual tap render callback through the hand-off
+  and SHSignatureGenerator, independently owned copies across pool reuse,
+  interleaved/non-interleaved Float32/Int16 storage, overflow/discontinuity
+  rejection, the single-fallback deadline and partial-fingerprint reset.
+- Generated rolling-HLS playback passed through the ordinary native output. A
+  forced silent live source passed the separate-decoder fallback UI check; the
+  actual app log recorded fallback at 3.2 seconds, reset, a new ten-second
+  fingerprint and catalogue submission under the same attempt ID. Dismissal,
+  retry and continued playback controls also passed.
+- The iOS 27.0 simulator did not activate its native HLS processing tap for the
+  Deep Bass fixture. The first attempt was correctly cancelled when the existing
+  sound-processing fallback changed the audible backend. A subsequent test after
+  that backend settled passed recognition capture through the enhanced decoder.
+  This does not validate a physical HLS tap; that hand-off has deterministic
+  render-callback coverage and still needs an iPhone retest.
+- Simulator catalogue requests continued to report error 202, Missing
+  entitlements. Successful real-music matches and physical Bluetooth audio remain
+  unverified. No device installation, archive or upload was performed.

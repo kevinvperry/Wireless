@@ -1,6 +1,7 @@
 import AVFoundation
 import Combine
 import ShazamKit
+import Synchronization
 
 struct RecognisedSong: Equatable, Sendable {
     let title: String
@@ -58,6 +59,16 @@ final class SongRecognitionWorker: NSObject, SHSessionDelegate, @unchecked Senda
     enum Event: Sendable { case matching, found(RecognisedSong), noMatch, failed(String) }
     private let queue = DispatchQueue(label: "au.com.kevmarl.Wireless.songRecognition")
     private var generator = SHSignatureGenerator()
+    private let inputFrames = Atomic<Int>(0)
+    var captureFrameCount: Int { inputFrames.load(ordering: .relaxed) }
+    func resetCaptureForFallback() {
+        queue.async { [self] in
+            guard !completed, session == nil else { return }
+            diagnostics.record("capture.reset", "Discarding partial fingerprint before switching audio source", ["discardedSeconds": String(seconds)])
+            generator = SHSignatureGenerator(); format = nil; seconds = 0
+            buffers = 0; frames = 0; nextProgress = 0
+        }
+    }
     private var session: SHSession?
     private var seconds: Double = 0
     private var format: AVAudioFormat?
@@ -77,6 +88,7 @@ final class SongRecognitionWorker: NSObject, SHSessionDelegate, @unchecked Senda
     // its storage. Only this queue reads it after delivery.
     private struct OwnedPCM: @unchecked Sendable { let buffer: AVAudioPCMBuffer }
     func append(_ buffer: AVAudioPCMBuffer) {
+        inputFrames.wrappingAdd(Int(buffer.frameLength), ordering: .relaxed)
         let owned = OwnedPCM(buffer: buffer)
         queue.async { [self] in
             let buffer = owned.buffer
@@ -246,6 +258,10 @@ final class SongRecognitionWorker: NSObject, SHSessionDelegate, @unchecked Senda
                 : "Shazam took too long to respond. Check your connection and try again."))
         }
         return worker
+    }
+
+    func updateSourceExplanation(_ explanation: String) {
+        guard state.isWorking else { return }; sourceExplanation = explanation
     }
 
     func recordEnvironmentChange(_ event: String, _ fields: [String: String]) {

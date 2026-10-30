@@ -35,6 +35,7 @@ struct WirelessApp: App {
         let previewStatsURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("WirelessPlayerPreview", isDirectory: true)
             .appendingPathComponent("listening-stats.json")
+        if let preset = ProcessInfo.processInfo.environment["WIRELESS_TEST_MUSIC_PRESET"] { defaults.set(preset, forKey: "musicPresetLevel") }
         let player = MobilePlayer(defaults: defaults, statsStore: WirelessListeningStatsStore(fileURL: previewStatsURL))
         // Layout/playback fixtures must not contact the simulator's notification
         // daemon, which can block while another simulator is starting.

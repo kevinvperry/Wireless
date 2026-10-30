@@ -134,6 +134,7 @@ targets:
       - path: Wireless/ShazamDiagnostics.swift
       - path: Wireless/SongRecognition.swift
       - path: Wireless/VocalBoost.swift
+      - path: Wireless/TapSongSamples.swift
       - path: Wireless/HLSVocalBoostTap.swift
       - path: Wireless/PackedAudioHLS.swift
       - path: Wireless/StreamRecoveryPolicy.swift

@@ -36,6 +36,8 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
     private let songSampler = EnhancedLiveStreamEngine()
     private var hlsSongSample: AnyObject?
     private var songSampleID = UUID()
+    private var songCaptureTask: Task<Void, Never>?
+    private var songTapSamples: TapSongSamples?
 
     var songDiagnosticFields: [String: String] {
         let stream = streams.indices.contains(index) ? streams[index] : nil
@@ -43,7 +45,7 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
             "streamID": selectedStreamID ?? "none", "streamFormat": stream?.format ?? "unknown",
             "streamCodec": stream?.codec ?? "unknown", "streamBitrateKbps": stream?.bitrate_kbps.map { String($0) } ?? "unknown",
             "streamOrigin": stream?.playableURL?.host ?? "unknown",
-            "captureBackend": usesEnhancedPlayback ? "enhanced-decoder" : stream?.format == "hls" && supportsNativeSongSample ? "avplayer-hls-output" : "separate-stream-decoder",
+            "initialCaptureBackend": usesEnhancedPlayback ? "enhanced-decoder" : stream?.format == "hls" && hlsVocalBoostTap != nil ? "hls-processing-tap" : stream?.format == "hls" && supportsNativeSongSample ? "avplayer-hls-output" : "separate-stream-decoder",
             "playerItemStatus": player.currentItem.map { String($0.status.rawValue) } ?? "none",
             "playerTimeControlStatus": String(player.timeControlStatus.rawValue),
             "playbackPosition": String(player.currentTime().seconds), "syncEnabled": String(syncEnabled),
@@ -60,31 +62,83 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
         if #available(iOS 27.0, *) { return true }
         return false
     }
-    func startSongSample(_ worker: SongRecognitionWorker, failure: @escaping @MainActor @Sendable () -> Void) -> String? {
+    func startSongSample(_ worker: SongRecognitionWorker,
+                         sourceChanged: @escaping (String) -> Void = { _ in },
+                         failure: @escaping @MainActor @Sendable () -> Void) -> String? {
         stopSongSample()
         let sampleID = songSampleID
-        worker.diagnostics.record("capture.selected", "Selected recognition audio source", songDiagnosticFields)
         guard requested, streams.indices.contains(index) else { return "Play a station before identifying a song." }
         guard !syncEnabled else { return "Turn off TV Sync to identify a song from the live broadcast." }
-        if usesEnhancedPlayback {
-            enhancedEngine.observeSamples({ worker.append($0) }, diagnostics: worker.diagnostics)
-        } else if streams[index].format == "hls", #available(iOS 27.0, *), let item = player.currentItem {
-            hlsSongSample = HLSSongSample(item: item, receive: { worker.append($0) }, diagnostics: worker.diagnostics, failure: { [weak self] in
-                guard self?.songSampleID == sampleID else { return }; failure()
-            })
-        } else {
-            // The existing packed-AAC fallback also works on iOS 26; unsupported
-            // HLS containers fail explicitly without touching audible playback.
-            songSampler.sample(stream: streams[index], diagnostics: worker.diagnostics, receive: { worker.append($0) }, failure: { [weak self] in
-                Task { @MainActor in
+        let stream = streams[index]
+        let separateInitially = !usesEnhancedPlayback && !(stream.format == "hls" && supportsNativeSongSample)
+        var needsFallback = false
+        let requestFallback: () -> Void = { needsFallback = true }
+        let startSeparate = { [weak self] in
+            self?.songSampler.sample(stream: stream, diagnostics: worker.diagnostics, receive: { worker.append($0) }, failure: { [weak self] in
+                Task { @MainActor [weak self] in
                     guard self?.songSampleID == sampleID else { return }; failure()
                 }
             })
+        }
+        let source: String
+        #if DEBUG
+        let silentFixture = ProcessInfo.processInfo.environment["WIRELESS_PLAYER_PREVIEW"] == "1"
+            && ProcessInfo.processInfo.environment["WIRELESS_TEST_SILENT_SONG_SOURCE"] == "1"
+        #else
+        let silentFixture = false
+        #endif
+        if silentFixture {
+            source = "test-silent-live-source"
+        } else if usesEnhancedPlayback {
+            source = "enhanced-decoder"
+            enhancedEngine.observeSamples({ worker.append($0) }, diagnostics: worker.diagnostics)
+        } else if stream.format == "hls", let tap = hlsVocalBoostTap {
+            source = "hls-processing-tap"
+            songTapSamples = tap.state.songSamples
+            songTapSamples?.start()
+        } else if stream.format == "hls", #available(iOS 27.0, *), let item = player.currentItem {
+            source = "avplayer-hls-output"
+            hlsSongSample = HLSSongSample(item: item, receive: { worker.append($0) }, diagnostics: worker.diagnostics, failure: requestFallback)
+        } else {
+            source = "separate-stream-decoder"
+            startSeparate()
+        }
+        worker.diagnostics.record("capture.selected", "Selected recognition audio source", songDiagnosticFields.merging(["captureBackend": source]) { _, new in new })
+        songCaptureTask = Task { @MainActor [weak self] in
+            var health = SongCaptureHealth(started: ProcessInfo.processInfo.systemUptime, fallbackAlreadyUsed: separateInitially)
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(50))
+                guard !Task.isCancelled, let self, self.songSampleID == sampleID else { return }
+                if let tap = self.songTapSamples {
+                    let batch = tap.drain()
+                    if batch.discontinuity { needsFallback = true }
+                    else { for pcm in batch.buffers { worker.append(pcm) } }
+                }
+                let now = ProcessInfo.processInfo.systemUptime
+                switch health.check(frames: worker.captureFrameCount, now: now, sourceFailed: needsFallback) {
+                case .continueCapture: break
+                case .fallback:
+                    worker.diagnostics.record("capture.fallback", "Live capture unavailable; trying one separate stream connection", ["previousBackend": source, "captureBackend": "separate-stream-decoder", "reason": needsFallback ? "source-discontinuity-or-error" : "no-new-audio-for-3-seconds"])
+                    needsFallback = false
+                    self.songTapSamples?.stop(); self.songTapSamples = nil
+                    self.enhancedEngine.observeSamples(nil)
+                    if #available(iOS 27.0, *) { (self.hlsSongSample as? HLSSongSample)?.stop() }
+                    self.hlsSongSample = nil
+                    worker.resetCaptureForFallback()
+                    sourceChanged("Identifying from a separate connection to this live stream. It uses extra data; personalised adverts or stream timing may differ from what you hear.")
+                    startSeparate()
+                case .fail:
+                    worker.diagnostics.record("capture.noAudio", "Recognition source supplied no new audio within the capture deadline", ["captureBackend": "separate-stream-decoder", "deadlineSeconds": "3"])
+                    failure(); return
+                }
+            }
         }
         return nil
     }
     func stopSongSample() {
         songSampleID = UUID()
+        songCaptureTask?.cancel(); songCaptureTask = nil
+        songTapSamples?.stop(); songTapSamples = nil
         songSampler.stop(); enhancedEngine.observeSamples(nil)
         if #available(iOS 27.0, *) { (hlsSongSample as? HLSSongSample)?.stop() }
         hlsSongSample = nil

@@ -30,13 +30,19 @@ final class SongRecognitionUITests: XCTestCase {
         }
     }
 
+    @MainActor func testSilentLiveCaptureFallsBackWithoutStoppingPlayback() throws {
+        try checkPlayback(format: "hls", silentSource: true)
+    }
+    @MainActor func testHLSDeepBassPlaybackCanIdentifyWithoutStoppingPlayback() throws {
+        try checkPlayback(format: "hls", musicPreset: "deep")
+    }
     @MainActor func testHLSSamplesCurrentPlayerWithoutStoppingPlayback() throws {
         try checkPlayback(format: "hls")
     }
     @MainActor func testIdentifySamplesWithoutStoppingPlaybackAndCanBeClosed() throws {
         try checkPlayback(format: "aac")
     }
-    @MainActor private func checkPlayback(format: String) throws {
+    @MainActor private func checkPlayback(format: String, musicPreset: String? = nil, silentSource: Bool = false) throws {
         // Optional integration fixture; the normal suite remains self-contained.
         let probe = URL(string: "http://127.0.0.1:18742/tone.aac")!
         guard let bytes = try? Data(contentsOf: probe), !bytes.isEmpty else {
@@ -44,6 +50,8 @@ final class SongRecognitionUITests: XCTestCase {
         }
         let app = XCUIApplication()
         app.launchEnvironment["WIRELESS_PLAYER_PREVIEW"] = "1"
+        app.launchEnvironment["WIRELESS_TEST_MUSIC_PRESET"] = musicPreset
+        app.launchEnvironment["WIRELESS_TEST_SILENT_SONG_SOURCE"] = silentSource ? "1" : nil
         app.launchEnvironment["WIRELESS_TEST_HLS_URL"] = "http://127.0.0.1:18742/tone.\(format == "hls" ? "m3u8" : "aac")"
         app.launchEnvironment["WIRELESS_TEST_STREAM_FORMAT"] = format
         app.launchArguments = ["-streamDiagnosticLoggingEnabled", "YES"]
@@ -56,8 +64,15 @@ final class SongRecognitionUITests: XCTestCase {
         waitForExpectations(timeout: 20)
         let playerShot = XCTAttachment(screenshot: app.screenshot())
         playerShot.name = "Identify song player"; playerShot.lifetime = .keepAlways; add(playerShot)
+        // Let the fixture's existing sound-processing fallback settle before
+        // testing recognition. Some simulator runtimes never activate HLS taps.
+        if musicPreset != nil { Thread.sleep(forTimeInterval: 8) }
         identify.tap()
         XCTAssertTrue(app.navigationBars["Identify song"].waitForExistence(timeout: 5))
+        if silentSource {
+            let explanation = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Identifying from a separate connection")).firstMatch
+            XCTAssertTrue(explanation.waitForExistence(timeout: 8))
+        }
         if format == "hls" {
             let submitted = NSPredicate { _, _ in
                 app.staticTexts["Checking with Shazam…"].exists
