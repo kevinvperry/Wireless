@@ -62,6 +62,7 @@ targets:
     dependencies:
       - sdk: AppIntents.framework
       - sdk: WidgetKit.framework
+      - sdk: ShazamKit.framework
       - sdk: CarPlay.framework
       - target: WirelessWidgets
         embed: true
@@ -129,6 +130,8 @@ targets:
       - path: Shared/StationDirectory.swift
       - path: Shared/StationListOrganisation.swift
       - path: Shared/WirelessContact.swift
+      - path: Wireless/HLSSongSample.swift
+      - path: Wireless/SongRecognition.swift
       - path: Wireless/VocalBoost.swift
       - path: Wireless/HLSVocalBoostTap.swift
       - path: Wireless/PackedAudioHLS.swift

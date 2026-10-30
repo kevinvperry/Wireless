@@ -141,6 +141,7 @@ struct RadioPlayerView: View {
     @State private var path: [String] = []
     @State private var showFavourites = false
     @State private var showAudio = false
+    @State private var showSongRecognition = false
     @State private var showSleepTimer = false
     @State private var confirmsUnfavourite = false
 
@@ -212,6 +213,10 @@ struct RadioPlayerView: View {
                 browse: { showFavourites = false; path = ["Discover"] },
                 close: { showFavourites = false }
             )
+        }
+        .sheet(isPresented: $showSongRecognition) {
+            SongRecognitionView(recognition: player.songRecognition, stationName: player.station.name,
+                                identify: { player.identifySong() })
         }
         .sheet(isPresented: $showAudio) {
             AudioControlsSheet(player: player) { showAudio = false }
@@ -352,13 +357,33 @@ struct RadioPlayerView: View {
                 contentScale: metrics.contentScale
             )
             liveProgress.padding(.horizontal, metrics.horizontalGutter)
-            Button { player.toggle() } label: {
-                Image(systemName: player.requested ? "pause.fill" : "play.fill")
-                    .font(.system(size: 28 * metrics.contentScale)).foregroundStyle(.white)
-                    .frame(width: 76 * metrics.contentScale, height: 76 * metrics.contentScale)
-                    .glassEffect(.regular.tint(.purple), in: Circle())
-                    .shadow(color: .purple.opacity(0.35), radius: 14)
-            }.accessibilityLabel(player.requested ? "Pause" : "Play")
+            HStack(spacing: 8) {
+                Color.clear.frame(width: 76 * metrics.contentScale).accessibilityHidden(true)
+                Spacer(minLength: 0)
+                Button { player.toggle() } label: {
+                    Image(systemName: player.requested ? "pause.fill" : "play.fill")
+                        .font(.system(size: 28 * metrics.contentScale)).foregroundStyle(.white)
+                        .frame(width: 76 * metrics.contentScale, height: 76 * metrics.contentScale)
+                        .glassEffect(.regular.tint(.purple), in: Circle())
+                        .shadow(color: .purple.opacity(0.35), radius: 14)
+                }.accessibilityLabel(player.requested ? "Pause" : "Play")
+                Spacer(minLength: 0)
+                Button {
+                    player.identifySong(); showSongRecognition = true
+                } label: {
+                    VStack(spacing: 6) {
+                        Image(systemName: "shazam.logo").font(.title2)
+                        Text("Identify song").font(.caption.weight(.semibold)).multilineTextAlignment(.center)
+                    }
+                    .frame(width: 76 * metrics.contentScale).frame(minHeight: 44)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain).foregroundStyle(.purple)
+                .accessibilityLabel("Identify song")
+                .accessibilityIdentifier("identifySongButton")
+                .disabled(!player.requested || player.buffering || player.syncEnabled)
+                .accessibilityHint(player.syncEnabled ? "Turn off TV Sync to identify songs" : "Identify music in the current radio stream")
+            }
             playerActionRow(width: width - 32)
             Spacer(minLength: 0)
             favouriteShortcuts

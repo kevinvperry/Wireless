@@ -32,6 +32,50 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
 /// not expose a seekable live window through AVFoundation.
 /// All AVPlayer state and item replacement are confined to the main actor.
 @MainActor final class DirectoryAudio {
+    var onRecognitionInvalidated: (() -> Void)?
+    private let songSampler = EnhancedLiveStreamEngine()
+    private var hlsSongSample: AnyObject?
+    private var songSampleID = UUID()
+
+    var songSampleExplanation: String {
+        if usesEnhancedPlayback || (streams.indices.contains(index) && streams[index].format == "hls" && supportsNativeSongSample) {
+            return "Identifies a short sample of the radio audio playing in Wireless."
+        }
+        return "Identifies a short sample from a separate connection to this live stream. It uses extra data; personalised adverts or stream timing may differ from what you hear."
+    }
+    private var supportsNativeSongSample: Bool {
+        if #available(iOS 27.0, *) { return true }
+        return false
+    }
+    func startSongSample(_ worker: SongRecognitionWorker, failure: @escaping @MainActor @Sendable () -> Void) -> String? {
+        stopSongSample()
+        let sampleID = songSampleID
+        guard requested, streams.indices.contains(index) else { return "Play a station before identifying a song." }
+        guard !syncEnabled else { return "Turn off TV Sync to identify a song from the live broadcast." }
+        if usesEnhancedPlayback {
+            enhancedEngine.observeSamples { worker.append($0) }
+        } else if streams[index].format == "hls", #available(iOS 27.0, *), let item = player.currentItem {
+            hlsSongSample = HLSSongSample(item: item, receive: { worker.append($0) }, failure: { [weak self] in
+                guard self?.songSampleID == sampleID else { return }; failure()
+            })
+        } else {
+            // The existing packed-AAC fallback also works on iOS 26; unsupported
+            // HLS containers fail explicitly without touching audible playback.
+            songSampler.sample(stream: streams[index], receive: { worker.append($0) }, failure: { [weak self] in
+                Task { @MainActor in
+                    guard self?.songSampleID == sampleID else { return }; failure()
+                }
+            })
+        }
+        return nil
+    }
+    func stopSongSample() {
+        songSampleID = UUID()
+        songSampler.stop(); enhancedEngine.observeSamples(nil)
+        if #available(iOS 27.0, *) { (hlsSongSample as? HLSSongSample)?.stop() }
+        hlsSongSample = nil
+    }
+
     var onStatus: ((PlaybackStatus, Bool) -> Void)?
     var onAudioEffectState: ((VocalBoostState) -> Void)?
     private(set) var audioEffectState: VocalBoostState = .off
@@ -94,7 +138,10 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
         enhancedEngine.onStatus = { [weak self] playbackID, update in
             Task { @MainActor in
                 guard let self, self.generation == playbackID, self.requested, self.usesEnhancedPlayback else { return }
-                if update.buffering { self.setAudioEffectState(.preparing) }
+                if update.buffering {
+                    self.setAudioEffectState(.preparing)
+                    self.onRecognitionInvalidated?()
+                }
                 if update.title == "Playing" { self.lastAdvance = Date(); self.recovery.recordPlayback(at: Date()) }
                 self.onStatus?(PlaybackStatus(active: self.requested, buffering: update.buffering, progress: update.progress, title: update.title, detail: update.detail, measuredDelay: update.measuredDelay), false)
             }
@@ -247,6 +294,8 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
         load()
     }
     func stop() {
+        onRecognitionInvalidated?()
+        stopSongSample()
         if requested { diagnose("playback.stop", "Playback stopped") }
         requested = false; preparing = false; retryAt = nil; recovery.reset(); generation = UUID(); seeking = false
         timer?.invalidate(); timer = nil
@@ -266,6 +315,7 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
         diagnose("sync.mode", enabled ? "TV Sync enabled" : "TV Sync disabled", metadata: ["delaySeconds": String(format: "%.1f", delay)])
         onTrackMetadata?(nil)
         packetEngine.setSyncEnabled(enabled)
+        onRecognitionInvalidated?()
         generation = UUID()
         player.currentItem?.cancelPendingSeeks()
         seeking = false
@@ -335,6 +385,7 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
               let url = StreamRequestPolicy.playbackURL(for: streams[index]) else { return }
         if !preservingVocalBoostFallback { hlsBoostFallbackAttempted = false; hlsBoostFailure = nil }
         onTrackMetadata?(nil)
+        onRecognitionInvalidated?()
         generation = UUID(); seeking = false; prerollStarted = false; selectedStreamID = streams[index].id
         avPlayerAccountingSample = nil
         packetEngine.stop(); packetEngine.suspendPreparation()
@@ -636,6 +687,7 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
         let attempt = recovery.nextAttempt(streamCount: streams.count, currentIndex: index)
         index = attempt.index
         retryAt = Date().addingTimeInterval(attempt.wait)
+        onRecognitionInvalidated?()
         generation = UUID(); seeking = false
         removeItemObservers()
         player.pause(); player.replaceCurrentItem(with: nil)
@@ -654,6 +706,7 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
         publish(title: "Reconnecting…", detail: "Retry cycle \(attempt.cycle). Waiting for reception to return.", buffering: true, supportsDelay: false)
     }
     private func switchHLSIntoVocalBoostFallback() {
+        onRecognitionInvalidated?()
         hlsBoostFallbackAttempted = true
         usesEnhancedPlayback = true
         removeItemObservers()
@@ -674,6 +727,7 @@ private final class StreamMetadataOutputDelegate: NSObject, AVPlayerItemMetadata
     private func switchHLSIntoPacketFallback() {
         guard requested, streams.indices.contains(index) else { return }
         hlsPacketFallbackAttempted = true
+        onRecognitionInvalidated?()
         generation = UUID(); seeking = false
         avPlayerAccountingSample = nil
         removeItemObservers()

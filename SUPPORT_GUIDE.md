@@ -55,6 +55,18 @@ ABC Local Radio, Radio National, NewsRadio, Radio Australia and ABC sport feeds 
 
 Triple M and Hit embedded metadata remains authoritative. During some national networked programmes, a station may repeatedly supply an old technical playout marker rather than current song information. Wireless hides only exact `Asset Link`, `Asset Spot` and `Asset Stop` markers, records them in Stream Diagnostics, and clears any previous song rather than leaving it frozen on screen. It also prevents old timestamped values from replacing current information and clears metadata that remains unchanged beyond its freshness limit. Each SCA playback session uses a new stream request identifier so a previous session's playlist is not deliberately reused.
 
+## Identify song
+
+While a station is playing, tap **Identify song** in the **Playing** pane. Wireless samples about ten seconds of audio and asks Shazam to identify the recording. Playback continues. Allow up to 30 seconds for a result; cancel or close the sheet to stop identification.
+
+A match shows the title, artist and artwork when available. Choose **Open in Apple Music** to open the matching song, or **Save to Shazam** to explicitly add it to your Shazam library. Wireless does not automatically save matches or replace the station’s song/programme information. Saving can fail independently of identification; retry if needed.
+
+Identification requires an internet connection. Apple receives an audio fingerprint rather than a recording; Wireless does not use the microphone or save sampled audio to disk. Music in adverts or behind speech may match, and live performances or unfamiliar recordings may not. A match describes the sampled audio and is not a continuously updated now-playing result.
+
+On iOS 27 or later, HLS identification samples the current player’s decoded audio. When Wireless’s sound-processing engine is active, identification reuses its decoded audio. Other compatible direct MP3/AAC streams and unencrypted packed-AAC HLS use a short, silent, separate stream connection, which consumes extra data and may receive different personalised adverts or timing. Other HLS containers on iOS 26 may be unavailable; try another stream in **Audio Controls**. Protected streams or routes that do not expose decoded audio may also be unavailable.
+
+**Identify song** is unavailable while paused, buffering or using TV Sync. Identification stops when the sheet closes, Wireless leaves the foreground, or the station/stream/playback mode changes. Turn off TV Sync and wait for live playback before trying again.
+
 ## Favourites
 
 Tap the heart button on the player to add or remove the current station from Favourites. Wireless asks for confirmation before removing a station so an accidental tap does not change the list. The outlined heart in the top-right corner shows the number of saved stations and opens the complete Favourites list.

@@ -35,14 +35,20 @@ struct WirelessApp: App {
         let previewStatsURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("WirelessPlayerPreview", isDirectory: true)
             .appendingPathComponent("listening-stats.json")
-        return MobilePlayer(defaults: defaults, statsStore: WirelessListeningStatsStore(fileURL: previewStatsURL))
+        let player = MobilePlayer(defaults: defaults, statsStore: WirelessListeningStatsStore(fileURL: previewStatsURL))
+        // Layout/playback fixtures must not contact the simulator's notification
+        // daemon, which can block while another simulator is starting.
+        player.sleepSchedule.onPromptDismissed = nil
+        return player
     }()
     #endif
 
     var body: some Scene {
         WindowGroup {
             #if DEBUG
-            if ProcessInfo.processInfo.environment["WIRELESS_PLAYER_PREVIEW"] == "1" {
+            if ProcessInfo.processInfo.environment["WIRELESS_SONG_PREVIEW"] != nil {
+                WirelessSongRecognitionPreview()
+            } else if ProcessInfo.processInfo.environment["WIRELESS_PLAYER_PREVIEW"] == "1" {
                 RadioPlayerView(player: Self.previewPlayer)
                     .preferredColorScheme(.dark)
                     .tint(.purple)

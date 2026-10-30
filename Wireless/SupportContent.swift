@@ -39,7 +39,7 @@ struct WirelessSupportSection: Identifiable {
 
 enum WirelessSupportGuide {
     static let sections: [WirelessSupportSection] = [
-        gettingStarted, discover, player, favourites, sync, streams,
+        gettingStarted, discover, player, identifySong, favourites, sync, streams,
         vocalBoost, deepBass, sleepTimer, sleepSchedule, systemPlayback, widgets, carPlay, listeningStats, listeningHistory, settings, contact, troubleshooting
     ]
 
@@ -106,6 +106,18 @@ enum WirelessSupportGuide {
             .paragraph("When a music stream or supported broadcaster now-playing service supplies reliable metadata, Wireless shows **song title · artist** on the top row and the **station name below**, including in the mini-player. Album information remains available in the mini-player when supplied. CarPlay and other system playback surfaces use their third text line for the station name. Triple M and Hit Metro and Regional broadcast stations use metadata embedded directly in their selected stream. Wireless also supports ABC music services, supported Triton StreamTheWorld feeds and official LiSTNR now-playing data for LiSTNR and SCA digital music stations. A brief gap is normal when a broadcaster reports that no current track is available. Track metadata is available only during normal playback with TV Sync off."),
             .paragraph("ABC Local Radio, Radio National, NewsRadio, Radio Australia and ABC sport feeds use ABC’s official programme schedules. When supplied, the current programme appears in Playing; Details shows its presenter, broadcast times and upcoming programmes. Schedules refresh automatically and follow the selected regional feed. Sport and event streams may have no programme listed between broadcasts, and some regional services may have gaps in ABC’s schedule data. Radio National’s Victorian and Tasmanian feeds use the national eastern schedule when ABC supplies no regional listings. Programme times describe the live broadcast and do not move with TV Sync delay. ABC music stations retain their song title and artist information."),
             .paragraph("Triple M and Hit embedded metadata remains authoritative. During some national networked programmes, a station may repeatedly supply an old technical playout marker rather than current song information. Wireless hides only exact Asset Link, Asset Spot and Asset Stop markers, records them in Stream Diagnostics, and clears any previous song rather than leaving it frozen on screen. It also prevents old timestamped values from replacing current information and clears metadata that remains unchanged beyond its freshness limit. Each SCA playback session uses a new stream request identifier so a previous session's playlist is not deliberately reused.")
+        ]
+    )
+
+    private static let identifySong = WirelessSupportSection(
+        id: "identify-song", icon: "shazam.logo", title: "Identify song",
+        summary: "Identify music in the selected radio stream with Shazam",
+        blocks: [
+            .paragraph("While a station is playing, tap **Identify song** in **Playing**. Wireless samples about ten seconds of audio and asks Shazam to identify the recording. Playback continues. Allow up to 30 seconds for a result; cancel or close the sheet to stop identification."),
+            .paragraph("A match shows the title, artist and artwork when available. **Open in Apple Music** opens the matching song; **Save to Shazam** explicitly adds it to your Shazam library. Wireless does not automatically save matches or replace station song/programme information. Saving can fail independently; retry if needed."),
+            .paragraph("Identification needs an internet connection. Apple receives an audio fingerprint rather than a recording. Wireless does not use the microphone or save sampled audio to disk. Music in adverts or behind speech may match; live performances or unfamiliar recordings may not. Results describe a sample and are not continuously updated now-playing information."),
+            .paragraph("On iOS 27 or later, HLS identification samples the current player’s decoded audio. Wireless also reuses decoded audio when its sound-processing engine is active. Other compatible MP3/AAC streams and unencrypted packed-AAC HLS use a short, silent, separate connection. This uses extra data and may receive different personalised adverts or timing. Other HLS containers on iOS 26, protected streams or routes without decoded audio may be unavailable; try another stream in **Audio Controls**."),
+            .callout(.note, "Unavailable while paused, buffering or using TV Sync. Identification stops when the sheet closes, Wireless leaves the foreground, or the station/stream/playback mode changes. Turn off TV Sync and wait for live playback before trying again.")
         ]
     )
 

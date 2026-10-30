@@ -80,6 +80,21 @@ final class MobilePlayer: ObservableObject {
             startCompanionMetadataIfNeeded()
         }
     } }
+    let songRecognition = SongRecognition()
+
+    func identifySong() {
+        guard requested, !buffering else {
+            songRecognition.unavailable("Play a station and wait for the audio to start, then try again."); return
+        }
+        guard !syncEnabled else {
+            songRecognition.unavailable("Turn off TV Sync to identify a song from the live broadcast."); return
+        }
+        let worker = songRecognition.start(explanation: directoryAudio.songSampleExplanation)
+        if let error = directoryAudio.startSongSample(worker, failure: { [weak self] in
+            self?.songRecognition.unavailable("This stream could not supply audio for identification. Try another stream in Audio Controls.")
+        }) { songRecognition.unavailable(error) }
+    }
+
     let library: StationLibrary
     let statsStore: WirelessListeningStatsStore
     let sleepTimer = SleepTimerService()
@@ -218,6 +233,8 @@ final class MobilePlayer: ObservableObject {
             .flatMap { saved in selected.playableStreams.contains(where: { $0.id == saved }) ? saved : nil }
             ?? selected.preferredStream?.id ?? ""
         delay = min(30, max(0, (delay * 2).rounded() / 2))
+        songRecognition.stopAudio = { [weak self] in self?.directoryAudio.stopSongSample() }
+        directoryAudio.onRecognitionInvalidated = { [weak self] in self?.songRecognition.cancel() }
         directoryAudio.onStatus = { [weak self] update, supported in
             guard let self else { return }
             self.recordPlaybackStatus(update, supportsDelay: supported)
@@ -536,6 +553,7 @@ final class MobilePlayer: ObservableObject {
     func adjust(_ amount: Double) { delay = min(30, max(0, delay + amount)) }
     func sceneChanged(_ phase: ScenePhase) {
         diagnose("app.scene", "Scene phase changed", metadata: ["phase": String(describing: phase), "playing": "\(requested)", "buffering": "\(buffering)"])
+        if phase != .active, songRecognition.state.isWorking { songRecognition.cancel() }
         isForeground = phase == .active
         if isForeground { recoveryGraceUsed = false; endRecoveryGrace() }
         if phase == .active {

@@ -9,6 +9,27 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
     var onStatus: (@Sendable (UUID, PlaybackStatus) -> Void)?
     var onPlaybackInterval: (@Sendable (UUID, TimeInterval, Date) -> Void)?
 
+    // Sampling mode reuses the stream parser/decoder without creating or starting
+    // an audio engine. Its owner supplies a deadline and stops after one sample.
+    private var sampleOnly = false
+    private var sampledSeconds = 0.0
+    private var sampleConsumer: (@Sendable (AVAudioPCMBuffer) -> Void)?
+    private var sampleFailure: (@Sendable () -> Void)?
+
+    func sample(stream: StationStream, receive: @escaping @Sendable (AVAudioPCMBuffer) -> Void,
+                failure: @escaping @Sendable () -> Void) {
+        work.async {
+            self.close()
+            self.stream = stream; self.sampleOnly = true
+            self.sampleConsumer = receive; self.sampleFailure = failure
+            self.requested = true; self.connect()
+        }
+    }
+
+    func observeSamples(_ receive: (@Sendable (AVAudioPCMBuffer) -> Void)?) {
+        work.async { self.sampleConsumer = receive }
+    }
+
     private let work = DispatchQueue(label: "au.com.kevmarl.Wireless.vocalBoost")
     private var session: URLSession?
     private var task: URLSessionDataTask?
@@ -42,6 +63,7 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
     func configure(stream: StationStream, level: VocalBoostLevel, musicPreset: MusicPreset = .off, playbackID: UUID) {
         work.async {
             self.close()
+            self.sampleOnly = false; self.sampleConsumer = nil; self.sampleFailure = nil
             self.playbackID = playbackID
             self.stream = stream
             self.level = level
@@ -74,6 +96,7 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
         work.async {
             self.requested = false
             self.close()
+            self.sampleConsumer = nil; self.sampleFailure = nil; self.sampleOnly = false
         }
     }
 
@@ -137,6 +160,7 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
         if let parser { AudioFileStreamClose(parser) }
         parser = nil
         formatReady = false
+        sampledSeconds = 0
         converter = nil
         compressedFormat = nil
         pcmFormat = nil
@@ -150,7 +174,7 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
     fileprivate func receivedProperty(_ property: AudioFileStreamPropertyID) {
         guard !pendingFailure, property == kAudioFileStreamProperty_ReadyToProducePackets else { return }
         formatReady = true
-        guard requested, processor == nil, let parser else { return }
+        guard requested, converter == nil, let parser else { return }
         var description = AudioStreamBasicDescription()
         var size = UInt32(MemoryLayout<AudioStreamBasicDescription>.size)
         guard AudioFileStreamGetProperty(parser, kAudioFileStreamProperty_DataFormat, &size, &description) == noErr,
@@ -168,8 +192,8 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
             return
         }
         do {
-            let processor = try VocalBoostProcessor(format: output, level: level, musicPreset: musicPreset)
-            processor.setVolume(outputVolume)
+            let processor = sampleOnly ? nil : try VocalBoostProcessor(format: output, level: level, musicPreset: musicPreset)
+            processor?.setVolume(outputVolume)
             self.compressedFormat = source
             self.pcmFormat = output
             self.converter = converter
@@ -181,7 +205,7 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
 
     fileprivate func receivedPackets(_ count: UInt32, _ input: UnsafeRawPointer,
                                      _ descriptions: UnsafeMutablePointer<AudioStreamPacketDescription>?) {
-        guard requested || preparing, let descriptions else { return }
+        guard requested || preparing, !sampleOnly || sampledSeconds < 10, let descriptions else { return }
         for index in 0..<Int(count) {
             var description = descriptions[index]
             let bytes = Data(bytes: input.advanced(by: Int(description.mStartOffset)),
@@ -196,7 +220,7 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
     }
 
     private func decodeBacklog() {
-        guard !pendingFailure, let converter, let compressedFormat, let pcmFormat, let processor,
+        guard !pendingFailure, let converter, let compressedFormat, let pcmFormat,
               !packetBacklog.isEmpty else { return }
         let batch = Array(packetBacklog.prefix(24))
         packetBacklog.removeFirst(batch.count)
@@ -231,6 +255,20 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
             fail("This stream could not be decoded for sound processing.")
             return
         }
+        sampleConsumer?(pcm)
+        if sampleOnly {
+            sampledSeconds += Double(pcm.frameLength) / pcmFormat.sampleRate
+            if sampledSeconds >= 10 {
+                // AudioFileStream owns the current callback: close after it returns.
+                let token = generation
+                work.async { [self] in
+                    guard generation == token else { return }
+                    close(); sampleConsumer = nil; sampleFailure = nil
+                }
+            } else if !packetBacklog.isEmpty { decodeBacklog() }
+            return
+        }
+        guard let processor else { return }
         let renderedSeconds = Double(pcm.frameLength) / pcmFormat.sampleRate
         let token = generation
         processor.schedule(pcm) { [weak self] in
@@ -270,6 +308,11 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
     }
 
     private func handleFailure(_ message: String) {
+        if sampleOnly {
+            let failure = sampleFailure
+            close(); sampleConsumer = nil; sampleFailure = nil
+            failure?(); return
+        }
         if stream?.format == "hls" {
             close()
             onUnsupportedHLS?(playbackID, message)
