@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		006D08E3FE9643881A0C5DDE /* AudioRoutePickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE5F0B6C67EEBCF54CBB0BF9 /* AudioRoutePickerView.swift */; };
 		08DAD67874CBEB2500A172D1 /* SleepTimerSheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46E14DACD66F8DAD68FBCE55 /* SleepTimerSheetView.swift */; };
+		0C654A850E7796EBF90D3255 /* StreamingSongRecognitionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 436954F97C4432731908A30F /* StreamingSongRecognitionTests.swift */; };
 		0D7808193B88750064978753 /* ProgrammeGuide.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA29A1EC84D04AB7DC690374 /* ProgrammeGuide.swift */; };
 		0D78887AA33D15E59DD98787 /* StreamTrackMetadataTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81ED0C6EA381C06DF5A478BD /* StreamTrackMetadataTests.swift */; };
 		0D8712172736E69B915B5826 /* AppIntents.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 761BC20B81D99D68D12AEA78 /* AppIntents.framework */; };
@@ -172,6 +173,7 @@
 		3717973812D13753B64AA286 /* WirelessContact.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WirelessContact.swift; sourceTree = "<group>"; };
 		3884AC1AE2B969BCC399EC85 /* WirelessStatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WirelessStatsView.swift; sourceTree = "<group>"; };
 		3C8DF2AC33887409191F2781 /* WirelessApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WirelessApp.swift; sourceTree = "<group>"; };
+		436954F97C4432731908A30F /* StreamingSongRecognitionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamingSongRecognitionTests.swift; sourceTree = "<group>"; };
 		45AF71D0E042FF2350372216 /* CarPlay.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CarPlay.framework; path = System/Library/Frameworks/CarPlay.framework; sourceTree = SDKROOT; };
 		46E14DACD66F8DAD68FBCE55 /* SleepTimerSheetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepTimerSheetView.swift; sourceTree = "<group>"; };
 		47A2A61AFBF289006DDAA5D2 /* CarPlayStationPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarPlayStationPresenter.swift; sourceTree = "<group>"; };
@@ -419,6 +421,7 @@
 				91FFC7D91231CDB151A40688 /* SleepScheduleServiceTests.swift */,
 				4C406508E41B10BF21F36FA3 /* SongRecognitionTests.swift */,
 				76EECFE6B7E52C2FE1E8A08B /* StationDirectoryTests.swift */,
+				436954F97C4432731908A30F /* StreamingSongRecognitionTests.swift */,
 				5345DD72CF65E9CFDB358002 /* StreamRecoveryPolicyTests.swift */,
 				81ED0C6EA381C06DF5A478BD /* StreamTrackMetadataTests.swift */,
 				C4DA14D7AAFB330105648E1C /* TapSongSamplesTests.swift */,
@@ -653,6 +656,7 @@
 				1F07BD3BF33F2F59C35FFC53 /* StreamRecoveryPolicyTests.swift in Sources */,
 				B2974319EDD6D7321D088AAC /* StreamTrackMetadata.swift in Sources */,
 				0D78887AA33D15E59DD98787 /* StreamTrackMetadataTests.swift in Sources */,
+				0C654A850E7796EBF90D3255 /* StreamingSongRecognitionTests.swift in Sources */,
 				E1F49C0077FF4434267C097E /* TapSongSamples.swift in Sources */,
 				2D8E414541FABFB3C707DE42 /* TapSongSamplesTests.swift in Sources */,
 				A7B4F7A8D3177BF992434FF6 /* VocalBoost.swift in Sources */,

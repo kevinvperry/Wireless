@@ -9,19 +9,19 @@ Before feature edits, the current tracked source and outstanding widget source w
 ## Behaviour
 
 - The Playing pane has an Identify song action beside Play/Pause. It is disabled while paused, buffering or using TV Sync.
-- One attempt fingerprints roughly ten seconds of audio and submits one signature to `SHSession`. A 30-second deadline covers capture and the service response.
-- Results stay separate from broadcaster song/programme metadata. A result offers artwork, an Apple Music link when supplied, and explicit saving through `SHLibrary`. Missing Apple Music links fall back to a Shazam link when supplied.
-- No microphone recording, automatic library writes, stored audio, recognition history or continuous recognition.
-- Each attempt has its own identity. Closing/cancelling, changing the stream/station/backend, pausing, or leaving the foreground cancels sampling and rejects late callbacks. A save finishing after dismissal cannot alter the next sheet.
-- Shazam failures log only error domain/code in opt-in Stream Diagnostics; fingerprints and sampled audio are not logged.
+- Each attempt feeds decoded PCM immediately to `SHSession.matchStreamingBuffer(_:at:)`. ShazamKit chooses its signature/search timing; there is no fixed ten-second capture gate. A 30-second deadline bounds capture and matching.
+- Results stay separate from broadcaster song/programme metadata. A result offers artwork, an Apple Music link when supplied, and **Open in Shazam** using the returned `SHMediaItem.webURL` when supplied. The system opens the song in Shazam/App Clip where available or the website otherwise. This does not write to the Shazam library or automatically add a song to a music-service playlist.
+- No microphone recording, automatic library writes, stored audio, recognition history or always-on recognition.
+- Each attempt has its own identity. Closing/cancelling, changing the stream/station/backend, pausing, or leaving the foreground cancels sampling and rejects late callbacks.
+- Opt-in Stream Diagnostics records correlated streaming activity, capture progress, callback signature duration, error chains, fallback/reset and cancellation. Fingerprint bytes and sampled audio are not logged.
 
 ## Audio paths and limitations
 
-1. HLS on iOS 27+: attach `AVPlayerItemSampleBufferOutput` to the current item with normal rendering retained. Pull decoded PCM at the playback clock, skip prior decoder history and hold future samples until due. Detach on completion/cancellation. Reject discontinuities rather than combining unrelated audio.
+1. HLS on iOS 27+: prefer the existing mixed-track audio-processing tap when present, with a prepared bounded hand-off. Otherwise attach `AVPlayerItemSampleBufferOutput` to the current item with normal rendering retained. Pull decoded PCM at the playback clock, skip prior decoder history and hold future samples until due. Detach on completion/cancellation. Reject discontinuities rather than combining unrelated audio.
 2. EnhancedLiveStreamEngine playback: reuse freshly allocated decoded PCM before sound processing. No second stream or new audio engine.
 3. Other direct MP3/AAC and compatible unencrypted packed-AAC HLS: a bounded, silent connection uses the existing parser/decoder in sample-only mode. It never creates an audio engine or alters audible playback. The sheet explicitly explains extra data use and that personalised adverts/timing can differ.
 
-The sample-only decoder stops after roughly ten seconds of decoded audio; the outer deadline also bounds failed/stalled downloads. Unsupported iOS 26 HLS containers, protected content and routes that do not expose audio fail explicitly. No claim is made that a matched recording is the main programme music rather than an advert or background bed.
+The sample-only decoder has a thirty-second decoded-audio ceiling and is stopped as soon as the attempt finishes; the outer deadline also bounds failed/stalled downloads. Unsupported iOS 26 HLS containers, protected content and routes that do not expose audio fail explicitly. No claim is made that a matched recording is the main programme music rather than an advert or background bed.
 
 Autohop was searched for SHSession/SHManagedSession/Shazam integration; none was found. The feature adapts Wireless’s existing Autohop-derived player/sheet patterns and reuses its established decoder. Both Support guide sources were updated.
 
@@ -137,3 +137,53 @@ Validation of this repair:
 - Simulator catalogue requests continued to report error 202, Missing
   entitlements. Successful real-music matches and physical Bluetooth audio remain
   unverified. No device installation, archive or upload was performed.
+
+
+## Streaming recognition and Open in Shazam — 31 October 2026
+
+The latest iPhone log contained 13 successful matches from 14 attempts. Successful
+attempts averaged 10.04 seconds before submission and 1.09 seconds for the service
+response. The earlier fixed capture gate is now removed. The existing decoded
+PCM sources feed SHSession immediately, using contiguous sample-frame timestamps.
+Capture continues while matching. An intermediate no-match is logged and allowed
+to accumulate more audio; the first usable match or a service error finishes the
+attempt. At the overall deadline, a prior no-match yields the no-match state;
+otherwise the app reports a capture/service timeout. The three-second no-audio
+policy and single separate-decoder fallback remain. Fallback retires the old
+SHSession, starts a new timestamp origin and rejects late callbacks from the old
+session so audio from different sources is not combined.
+
+The Save to Shazam action and SHLibrary write state have been removed. Open in
+Shazam uses the matched song's supplied webURL independently of the Apple Music
+link. Spotify/YouTube Music options are handled within Shazam according to the
+user's installed apps, account and region. Wireless does not claim to save or
+synchronise songs by opening a link. The in-app and source Support guides agree.
+
+Autohop's PlaybackEngine bounded PCM handling was inspected again; it has no
+Shazam streaming matcher or equivalent Shazam result action to reuse. The existing
+Wireless capture and hand-off architecture is retained.
+
+Streaming validation:
+
+- The full unit suite passed 109 tests (one existing skip, zero failures),
+  including immediate first-buffer delivery, contiguous timestamps, continued
+  capture while matching, early no-match continuation, deadline handling, fresh
+  fallback sessions and stale-callback rejection.
+- Four simulator UI checks passed: result/error/progress layouts, the largest
+  accessibility text size with Open in Shazam reachable, ordinary HLS streaming
+  capture and forced no-audio fallback with dismissal/retry/playback controls.
+- The actual simulator diagnostic log recorded streaming at 0.38 seconds and a
+  callback signature of 3.11 seconds on the ordinary HLS path. The fallback path
+  recorded reset and a new session with a 3.18-second callback signature. These
+  demonstrate removal of the fixed ten-second gate, not successful music matches.
+  The unsigned simulator still reported Shazam error 202, Missing entitlements.
+- Physical-device matching speed, opening the installed Shazam app and its
+  third-party service options need an iPhone retest. No installation, archive or
+  upload was performed. The previous successful device log describes the older
+  fixed-sample implementation and is not validation of the streaming change.
+
+- Unsigned iPhone Release and compatible Mac builds passed. The UI runner
+  reported all four tests passed, then xcodebuild hung during result-bundle
+  finalisation (SDK build-version parsing errors; no finished Info.plist). Its
+  log is `/tmp/wireless-streaming-ui.log`; the completed tests are distinguished
+  from the interrupted report packaging. The full unit run completed normally.

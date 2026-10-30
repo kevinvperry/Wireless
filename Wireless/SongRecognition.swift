@@ -28,7 +28,7 @@ struct RecognisedSong: Equatable, Sendable {
     }
 }
 
-/// A new identity for every attempt prevents late recognition/library callbacks
+/// A new identity for every attempt prevents late recognition callbacks
 /// from changing a newer attempt, a different station or a dismissed sheet.
 struct SongRecognitionAttempt: Equatable, Sendable {
     private(set) var id = UUID()
@@ -58,14 +58,19 @@ enum SongRecognitionState: Equatable {
 final class SongRecognitionWorker: NSObject, SHSessionDelegate, @unchecked Sendable {
     enum Event: Sendable { case matching, found(RecognisedSong), noMatch, failed(String) }
     private let queue = DispatchQueue(label: "au.com.kevmarl.Wireless.songRecognition")
-    private var generator = SHSignatureGenerator()
+    typealias Submission = @Sendable (SHSession, AVAudioPCMBuffer, AVAudioTime) -> Void
+    private let submitBuffer: Submission
+    private var receivedNoMatch = false
+    private var announcedMatching = false
     private let inputFrames = Atomic<Int>(0)
     var captureFrameCount: Int { inputFrames.load(ordering: .relaxed) }
     func resetCaptureForFallback() {
         queue.async { [self] in
-            guard !completed, session == nil else { return }
+            guard !completed else { return }
             diagnostics.record("capture.reset", "Discarding partial fingerprint before switching audio source", ["discardedSeconds": String(seconds)])
-            generator = SHSignatureGenerator(); format = nil; seconds = 0
+            session?.delegate = nil; session = nil
+            receivedNoMatch = false; announcedMatching = false
+            format = nil; seconds = 0
             buffers = 0; frames = 0; nextProgress = 0
         }
     }
@@ -80,8 +85,9 @@ final class SongRecognitionWorker: NSObject, SHSessionDelegate, @unchecked Senda
     private let receive: @Sendable (Event) -> Void
 
     init(diagnostics: ShazamDiagnosticContext = ShazamDiagnosticContext(),
+         submitBuffer: @escaping Submission = { $0.matchStreamingBuffer($1, at: $2) },
          receive: @escaping @Sendable (Event) -> Void) {
-        self.diagnostics = diagnostics; self.receive = receive
+        self.diagnostics = diagnostics; self.receive = receive; self.submitBuffer = submitBuffer
     }
 
     // The producer transfers an independently allocated buffer and never reuses
@@ -92,7 +98,7 @@ final class SongRecognitionWorker: NSObject, SHSessionDelegate, @unchecked Senda
         let owned = OwnedPCM(buffer: buffer)
         queue.async { [self] in
             let buffer = owned.buffer
-            guard !completed, session == nil, buffer.frameLength > 0 else { return }
+            guard !completed, buffer.frameLength > 0 else { return }
             // Discontinuities/formats must never be concatenated into one signature.
             if let format, format != buffer.format {
                 diagnostics.record("audio.formatChanged", "PCM format changed during capture",
@@ -104,9 +110,9 @@ final class SongRecognitionWorker: NSObject, SHSessionDelegate, @unchecked Senda
                     ShazamDiagnosticContext.audioFormat(buffer.format).merging(["frameLength": String(buffer.frameLength)]) { _, new in new })
             }
             format = buffer.format
+            let time = AVAudioTime(sampleTime: AVAudioFramePosition(frames), atRate: buffer.format.sampleRate)
             buffers += 1; frames += UInt64(buffer.frameLength)
             do {
-                try generator.append(buffer, at: nil)
                 seconds += Double(buffer.frameLength) / buffer.format.sampleRate
                 if diagnostics.enabled, seconds >= nextProgress {
                     nextProgress = seconds + 2
@@ -128,38 +134,41 @@ final class SongRecognitionWorker: NSObject, SHSessionDelegate, @unchecked Senda
                     } else { details["signalStatistics"] = "unavailable-for-this-PCM-type" }
                     diagnostics.record("audio.progress", "PCM capture progress (signal statistics only)", details)
                 }
-                if seconds >= 10 {
-                    let session = SHSession()
-                    let signature = generator.signature()
-                    diagnostics.record("signature.generated", "Generated Shazam fingerprint", [
-                        "signatureDuration": String(signature.duration),
-                        "signatureByteCount": diagnostics.enabled ? String(signature.dataRepresentation.count) : "not-inspected",
-                        "catalogueMinimumDuration": String(session.catalog.minimumQuerySignatureDuration),
-                        "catalogueMaximumDuration": String(session.catalog.maximumQuerySignatureDuration),
-                        "buffers": String(buffers), "frames": String(frames)
-                    ])
-                    guard signature.duration >= session.catalog.minimumQuerySignatureDuration,
-                          signature.duration <= session.catalog.maximumQuerySignatureDuration else {
-                        diagnostics.record("signature.rejected", "Fingerprint duration outside catalogue limits")
-                        completed = true; receive(.failed("This audio sample could not be recognised. Try again.")); return
-                    }
-                    self.session = session; session.delegate = self
-                    receive(.matching)
-                    diagnostics.record("request.submitted", "Submitting fingerprint to Shazam catalogue")
-                    session.match(signature)
-                    diagnostics.record("request.invoked", "SHSession.match returned; awaiting delegate callback")
+                let active: SHSession
+                if let session { active = session }
+                else {
+                    active = SHSession(); session = active; active.delegate = self
+                    diagnostics.record("stream.started", "Feeding PCM to ShazamKit streaming matcher", [
+                        "catalogueMinimumDuration": String(active.catalog.minimumQuerySignatureDuration),
+                        "catalogueMaximumDuration": String(active.catalog.maximumQuerySignatureDuration),
+                        "matchingMode": "streaming", "captureGeneration": "new-session"])
                 }
-            } catch {
-                diagnostics.error("signature.failed", "Fingerprint generator rejected PCM audio", error, details: ["capturedSeconds": String(seconds)])
-                completed = true; receive(.failed("This stream’s audio format cannot be used for song identification."))
+                submitBuffer(active, buffer, time)
+                if !announcedMatching, seconds >= active.catalog.minimumQuerySignatureDuration {
+                    announcedMatching = true
+                    diagnostics.record("stream.matching", "Minimum query duration reached; streaming matcher remains active", ["capturedSeconds": String(seconds)])
+                    receive(.matching)
+                }
             }
+        }
+    }
+
+    func deadlineReached() {
+        queue.async { [self] in
+            guard !completed else { return }
+            completed = true
+            diagnostics.record("stream.deadline", "Streaming recognition reached overall deadline", ["capturedSeconds": String(seconds), "receivedNoMatch": String(receivedNoMatch)])
+            if receivedNoMatch { receive(.noMatch) }
+            else { receive(.failed(seconds == 0
+                ? "Wireless could not obtain enough audio from this stream. Try another stream in Audio Controls."
+                : "Shazam took too long to respond. Check your connection and try again.")) }
         }
     }
 
     func cancel(reason: String = "cancelled") {
         queue.async { [self] in
             diagnostics.record("audio.summary", "Capture worker stopped", ["reason": reason, "buffers": String(buffers),
-                "frames": String(frames), "capturedSeconds": String(seconds), "requestSubmitted": String(session != nil),
+                "frames": String(frames), "capturedSeconds": String(seconds), "streamingSessionStarted": String(session != nil), "matchingMode": "streaming",
                 "workerCompleted": String(completed)])
             completed = true; session?.delegate = nil; session = nil
         }
@@ -169,16 +178,17 @@ final class SongRecognitionWorker: NSObject, SHSessionDelegate, @unchecked Senda
         let song = match.mediaItems.compactMap(RecognisedSong.init).max { $0.confidence < $1.confidence }
         let sessionID = ObjectIdentifier(session)
         let candidateCount = match.mediaItems.count
+        let signatureDuration = match.querySignature.duration
         queue.async { [self] in
             guard !completed, self.session.map(ObjectIdentifier.init) == sessionID else {
                 diagnostics.record("callback.ignored", "Late or unrelated match callback ignored"); return
             }
-            diagnostics.record("callback.match", "Shazam returned catalogue candidates", ["candidateCount": String(candidateCount),
+            diagnostics.record("callback.match", "Shazam returned catalogue candidates", ["signatureDuration": String(signatureDuration), "capturedSeconds": String(seconds), "candidateCount": String(candidateCount),
                 "usableCandidate": String(song != nil), "confidence": song.map { String($0.confidence) } ?? "none",
                 "shazamID": song?.shazamID ?? "none", "title": song?.title ?? "none", "artist": song?.artist ?? "none",
-                "hasArtwork": String(song?.artworkURL != nil), "hasAppleMusicLink": String(song?.appleMusicURL != nil)])
-            completed = true
-            if let song { receive(.found(song)) } else { receive(.noMatch) }
+                "hasArtwork": String(song?.artworkURL != nil), "hasAppleMusicLink": String(song?.appleMusicURL != nil), "hasShazamLink": String(song?.shazamURL != nil)])
+            if let song { completed = true; receive(.found(song)) }
+            else { receivedNoMatch = true }
         }
     }
     func session(_ session: SHSession, didNotFindMatchFor signature: SHSignature, error: Error?) {
@@ -190,31 +200,31 @@ final class SongRecognitionWorker: NSObject, SHSessionDelegate, @unchecked Senda
             guard !completed, self.session.map(ObjectIdentifier.init) == sessionID else {
                 diagnostics.record("callback.ignored", "Late or unrelated no-match/error callback ignored"); return
             }
-            completed = true
+            if failed { completed = true } else { receivedNoMatch = true }
             diagnostics.record(failed ? "request.failed" : "callback.noMatch",
                 failed ? "Shazam catalogue request failed" : "Shazam returned no matching recording",
-                errorDetails.merging(["signatureDuration": String(duration), "callbackHasError": String(failed)]) { _, new in new })
-            receive(failed ? .failed("Shazam could not complete the request. Check your internet connection and try again.") : .noMatch)
+                errorDetails.merging(["signatureDuration": String(duration), "capturedSeconds": String(seconds), "callbackHasError": String(failed), "continuingStreaming": String(!failed)]) { _, new in new })
+            if failed { receive(.failed("Shazam could not complete the request. Check your internet connection and try again.")) }
+            // A streaming session can return an early no-match and then succeed
+            // with more audio. Continue until a usable result or the deadline.
         }
     }
 }
 
 @MainActor final class SongRecognition: ObservableObject {
     @Published private(set) var state: SongRecognitionState = .ready
-    @Published private(set) var saveMessage: String?
-    @Published private(set) var saving = false
-    @Published private(set) var saved = false
     @Published private(set) var sourceExplanation = ""
     private let timeout: Duration
+    private let submitBuffer: SongRecognitionWorker.Submission
     private let diagnosticSink: ShazamDiagnosticContext.Sink?
     private var diagnostics: ShazamDiagnosticContext?
-    init(timeout: Duration = .seconds(30), diagnosticSink: ShazamDiagnosticContext.Sink? = nil) {
-        self.timeout = timeout; self.diagnosticSink = diagnosticSink
+    init(timeout: Duration = .seconds(30), diagnosticSink: ShazamDiagnosticContext.Sink? = nil,
+         submitBuffer: @escaping SongRecognitionWorker.Submission = { $0.matchStreamingBuffer($1, at: $2) }) {
+        self.timeout = timeout; self.diagnosticSink = diagnosticSink; self.submitBuffer = submitBuffer
     }
     #if DEBUG
-    private var previewOnly = false
     convenience init(previewState: SongRecognitionState) {
-        self.init(); previewOnly = true; state = previewState; _ = attempt.begin()
+        self.init(); state = previewState; _ = attempt.begin()
     }
     #endif
     private var attempt = SongRecognitionAttempt()
@@ -228,19 +238,19 @@ final class SongRecognitionWorker: NSObject, SHSessionDelegate, @unchecked Senda
         let trace = ShazamDiagnosticContext(id: id,
             fields: ShazamDiagnosticContext.environment().merging(diagnosticFields) { _, new in new }, sink: diagnosticSink, privateNames: privateNames)
         diagnostics = trace
-        trace.record("attempt.started", "Identify song requested", ["timeout": String(describing: timeout), "captureTargetSeconds": "10"])
+        trace.record("attempt.started", "Identify song requested", ["timeout": String(describing: timeout), "matchingMode": "streaming"])
 
         sourceExplanation = explanation
-        state = .listening; saveMessage = nil; saved = false; saving = false
-        let worker = SongRecognitionWorker(diagnostics: trace) { [weak self] event in
+        state = .listening
+        let worker = SongRecognitionWorker(diagnostics: trace, submitBuffer: submitBuffer) { [weak self] event in
             Task { @MainActor in
                 guard let self, self.attempt.accepts(id), self.state.isWorking else {
                     trace.record("result.ignored", "Result rejected because the attempt is no longer current"); return
                 }
                 switch event {
                 case .matching:
-                    trace.record("attempt.matching", "Audio capture complete; waiting for Shazam")
-                    self.state = .matching; self.stopAudio?()
+                    trace.record("attempt.matching", "Streaming recognition is matching while audio capture continues")
+                    self.state = .matching
                 case .found(let song): self.finish(.found(song))
                 case .noMatch: self.finish(.noMatch)
                 case .failed(let message): self.finish(.failed(message))
@@ -253,9 +263,7 @@ final class SongRecognitionWorker: NSObject, SHSessionDelegate, @unchecked Senda
             try? await Task.sleep(for: timeout)
             guard !Task.isCancelled, let self, self.attempt.accepts(id) else { return }
             trace.record("attempt.timeout", "Identify song deadline reached", ["phase": self.state == .listening ? "capture" : "catalogue-request"])
-            self.finish(.failed(self.state == .listening
-                ? "Wireless could not obtain enough audio from this stream. Try another stream in Audio Controls."
-                : "Shazam took too long to respond. Check your connection and try again."))
+            self.worker?.deadlineReached()
         }
         return worker
     }
@@ -283,33 +291,11 @@ final class SongRecognitionWorker: NSObject, SHSessionDelegate, @unchecked Senda
         if attempt.active { diagnostics?.record("attempt.cancelled", "Identification cancelled or dismissed", ["reason": reason, "state": state.diagnosticName]) }
         attempt.cancel(); deadline?.cancel(); deadline = nil
         worker?.cancel(reason: reason); worker = nil; stopAudio?()
-        state = .ready; saving = false; saved = false; saveMessage = nil; sourceExplanation = ""
+        state = .ready; sourceExplanation = ""
     }
     private func finish(_ result: SongRecognitionState) {
         diagnostics?.record("attempt.finished", "Identification reached a terminal result", ["outcome": result.diagnosticName])
         state = result; deadline?.cancel(); deadline = nil
         worker?.cancel(reason: "terminal-" + result.diagnosticName); worker = nil; stopAudio?()
-    }
-    func saveToShazam() async {
-        #if DEBUG
-        if previewOnly { saveMessage = "Preview only — no song was saved."; return }
-        #endif
-        guard case .found(let song) = state, let shazamID = song.shazamID,
-              !saving, !saved else { return }
-        let id = attempt.id
-        saving = true; saveMessage = nil
-        let trace = diagnostics
-        trace?.record("library.saveStarted", "Saving matched recording to Shazam library", ["shazamID": shazamID])
-        do {
-            let item = SHMediaItem(properties: [.shazamID: shazamID])
-            try await SHLibrary.default.addItems([item])
-            trace?.record("library.saved", "Shazam library save succeeded", ["attemptStillCurrent": String(attempt.accepts(id))])
-            guard attempt.accepts(id) else { return }
-            saved = true; saving = false; saveMessage = "Saved to your Shazam library."
-        } catch {
-            trace?.error("library.saveFailed", "Shazam library save failed", error)
-            guard attempt.accepts(id) else { return }
-            saving = false; saveMessage = "Could not save to Shazam. Please try again."
-        }
     }
 }

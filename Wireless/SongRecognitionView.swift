@@ -49,7 +49,7 @@ struct SongRecognitionView: View {
             status("Identify a song", detail: "Play a station, then identify the song in its live broadcast.", symbol: "shazam.logo")
         case .listening, .matching:
             ProgressView().controlSize(.large).tint(.purple)
-            Text(recognition.state == .listening ? "Sampling the stream…" : "Checking with Shazam…")
+            Text(recognition.state == .listening ? "Sampling the stream…" : "Listening and matching with Shazam…")
                 .font(.title2.bold()).accessibilityIdentifier("songRecognitionProgress")
             Text("Radio playback continues. This can take up to 30 seconds.").foregroundStyle(.secondary)
         case .found(let song):
@@ -66,19 +66,13 @@ struct SongRecognitionView: View {
             if let url = song.appleMusicURL {
                 Link(destination: url) { Label("Open in Apple Music", systemImage: "music.note") }
                     .buttonStyle(.borderedProminent).tint(.purple)
-            } else if let url = song.shazamURL {
-                Link("View on Shazam", destination: url).buttonStyle(.bordered)
             }
-            if song.shazamID != nil {
-                Button {
-                    Task { await recognition.saveToShazam() }
-                } label: {
-                    Label(recognition.saved ? "Saved to Shazam" : recognition.saving ? "Saving…" : "Save to Shazam",
-                          systemImage: recognition.saved ? "checkmark" : "plus")
-                }
-                .buttonStyle(.bordered).disabled(recognition.saving || recognition.saved)
+            if let url = song.shazamURL {
+                Link(destination: url) { Label("Open in Shazam", systemImage: "shazam.logo") }
+                    .buttonStyle(.bordered)
+                    .accessibilityIdentifier("openInShazam")
+                    .accessibilityHint("Opens this song in Shazam, or its website if the app is unavailable")
             }
-            if let message = recognition.saveMessage { Text(message).font(.footnote) }
         case .noMatch:
             status("No song found", detail: "Try again during a clear section of music. Live performances, talk-over and some recordings may not match.", symbol: "music.note")
         case .failed(let message):
@@ -102,7 +96,7 @@ struct WirelessSongRecognitionPreview: View {
     init() {
         let mode = ProcessInfo.processInfo.environment["WIRELESS_SONG_PREVIEW"] ?? "found"
         let song = RecognisedSong(title: "Never Tear Us Apart", artist: "INXS",
-            appleMusicURL: URL(string: "https://music.apple.com/au/"), shazamID: "12345")
+            appleMusicURL: URL(string: "https://music.apple.com/au/"), shazamURL: URL(string: "https://www.shazam.com/track/12345"), shazamID: "12345")
         let state: SongRecognitionState = mode == "no-match" ? .noMatch
             : mode == "error" ? .failed("This stream could not supply audio for identification. Try another stream in Audio Controls.")
             : mode == "listening" ? .listening : .found(song)

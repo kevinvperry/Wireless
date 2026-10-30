@@ -222,7 +222,7 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
 
     fileprivate func receivedPackets(_ count: UInt32, _ input: UnsafeRawPointer,
                                      _ descriptions: UnsafeMutablePointer<AudioStreamPacketDescription>?) {
-        guard requested || preparing, !sampleOnly || sampledSeconds < 10, let descriptions else { return }
+        guard requested || preparing, !sampleOnly || sampledSeconds < 30, let descriptions else { return }
         for index in 0..<Int(count) {
             var description = descriptions[index]
             let bytes = Data(bytes: input.advanced(by: Int(description.mStartOffset)),
@@ -276,7 +276,7 @@ final class EnhancedLiveStreamEngine: NSObject, URLSessionDataDelegate, @uncheck
         sampleConsumer?(pcm)
         if sampleOnly {
             sampledSeconds += Double(pcm.frameLength) / pcmFormat.sampleRate
-            if sampledSeconds >= 10 {
+            if sampledSeconds >= 30 {
                 // AudioFileStream owns the current callback: close after it returns.
                 let token = generation
                 work.async { [self] in

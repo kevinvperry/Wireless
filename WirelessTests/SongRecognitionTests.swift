@@ -66,9 +66,6 @@ final class SongRecognitionTests: XCTestCase {
         recognition.cancel()
         XCTAssertEqual(stops, before + 1)
         XCTAssertEqual(recognition.state, .ready)
-        XCTAssertFalse(recognition.saving)
-        XCTAssertFalse(recognition.saved)
-        XCTAssertNil(recognition.saveMessage)
     }
 
     @MainActor func testUnavailableStopsAttemptAndClearsOldSourceDescription() {

@@ -15,7 +15,7 @@ final class SongRecognitionUITests: XCTestCase {
             if mode == "found" {
                 XCTAssertTrue(app.staticTexts["identifiedSongTitle"].waitForExistence(timeout: 5))
                 // Scrollable content keeps actions reachable at accessibility sizes.
-                let save = app.buttons["Save to Shazam"]
+                let save = app.buttons["openInShazam"].exists ? app.buttons["openInShazam"] : app.links["openInShazam"]
                 for _ in 0..<4 { if save.isHittable { break }; app.swipeUp() }
                 XCTAssertTrue(save.isHittable)
                 XCTAssertTrue(app.buttons["Open in Apple Music"].exists || app.links["Open in Apple Music"].exists)
@@ -75,7 +75,7 @@ final class SongRecognitionUITests: XCTestCase {
         }
         if format == "hls" {
             let submitted = NSPredicate { _, _ in
-                app.staticTexts["Checking with Shazam…"].exists
+                app.staticTexts["Listening and matching with Shazam…"].exists
                     || app.staticTexts["No song found"].exists
                     || app.staticTexts["Shazam could not complete the request. Check your internet connection and try again."].exists
             }
