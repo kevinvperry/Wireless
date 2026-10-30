@@ -3,7 +3,7 @@ import Combine
 import ShazamKit
 import Synchronization
 
-struct RecognisedSong: Equatable, Sendable {
+struct RecognisedSong: Codable, Equatable, Sendable {
     let title: String
     let artist: String
     let artworkURL: URL?
@@ -231,6 +231,7 @@ final class SongRecognitionWorker: NSObject, SHSessionDelegate, @unchecked Senda
     private var worker: SongRecognitionWorker?
     private var deadline: Task<Void, Never>?
     var stopAudio: (() -> Void)?
+    var onRecognised: ((RecognisedSong, UUID) -> Bool)?
 
     func start(explanation: String, diagnosticFields: [String: String] = [:], privateNames: [String] = []) -> SongRecognitionWorker {
         cancel(reason: "replaced-by-new-attempt")
@@ -294,6 +295,10 @@ final class SongRecognitionWorker: NSObject, SHSessionDelegate, @unchecked Senda
         state = .ready; sourceExplanation = ""
     }
     private func finish(_ result: SongRecognitionState) {
+        if case .found(let song) = result, let onRecognised {
+            let saved = onRecognised(song, attempt.id)
+            diagnostics?.record(saved ? "history.saved" : "history.failed", "Local recognition history update", ["saved": String(saved)])
+        }
         diagnostics?.record("attempt.finished", "Identification reached a terminal result", ["outcome": result.diagnosticName])
         state = result; deadline?.cancel(); deadline = nil
         worker?.cancel(reason: "terminal-" + result.diagnosticName); worker = nil; stopAudio?()

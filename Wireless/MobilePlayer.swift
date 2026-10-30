@@ -81,6 +81,7 @@ final class MobilePlayer: ObservableObject {
         }
     } }
     let songRecognition = SongRecognition()
+    let shazamHistory: ShazamHistoryStore
 
     func identifySong() {
         let audioSession = AVAudioSession.sharedInstance()
@@ -213,7 +214,8 @@ final class MobilePlayer: ObservableObject {
 
     init(
         defaults: UserDefaults = .standard,
-        statsStore: WirelessListeningStatsStore = .shared
+        statsStore: WirelessListeningStatsStore = .shared,
+        shazamHistory: ShazamHistoryStore = .shared
     ) {
         let initialSyncEnabled: Bool
         if defaults.bool(forKey: Self.syncDefaultOffMigrationKey) {
@@ -236,6 +238,7 @@ final class MobilePlayer: ObservableObject {
         ) ?? .off)
         self.defaults = defaults
         self.statsStore = statsStore
+        self.shazamHistory = shazamHistory
         let library = StationLibrary(defaults: defaults)
         self.library = library
         let saved = defaults.data(forKey: "lastPlayedStation.v1").flatMap { try? JSONDecoder().decode(DirectoryStation.self, from: $0) }
@@ -245,6 +248,10 @@ final class MobilePlayer: ObservableObject {
             .flatMap { saved in selected.playableStreams.contains(where: { $0.id == saved }) ? saved : nil }
             ?? selected.preferredStream?.id ?? ""
         delay = min(30, max(0, (delay * 2).rounded() / 2))
+        songRecognition.onRecognised = { [weak self] song, id in
+            guard let self else { return false }
+            return self.shazamHistory.record(song, stationID: self.station.id, stationName: self.station.name, id: id)
+        }
         songRecognition.stopAudio = { [weak self] in self?.directoryAudio.stopSongSample() }
         directoryAudio.onRecognitionInvalidated = { [weak self] reason in self?.songRecognition.cancel(reason: reason) }
         directoryAudio.onStatus = { [weak self] update, supported in

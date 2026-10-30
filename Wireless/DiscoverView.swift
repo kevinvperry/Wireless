@@ -408,6 +408,17 @@ private struct WirelessSettingsView: View {
 
             Section {
                 NavigationLink {
+                    ShazamHistoryView(history: player.shazamHistory)
+                } label: {
+                    settingsRow("Shazam History", systemImage: "clock.arrow.circlepath")
+                }
+                .accessibilityIdentifier("shazamHistory")
+            } header: { Text("Music discovery") }
+            footer: { Text("Revisit songs identified in Wireless. History is saved on this device.") }
+            .listRowBackground(cardBackground)
+
+            Section {
+                NavigationLink {
                     WirelessSupportView()
                 } label: {
                     settingsRow("Wireless Support", systemImage: "questionmark.circle")

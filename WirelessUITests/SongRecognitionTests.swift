@@ -1,6 +1,49 @@
 import XCTest
 
 final class SongRecognitionUITests: XCTestCase {
+    @MainActor func testHistorySearchDetailsAndConfirmedClear() {
+        let app = XCUIApplication()
+        app.launchEnvironment["WIRELESS_SONG_PREVIEW"] = "history"
+        app.launch()
+        XCTAssertTrue(app.navigationBars["Shazam History"].waitForExistence(timeout: 10))
+        let search = app.searchFields.firstMatch
+        XCTAssertTrue(search.waitForExistence(timeout: 5))
+        search.tap(); search.typeText("The Knack\n")
+        XCTAssertTrue(app.staticTexts["My Sharona"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["Never Tear Us Apart"].exists)
+        app.staticTexts["My Sharona"].tap()
+        XCTAssertTrue(app.navigationBars["Identified song"].waitForExistence(timeout: 5))
+        let open = app.buttons["openInShazam"].exists ? app.buttons["openInShazam"] : app.links["openInShazam"]
+        for _ in 0..<4 { if open.isHittable { break }; app.swipeUp() }
+        XCTAssertTrue(open.isHittable)
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        if !app.buttons["shazamHistoryOptions"].exists {
+            let closeSearch = app.buttons["close"].exists ? app.buttons["close"] : app.buttons["Cancel"]
+            if closeSearch.exists { closeSearch.tap() }
+        }
+        XCTAssertTrue(app.buttons["shazamHistoryOptions"].waitForExistence(timeout: 5))
+        app.buttons["shazamHistoryOptions"].tap()
+        app.buttons["Clear history"].tap()
+        let confirmation = app.alerts.firstMatch
+        XCTAssertTrue(confirmation.waitForExistence(timeout: 5))
+        confirmation.buttons["Cancel"].tap()
+        XCTAssertTrue(app.staticTexts["My Sharona"].exists)
+        app.buttons["shazamHistoryOptions"].tap(); app.buttons["Clear history"].tap()
+        XCTAssertTrue(confirmation.waitForExistence(timeout: 5))
+        confirmation.buttons["Clear history"].tap()
+        XCTAssertTrue(app.otherElements["shazamHistoryEmpty"].waitForExistence(timeout: 5)
+                      || app.staticTexts["Your discoveries start here"].exists)
+    }
+    @MainActor func testHistoryNavigationPreservesRecognitionResult() {
+        let app = XCUIApplication()
+        app.launchEnvironment["WIRELESS_SONG_PREVIEW"] = "found"
+        app.launch()
+        XCTAssertTrue(app.staticTexts["identifiedSongTitle"].waitForExistence(timeout: 10))
+        app.buttons["recognitionHistory"].tap()
+        XCTAssertTrue(app.navigationBars["Shazam History"].waitForExistence(timeout: 5))
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(app.staticTexts["identifiedSongTitle"].waitForExistence(timeout: 5))
+    }
     @MainActor func testResultAndFailureLayouts() { checkLayouts(largeText: false) }
     @MainActor func testAccessibilityResultLayout() { checkLayouts(largeText: true, modes: ["found"]) }
     @MainActor private func checkLayouts(largeText: Bool, modes: [String] = ["found", "no-match", "error", "listening"]) {

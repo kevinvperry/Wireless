@@ -11,7 +11,7 @@ Before feature edits, the current tracked source and outstanding widget source w
 - The Playing pane has an Identify song action beside Play/Pause. It is disabled while paused, buffering or using TV Sync.
 - Each attempt feeds decoded PCM immediately to `SHSession.matchStreamingBuffer(_:at:)`. ShazamKit chooses its signature/search timing; there is no fixed ten-second capture gate. A 30-second deadline bounds capture and matching.
 - Results stay separate from broadcaster song/programme metadata. A result offers artwork, an Apple Music link when supplied, and **Open in Shazam** using the returned `SHMediaItem.webURL` when supplied. The system opens the song in Shazam/App Clip where available or the website otherwise. This does not write to the Shazam library or automatically add a song to a music-service playlist.
-- No microphone recording, automatic library writes, stored audio, recognition history or always-on recognition.
+- No microphone recording, automatic Shazam-library writes, stored audio or always-on recognition. Successful matches are now retained in local Shazam History; see SHAZAM_HISTORY_AND_DESIGN.md.
 - Each attempt has its own identity. Closing/cancelling, changing the stream/station/backend, pausing, or leaving the foreground cancels sampling and rejects late callbacks.
 - Opt-in Stream Diagnostics records correlated streaming activity, capture progress, callback signature duration, error chains, fallback/reset and cancellation. Fingerprint bytes and sampled audio are not logged.
 
@@ -187,3 +187,11 @@ Streaming validation:
   finalisation (SDK build-version parsing errors; no finished Info.plist). Its
   log is `/tmp/wireless-streaming-ui.log`; the completed tests are distinguished
   from the interrupted report packaging. The full unit run completed normally.
+
+
+## Modern screens and history — 31 October 2026
+
+See [Shazam screens and local history](SHAZAM_HISTORY_AND_DESIGN.md) for the
+responsive artwork/glass redesign, local metadata history, navigation and
+persistence behaviour, and validation. Recognition streaming and its existing
+capture fallback remain in place.

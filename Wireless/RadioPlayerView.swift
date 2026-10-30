@@ -214,8 +214,8 @@ struct RadioPlayerView: View {
                 close: { showFavourites = false }
             )
         }
-        .sheet(isPresented: $showSongRecognition) {
-            SongRecognitionView(recognition: player.songRecognition, stationName: player.station.name,
+        .sheet(isPresented: $showSongRecognition, onDismiss: { player.songRecognition.cancel(reason: "sheet-dismissed") }) {
+            SongRecognitionView(recognition: player.songRecognition, stationName: player.station.name, history: player.shazamHistory,
                                 identify: { player.identifySong() })
         }
         .sheet(isPresented: $showAudio) {

@@ -59,13 +59,17 @@ Triple M and Hit embedded metadata remains authoritative. During some national n
 
 While a station is playing, tap **Identify song** in the **Playing** pane. Wireless feeds the playing audio to Shazam’s streaming matcher, so it can return a result as soon as enough audio is recognised rather than waiting for a fixed ten-second sample. Playback continues. Allow up to 30 seconds for a result; cancel or close the sheet to stop identification.
 
-A match shows the title, artist and artwork when available. Choose **Open in Apple Music** to open the matching song, or **Open in Shazam** to open the identified song in Shazam or its website. Shazam provides options for supported services such as Spotify and YouTube Music, depending on your installed apps, account and region. Wireless does not automatically save matches or replace the station’s song/programme information. Opening a song does not automatically save it to your Shazam library or add it to a music-service playlist.
+A match shows the title, artist and artwork when available. Choose **Open in Apple Music** to open the matching song, or **Open in Shazam** to open the identified song in Shazam or its website. Shazam provides options for supported services such as Spotify and YouTube Music, depending on your installed apps, account and region. Successful identifications are saved to **Shazam History** on this device. Wireless does not automatically add them to your Shazam library or replace the station’s song/programme information. Opening a song does not automatically save it to your Shazam library or add it to a music-service playlist.
 
 Identification requires an internet connection. Apple receives an audio fingerprint rather than a recording; Wireless does not use the microphone or save sampled audio to disk. Music in adverts or behind speech may match, and live performances or unfamiliar recordings may not. A match describes the sampled audio and is not a continuously updated now-playing result.
 
 On iOS 27 or later, HLS identification samples the current player’s decoded audio. When Wireless’s sound-processing engine is active, identification reuses its decoded audio. Other compatible direct MP3/AAC streams and unencrypted packed-AAC HLS use a short, silent, separate stream connection, which consumes extra data and may receive different personalised adverts or timing. Other HLS containers on iOS 26 may be unavailable; try another stream in **Audio Controls**. Protected streams or routes that do not expose decoded audio may also be unavailable.
 
 **Identify song** is unavailable while paused, buffering or using TV Sync. Identification stops when the sheet closes, Wireless leaves the foreground, or the station/stream/playback mode changes. Turn off TV Sync and wait for live playback before trying again.
+
+## Shazam History
+
+Open **History** from the Identify song sheet, or **Settings → Shazam History**, to browse past successful identifications. Each entry includes its station, date, artwork and available Apple Music and Shazam links. Search by song, artist or station, then tap a row for the full song page. Swipe a row to delete it, or use History options to clear all entries after confirmation. History starts with successful identifications made after this update and stays on this device; it does not sync with Shazam or other devices. Only song information is stored, never sampled audio.
 
 ## Favourites
 

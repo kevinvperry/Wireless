@@ -36,7 +36,8 @@ struct WirelessApp: App {
             .appendingPathComponent("WirelessPlayerPreview", isDirectory: true)
             .appendingPathComponent("listening-stats.json")
         if let preset = ProcessInfo.processInfo.environment["WIRELESS_TEST_MUSIC_PRESET"] { defaults.set(preset, forKey: "musicPresetLevel") }
-        let player = MobilePlayer(defaults: defaults, statsStore: WirelessListeningStatsStore(fileURL: previewStatsURL))
+        let player = MobilePlayer(defaults: defaults, statsStore: WirelessListeningStatsStore(fileURL: previewStatsURL),
+                                  shazamHistory: ShazamHistoryStore(fileURL: previewStatsURL.deletingLastPathComponent().appendingPathComponent("shazam-history.json")))
         // Layout/playback fixtures must not contact the simulator's notification
         // daemon, which can block while another simulator is starting.
         player.sleepSchedule.onPromptDismissed = nil
